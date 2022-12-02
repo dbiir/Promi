@@ -34,9 +34,17 @@ void table_t::init(Catalog * schema) {
 }
 
 RC table_t::get_new_row(row_t *& row) {
-	// this function is obsolete.
+	/*
+	// this function is obsolete.	
 	assert(false);
 	return RCOK;
+	*/
+	// it works again by godrose
+	RC rc = RCOK;
+	DEBUG("Insert migrated row into host_table\n");
+	row->table = this;
+	row->init_manager(row);
+	return rc;
 }
 
 // the row is not stored locally. the pointer must be maintained by index structure.

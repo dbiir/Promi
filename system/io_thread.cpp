@@ -248,7 +248,7 @@ RC InputThread::server_recv_loop() {
 #ifdef FAKE_PROCESS
 			if (fakeprocess(msg))
 #endif
-				work_queue.enqueue(get_thd_id(),msg,false);
+			work_queue.enqueue(get_thd_id(),msg,false);
 			msgs->erase(msgs->begin());
 		}
 		delete msgs;

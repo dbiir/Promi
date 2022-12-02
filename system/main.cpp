@@ -53,6 +53,7 @@
 #include "tictoc.h"
 #include "key_xid.h"
 #include "rts_cache.h"
+#include "index_btree.h"
 
 void network_test();
 void network_test_recv();
@@ -359,7 +360,7 @@ int main(int argc, char *argv[]) {
 	simulation->last_da_query_time = starttime;
 
 	uint64_t id = 0;
-	for (uint64_t i = 0; i < wthd_cnt; i++) {
+	for (uint64_t i = 0; i < wthd_cnt-1; i++) {//最后一个thd是迁移thd
 #if SET_AFFINITY
 		CPU_ZERO(&cpus);
 		CPU_SET(cpu_cnt, &cpus);
@@ -370,6 +371,21 @@ int main(int argc, char *argv[]) {
 		worker_thds[i].init(id,g_node_id,m_wl);
 		pthread_create(&p_thds[id++], &attr, run_thread, (void *)&worker_thds[i]);
 	}
+
+	#if MIGRATION //启动迁移线程
+		uint64_t node_id_src=0, node_id_des=1;
+		uint64_t part_id = 0;
+		MigrationMessage* msg = new(MigrationMessage);
+		msg->node_id_src = node_id_src;
+		msg->node_id_des = node_id_des;
+		msg->rtype = SEND_MIGRATION;
+		msg->data_size = g_synth_table_size / g_part_cnt;
+		msg->return_node_id = node_id_des;
+		msg->part_id = part_id;
+		work_queue.enqueue(0,msg,true);
+		pthread_create(&p_thds[id++], &attr, run_thread, (void *)&worker_thds[wthd_cnt-1]);
+	#endif
+
 	for (uint64_t j = 0; j < rthd_cnt ; j++) {
 		assert(id >= wthd_cnt && id < wthd_cnt + rthd_cnt);
 		input_thds[j].init(id,g_node_id,m_wl);

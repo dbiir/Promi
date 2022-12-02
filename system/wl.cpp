@@ -94,6 +94,7 @@ RC Workload::init_schema(const char * schema_file) {
 			part_cnt = (CENTRAL_INDEX)? 1 : g_part_cnt;
 
       uint64_t table_size = g_synth_table_size;
+      std::cout<<table_size<<endl;
 #if WORKLOAD == TPCC
       if ( !tname.compare(1, 9, "WAREHOUSE") ) {
         table_size = g_num_wh / g_part_cnt;

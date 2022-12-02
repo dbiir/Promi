@@ -18,6 +18,10 @@
 #include "index_btree.h"
 #include "row.h"
 
+#include <sys/types.h>
+
+#include <sys/syscall.h>
+
 RC index_btree::init(uint64_t part_cnt) {
 	this->part_cnt = part_cnt;
 	order = BTREE_ORDER;
@@ -43,6 +47,11 @@ RC index_btree::init(uint64_t part_cnt, table_t * table) {
 
 bt_node * index_btree::find_root(uint64_t part_id) {
 	assert (part_id < part_cnt);
+	//bt_node* tmp = roots[0];
+	std::cout<<"print root[]"<<std::endl;
+	for (size_t i=0;i<g_part_cnt;i++){
+		std::cout<<"root "<<i<<" is "<<roots[i]<<std::endl;
+	}
 	return roots[part_id];
 }
 
@@ -95,7 +104,7 @@ RC index_btree::index_read(idx_key_t key, itemid_t *&item, int part_id) {
 	return index_read(key, item, 0, part_id);
 }
 
-RC index_btree::index_read(idx_key_t key, itemid_t *&item, uint64_t thd_id, int64_t part_id) {
+RC index_btree::index_read(idx_key_t key, itemid_t *&item, int part_id, int thd_id) {
 	RC rc = Abort;
 	glob_param params;
 	assert(part_id != -1);
@@ -329,7 +338,10 @@ RC index_btree::find_leaf(glob_param params, idx_key_t key, idx_acc_t access_typ
 	// key should be inserted into the right side of i
   if (!latch_node(c, LATCH_SH)) return Abort;
 	while (!c->is_leaf) {
-		assert(get_part_id(c) == params.part_id);
+		//int tmp = get_part_id(c->keys);
+		//std::cout<<"c->key is"<<c->keys<<std::endl;
+		//std::cout<<"get_part_id is"<<tmp<<' '<<params.part_id<<endl;
+		//assert(get_part_id(c) == params.part_id);
 		assert(get_part_id(c->keys) == params.part_id);
 		for (i = 0; i < c->num_keys; i++) {
       if (key < c->keys[i]) break;
@@ -516,6 +528,7 @@ RC index_btree::insert_into_new_root(glob_param params, bt_node *left, idx_key_t
     right->parent = new_root;
 	left->next = right;
 
+	std::cout<<"*************"<<params.part_id<<std::endl;
 	this->roots[part_id] = new_root;
 	// TODO this new root is not latched, at this point, other threads
 	// may start to access this new root. Is this ok?

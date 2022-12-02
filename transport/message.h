@@ -17,6 +17,9 @@
 #ifndef _MESSAGE_H_
 #define _MESSAGE_H_
 
+
+#include <vector>
+#include <string>
 #include "global.h"
 #include "helper.h"
 #include "logger.h"
@@ -490,6 +493,24 @@ class DAQueryMessage : public QueryMessage {
 	uint64_t state;
 	uint64_t next_state;
 	uint64_t last_state;
+};
+
+class MigrationMessage : public Message {
+public:
+  uint64_t node_id_src,node_id_des;//迁移源节点目标节点的id
+  uint64_t part_id;//迁移分区id
+  uint64_t data_size;
+  bool isdata;//是否真的传数据
+  vector<row_t> data;
+  vector<string> row_data;//row_t的真正信息保存在char[]中
+
+  uint64_t get_size();
+  void copy_from_buf(char * buf);
+  void copy_to_buf(char * buf);
+  void copy_from_txn(TxnManager * txn);
+  void copy_to_txn(TxnManager * txn);
+  void init();
+  void release();
 };
 
 #endif

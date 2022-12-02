@@ -301,7 +301,7 @@ public:
 	std::atomic<bool>* is_abort = nullptr;
 #endif
 
-protected:
+public:  //从protected改的
 
 	int rsp_cnt;
 	void            insert_row(row_t * row, table_t * table);

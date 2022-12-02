@@ -1131,7 +1131,7 @@ itemid_t *TxnManager::index_read(INDEX *index, idx_key_t key, int part_id, int c
 	uint64_t starttime = get_sys_clock();
 
 	itemid_t * item;
-	index->index_read(key, count, item, part_id);
+	index->index_read(key, item, count, part_id);  //btree hash is different
 
 	uint64_t t = get_sys_clock() - starttime;
 	INC_STATS(get_thd_id(), txn_index_time, t);

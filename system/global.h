@@ -313,6 +313,9 @@ enum RemReqType {
     LOG_MSG_RSP,
     LOG_FLUSHED,
     CALVIN_ACK,
+    SEND_MIGRATION,
+    RECV_MIGRATION,
+    FINISH_MIGRATION,
   NO_MSG
 };
 

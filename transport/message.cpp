@@ -168,6 +168,15 @@ Message * Message::create_message(RemReqType rtype) {
     case RACK_FIN:
       msg = new AckMessage;
       break;
+    case SEND_MIGRATION:
+      msg = new MigrationMessage;
+      break;
+    case RECV_MIGRATION:
+      msg = new MigrationMessage;
+      break;
+    case FINISH_MIGRATION:
+      msg = new MigrationMessage;
+      break;
     case CL_QRY:
     case CL_QRY_O:
     case RTXN:
@@ -1979,3 +1988,80 @@ uint64_t DAQueryMessage::get_size() {
   return size;
 }
 void DAQueryMessage::release() { QueryMessage::release(); }
+
+
+uint64_t MigrationMessage::get_size(){
+  uint64_t size = Message::mget_size();
+  size += sizeof(uint64_t)*4;
+  size += sizeof(bool);
+  if (isdata){
+    size += sizeof(row_t)*data_size;
+    size += data[0].get_tuple_size()*data_size;
+  }
+  return size;
+}
+
+void MigrationMessage::copy_from_buf(char* buf){
+  Message::mcopy_from_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_VAL(node_id_src,buf,ptr);
+  COPY_VAL(node_id_des,buf,ptr);
+  COPY_VAL(part_id,buf,ptr);
+  COPY_VAL(data_size,buf,ptr);
+  COPY_VAL(isdata,buf,ptr);
+  if (isdata){
+    vector<row_t> data(data_size);
+    for (size_t i=0;i<data_size;i++){
+      row_t tmp;
+      COPY_VAL(tmp,buf,ptr);
+     data.emplace_back(tmp);
+    }
+    vector<string> row_data(data_size);
+    for (size_t i=0;i<data_size;i++){
+      //char* tmp = (char*)malloc(sizeof(char)*data[0].get_tuple_size());
+      string* tmp_str;
+      COPY_VAL(tmp_str,buf,ptr);
+      
+      row_data.emplace_back(*tmp_str);
+    }
+  }
+}
+
+void MigrationMessage::copy_to_buf(char* buf){
+  Message::mcopy_to_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_BUF(buf,node_id_src,ptr);
+  COPY_BUF(buf,node_id_des,ptr);
+  COPY_BUF(buf,part_id,ptr);
+  COPY_BUF(buf,data_size,ptr);
+  COPY_BUF(buf,isdata,ptr);
+  if (isdata){
+    for (size_t i=0;i<data_size;i++){
+      COPY_BUF(buf,data[i],ptr);
+    }
+    for (size_t i=0;i<data_size;i++){
+      for (size_t j=0;i<data[0].get_tuple_size();j++){
+        COPY_BUF(buf,row_data[i][j],ptr);  
+      }
+    }
+  }
+}
+
+void MigrationMessage::init(){
+
+}
+
+void MigrationMessage::release(){
+  
+}
+
+
+//todo
+void MigrationMessage::copy_from_txn(TxnManager* txn){
+  Message::mcopy_from_txn(txn);
+  
+}
+
+void MigrationMessage::copy_to_txn(TxnManager* txn){
+  Message::mcopy_to_txn(txn);
+}

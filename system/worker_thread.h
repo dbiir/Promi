@@ -19,6 +19,9 @@
 
 #include "global.h"
 #include "thread.h"
+#include "helper.h"
+#include "ycsb.h"
+#include "row.h"
 class Workload;
 class Message;
 
@@ -51,6 +54,9 @@ public:
     RC process_log_msg(Message * msg);
     RC process_log_msg_rsp(Message * msg);
     RC process_log_flushed(Message * msg);
+    RC process_send_migration(MigrationMessage* msg);
+    RC process_recv_migration(MigrationMessage* msg);
+    RC process_finish_migration(MigrationMessage* msg);
     RC init_phase();
     uint64_t get_next_txn_id();
     bool is_cc_new_timestamp();

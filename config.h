@@ -71,7 +71,7 @@
 #define SEND_THREAD_CNT 2
 #define CORE_CNT 2
 // PART_CNT should be at least NODE_CNT
-#define PART_CNT NODE_CNT
+#define PART_CNT NODE_CNT*2
 #define CLIENT_NODE_CNT 1
 #define CLIENT_THREAD_CNT 4
 #define CLIENT_REM_THREAD_CNT 2
@@ -81,6 +81,8 @@
 #define LOAD_METHOD LOAD_MAX
 #define LOAD_PER_SERVER 100
 
+//MIGRATION
+#define MIGRATION true
 // Replication
 #define REPLICA_CNT 0
 // AA (Active-Active), AP (Active-Passive)
@@ -146,7 +148,7 @@
 #define NETWORK_DELAY_TEST false
 #define NETWORK_DELAY 0UL
 
-#define MAX_QUEUE_LEN NODE_CNT * 2
+#define MAX_QUEUE_LEN NODE_CNT
 
 #define PRIORITY_WORK_QUEUE false
 #define PRIORITY PRIORITY_ACTIVE
@@ -176,7 +178,7 @@
 #define ENABLE_LATCH        false
 #define CENTRAL_INDEX       false
 #define CENTRAL_MANAGER       false
-#define INDEX_STRUCT        IDX_HASH
+#define INDEX_STRUCT        IDX_BTREE
 #define BTREE_ORDER         16
 
 // [TIMESTAMP]
@@ -220,7 +222,7 @@
 // Benchmark
 /***********************************************/
 // max number of rows touched per transaction
-#define MAX_ROW_PER_TXN       64
+#define MAX_ROW_PER_TXN       65536
 #define QUERY_INTVL         1UL
 #define MAX_TXN_PER_PART 500000
 #define FIRST_PART_LOCAL      true
@@ -234,7 +236,7 @@
 #define DATA_PERC 100
 #define ACCESS_PERC 0.03
 #define INIT_PARALLELISM 8
-#define SYNTH_TABLE_SIZE 262144
+#define SYNTH_TABLE_SIZE 65536
 #define ZIPF_THETA 0.6
 #define TXN_WRITE_PERC 0.5
 #define TUP_WRITE_PERC 0.5
