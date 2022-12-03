@@ -13,7 +13,7 @@
 	 See the License for the specific language governing permissions and
 	 limitations under the License.
 */
-
+//*******************
 #include "abort_thread.h"
 #include "calvin_thread.h"
 #include "client_query.h"
