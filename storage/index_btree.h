@@ -56,6 +56,7 @@ private:
 	// index structures may have part_cnt = 1 or PART_CNT.
 	uint64_t part_cnt;
 	RC			make_lf(uint64_t part_id, bt_node *& node);
+	RC 			make_lf_init(uint64_t part_id, bt_node *& node); //fix
 	RC			make_nl(uint64_t part_id, bt_node *& node);
 	RC		 	make_node(uint64_t part_id, bt_node *& node);
 

@@ -27,13 +27,15 @@ RC index_btree::init(uint64_t part_cnt) {
 	order = BTREE_ORDER;
 	// these pointers can be mapped anywhere. They won't be changed
 	roots = (bt_node **) malloc(part_cnt * sizeof(bt_node *));
+
 	// "cur_xxx_per_thd" is only for SCAN queries.
 	ARR_PTR(bt_node *, cur_leaf_per_thd, g_thread_cnt);
 	ARR_PTR(UInt32, cur_idx_per_thd, g_thread_cnt);
 	// the index tree of each partition musted be mapped to corresponding l2 slices
 	for (UInt32 part_id = 0; part_id < part_cnt; part_id ++) {
+		roots[part_id] = (bt_node*)malloc(sizeof(bt_node));
 		RC rc;
-		rc = make_lf(part_id, roots[part_id]);
+		rc = make_lf_init(part_id, roots[part_id]);
 		assert (rc == RCOK);
 	}
 	return RCOK;
@@ -48,10 +50,12 @@ RC index_btree::init(uint64_t part_cnt, table_t * table) {
 bt_node * index_btree::find_root(uint64_t part_id) {
 	assert (part_id < part_cnt);
 	//bt_node* tmp = roots[0];
+	/*
 	std::cout<<"print root[]"<<std::endl;
 	for (size_t i=0;i<g_part_cnt;i++){
 		std::cout<<"root "<<i<<" is "<<roots[i]<<std::endl;
 	}
+	*/
 	return roots[part_id];
 }
 
@@ -171,6 +175,7 @@ RC index_btree::index_insert(idx_key_t key, itemid_t * item, int part_id) {
 //			assert( release_latch(ex_list[i]) == LATCH_EX );
 	}
 //	assert(leaf->latch_type == LATCH_NONE);
+	std::cout<<"insert key "<<key<<std::endl;
 	return rc;
 }
 
@@ -178,6 +183,17 @@ RC index_btree::make_lf(uint64_t part_id, bt_node *& node) {
 	RC rc = make_node(part_id, node);
 	if (rc != RCOK) return rc;
 	node->is_leaf = true;
+	return RCOK;
+}
+
+RC index_btree::make_lf_init(uint64_t part_id, bt_node *& node) {  //fix
+	bt_node * node_ = (bt_node *) mem_allocator.alloc(sizeof(bt_node));
+	RC rc = make_node(part_id, node_);
+	if (rc != RCOK) return rc;
+	//node->pointers = (void **) mem_allocator.alloc(order * sizeof(void *));
+	node->next = node_;
+	node_->parent = NULL;//btree的根节点的parent不指向roots节点，但roots指向根节点
+	node_->is_leaf = true;
 	return RCOK;
 }
 
@@ -323,12 +339,13 @@ RC index_btree::find_leaf(glob_param params, idx_key_t key, idx_acc_t access_typ
 //	RC rc;
 	UInt32 i;
 	bt_node * c = find_root(params.part_id);
+	c=(bt_node*)c->next;
 	assert(c != NULL);
 	bt_node * child;
 	if (access_type == INDEX_NONE) {
 		while (!c->is_leaf) {
 			for (i = 0; i < c->num_keys; i++) {
-        if (key < c->keys[i]) break;
+        		if (key < c->keys[i]) break;
 			}
 			c = (bt_node *)c->pointers[i];
 		}
@@ -342,10 +359,13 @@ RC index_btree::find_leaf(glob_param params, idx_key_t key, idx_acc_t access_typ
 		//std::cout<<"c->key is"<<c->keys<<std::endl;
 		//std::cout<<"get_part_id is"<<tmp<<' '<<params.part_id<<endl;
 		//assert(get_part_id(c) == params.part_id);
-		assert(get_part_id(c->keys) == params.part_id);
+		std::cout<<c->keys[0]<<' '<<get_part_id(&c->keys[0])<<' '<<"part_id is"<<params.part_id<<endl;
+		//assert(get_part_id(&c->keys[0]) == params.part_id);
+		assert(key_to_part(c->keys[0]) == params.part_id);
 		for (i = 0; i < c->num_keys; i++) {
-      if (key < c->keys[i]) break;
+      		if (key < c->keys[i]) break;
 		}
+		//if (i == c->num_keys) i--;
 		child = (bt_node *)c->pointers[i];
 		if (!latch_node(child, LATCH_SH)) {
 			release_latch(c);
@@ -362,8 +382,8 @@ RC index_btree::find_leaf(glob_param params, idx_key_t key, idx_acc_t access_typ
 					last_ex = NULL;
 					return Abort;
 				}
-        if (last_ex == NULL) last_ex = c;
-      } else {
+        		if (last_ex == NULL) last_ex = c;
+      		} else {
 				cleanup(c, last_ex);
 				last_ex = NULL;
 				release_latch(c);
@@ -475,8 +495,7 @@ RC index_btree::split_lf_insert(glob_param params, bt_node * leaf, idx_key_t key
 
     new_leaf->parent = leaf->parent;
     new_key = new_leaf->keys[0];
-
-    rc = insert_into_parent(params, leaf, new_key, new_leaf);
+	rc = insert_into_parent(params, leaf, new_key, new_leaf);
 	return rc;
 }
 
@@ -486,7 +505,7 @@ RC index_btree::insert_into_parent(glob_param params, bt_node *left, idx_key_t k
     bt_node * parent = left->parent;
 
     /* Case: new root. */
-  if (parent == NULL) return insert_into_new_root(params, left, key, right);
+  if (left->parent == NULL) return insert_into_new_root(params, left, key, right); //parent就是roots[part_id], Btree要往上生成新root了
 
 	UInt32 insert_idx = 0;
   while (parent->keys[insert_idx] < key && insert_idx < parent->num_keys) insert_idx++;
@@ -495,6 +514,7 @@ RC index_btree::insert_into_parent(glob_param params, bt_node *left, idx_key_t k
 		for (UInt32 i = parent->num_keys-1; i >= insert_idx; i--) {
 			parent->keys[i + 1] = parent->keys[i];
 			parent->pointers[i+2] = parent->pointers[i+1];
+			if (i==0) break;
 		}
 		parent->num_keys ++;
 		parent->keys[insert_idx] = key;
@@ -517,19 +537,22 @@ RC index_btree::insert_into_new_root(glob_param params, bt_node *left, idx_key_t
 	bt_node * new_root;
 //	printf("will make_nl(). part_id=%lld. key=%lld\n", part_id, key);
 	rc = make_nl(part_id, new_root);
+	latch_node(new_root,LATCH_EX);
 	if (rc != RCOK) return rc;
+	new_root->parent = NULL;
     new_root->keys[0] = key;
     new_root->pointers[0] = left;
     new_root->pointers[1] = right;
-    new_root->num_keys++;
+    new_root->num_keys = 1;
 	M_ASSERT( (new_root->num_keys < order), "too many keys in leaf" );
     new_root->parent = NULL;
     left->parent = new_root;
     right->parent = new_root;
 	left->next = right;
+	roots[part_id]->next = new_root;//生成新root的必要操作
 
-	std::cout<<"*************"<<params.part_id<<std::endl;
-	this->roots[part_id] = new_root;
+	std::cout<<"*************"<<"create the new root "<<params.part_id<<std::endl;
+	release_latch(new_root);
 	// TODO this new root is not latched, at this point, other threads
 	// may start to access this new root. Is this ok?
     return RCOK;

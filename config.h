@@ -129,7 +129,7 @@
 #define MEM_PAD           true
 
 // [PART_ALLOC]
-#define PART_ALLOC          false
+#define PART_ALLOC          true
 #define MEM_SIZE          (1UL << 30)
 #define NO_FREE           false
 

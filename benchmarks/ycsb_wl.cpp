@@ -154,15 +154,15 @@ void * YCSBWorkload::init_table_slice() {
 			key < slice_size * (tid + 1);
 			//key ++
 	) {
-    if(GET_NODE_ID(key_to_part(key)) != g_node_id) {
-      key++;
-      continue;
-    }
+    	if(GET_NODE_ID(key_to_part(key)) != g_node_id) {
+      	key++;
+      	continue;
+    	}
 
-    ++key_cnt;
-    if(key_cnt % 500000 == 0) {
-      printf("Thd %d inserted %ld keys %f\n",tid,key_cnt,simulation->seconds_from_start(get_sys_clock()));
-    }
+    	++key_cnt;
+    	if(key_cnt % 500000 == 0) {
+      	printf("Thd %d inserted %ld keys %f\n",tid,key_cnt,simulation->seconds_from_start(get_sys_clock()));
+    	}
 //		printf("tid=%d. key=%ld\n", tid, key);
 		row_t * new_row = NULL;
 		uint64_t row_id;
@@ -196,9 +196,10 @@ void * YCSBWorkload::init_table_slice() {
 
 		rc = the_index->index_insert(idx_key, m_item, part_id);
 		assert(rc == RCOK);
-    key += g_part_cnt;
+    	//key += g_part_cnt;
+		key += g_node_cnt;
 	}
-  printf("Thd %d inserted %ld keys\n",tid,key_cnt);
+  	printf("Thd %d inserted %ld keys\n",tid,key_cnt);
 	return NULL;
 }
 
