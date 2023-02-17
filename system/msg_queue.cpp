@@ -101,7 +101,6 @@ void MessageQueue::enqueue(uint64_t thd_id, Message * msg,uint64_t dest) {
   msg_queue_size++;
   sem_post(&_semaphore);
   INC_STATS(thd_id,trans_msg_queue_item_total,msg_queue_size);
-
 }
 
 uint64_t MessageQueue::dequeue(uint64_t thd_id, Message *& msg) {

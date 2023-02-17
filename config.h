@@ -69,9 +69,10 @@
 #define THREAD_CNT 4
 #define REM_THREAD_CNT 2
 #define SEND_THREAD_CNT 2
+#define MIG_THREAD_CNT 1 //迁移线程
 #define CORE_CNT 2
 // PART_CNT should be at least NODE_CNT
-#define PART_CNT NODE_CNT*2
+#define PART_CNT NODE_CNT*5
 #define CLIENT_NODE_CNT 1
 #define CLIENT_THREAD_CNT 4
 #define CLIENT_REM_THREAD_CNT 2
@@ -453,8 +454,8 @@ enum PPSTxnType {
 #define PROG_TIMER 10 * BILLION // in s
 #define BATCH_TIMER 0
 #define SEQ_BATCH_TIMER 5 * 1 * MILLION // ~5ms -- same as CALVIN paper
-#define DONE_TIMER 1 * 60 * BILLION // ~1 minutes
-#define WARMUP_TIMER 1 * 60 * BILLION // ~1 minutes
+#define DONE_TIMER 1 * 20 * BILLION // ~1 minutes  60 BILLION = 1 min
+#define WARMUP_TIMER 1 * 20 * BILLION // ~1 minutes
 
 #define SEED 0
 #define SHMEM_ENV false

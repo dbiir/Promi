@@ -113,7 +113,7 @@ RC InputThread::client_recv_loop() {
 		if (msgs == NULL) continue;
 		while(!msgs->empty()) {
 			Message * msg = msgs->front();
-			assert(msg->rtype == CL_RSP);
+			//assert(msg->rtype == CL_RSP); 注释掉看看
 		#if CC_ALG == BOCC || CC_ALG == FOCC || ONE_NODE_RECIEVE == 1
 			return_node_offset = msg->return_node_id;
 		#else

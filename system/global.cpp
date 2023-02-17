@@ -54,6 +54,7 @@
 #include "tictoc.h"
 #include "key_xid.h"
 #include "rts_cache.h"
+#include "migmsg_queue.h"
 
 #include <boost/lockfree/queue.hpp>
 #include "da_block_queue.h"
@@ -87,6 +88,7 @@ TxnTable txn_table;
 QWorkQueue work_queue;
 AbortQueue abort_queue;
 MessageQueue msg_queue;
+MigrateMessageQueue migmsg_queue;
 Client_txn client_man;
 Sequencer seq_man;
 Logger logger;
@@ -164,11 +166,12 @@ UInt32 g_logger_thread_cnt = 1;
 UInt32 g_logger_thread_cnt = 0;
 #endif
 UInt32 g_send_thread_cnt = SEND_THREAD_CNT;
+UInt32 g_migrate_thread_cnt = MIG_THREAD_CNT;
 #if CC_ALG == CALVIN
 // sequencer + scheduler thread
 UInt32 g_total_thread_cnt = g_thread_cnt + g_rem_thread_cnt + g_send_thread_cnt + g_abort_thread_cnt + g_logger_thread_cnt + 3;
 #else
-UInt32 g_total_thread_cnt = g_thread_cnt + g_rem_thread_cnt + g_send_thread_cnt + g_abort_thread_cnt + g_logger_thread_cnt + 1;
+UInt32 g_total_thread_cnt = g_thread_cnt + g_rem_thread_cnt + g_send_thread_cnt + g_abort_thread_cnt + g_logger_thread_cnt + g_migrate_thread_cnt + 1;
 #endif
 
 UInt32 g_total_client_thread_cnt = g_client_thread_cnt + g_client_rem_thread_cnt + g_client_send_thread_cnt;

@@ -157,6 +157,8 @@ public:
   // trans work queue count
   uint64_t trans_work_queue_item_total=0;
   uint64_t trans_msg_queue_item_total=0;
+  // trans migmsg count
+  uint64_t trans_migmsg_queue_item_total=0;
   // Work queue
   double work_queue_wait_time;
   uint64_t work_queue_cnt;
@@ -194,6 +196,12 @@ public:
   uint64_t * work_queue_dwq_cnt;
   uint64_t * work_queue_etx_cnt;
   uint64_t * work_queue_dtx_cnt;
+  
+  //Migration 待补充
+  uint64_t migmsg_queue_cnt;
+  uint64_t migmsg_queue_enq_cnt;
+  double migmsg_queue_delay_time;
+
   // IO
   double msg_queue_delay_time;
   uint64_t msg_queue_cnt;

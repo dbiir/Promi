@@ -163,6 +163,8 @@ void Stats_thd::clear() {
   // trans work queue
   trans_work_queue_item_total=0;
   trans_msg_queue_item_total=0;
+  // trans work queue count
+  trans_migmsg_queue_item_total=0;
   // Transaction stats
   txn_total_process_time=0;
   txn_process_time=0;
@@ -218,6 +220,12 @@ void Stats_thd::clear() {
     work_queue_etx_cnt[i]=0;
     work_queue_dtx_cnt[i]=0;
   }
+
+  //Migration
+  migmsg_queue_cnt = 0;
+  migmsg_queue_enq_cnt = 0;
+  migmsg_queue_delay_time = 0;
+
   // IO
   msg_queue_delay_time=0;
   msg_queue_cnt=0;
@@ -566,7 +574,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
   ",single_part_txn_avg_time=%f"
   ",txn_write_cnt=%ld"
   ",record_write_cnt=%ld"
-  ",parts_touched=%ld"
+  ",parts_touched=%ld\n"
           ",avg_parts_touched=%f",
           tput, txn_cnt, remote_txn_cnt, local_txn_cnt, local_txn_start_cnt, total_txn_commit_cnt,
           local_txn_commit_cnt, remote_txn_commit_cnt, total_txn_abort_cnt,positive_txn_abort_cnt, unique_txn_abort_cnt,
@@ -634,7 +642,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
   ",trans_msgsend_stage_three=%f"
   ",trans_get_client_wait=%f"
   ",trans_return_client_wait=%f"
-  ",trans_process_client=%f",
+  ",trans_process_client=%f\n",
           trans_total_run_time / BILLION, trans_init_time / BILLION, trans_process_time / BILLION,
           trans_get_access_time / BILLION, trans_store_access_time / BILLION, trans_get_row_time /BILLION, trans_benchmark_compute_time /BILLION,
           trans_2pc_time / BILLION,
@@ -670,7 +678,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
   ",avg_trans_process_network=%f"
   ",avg_trans_validation_network=%f"
   ",avg_trans_commit_network=%f"
-  ",avg_trans_abort_network=%f",
+  ",avg_trans_abort_network=%f\n",
           trans_total_run_time / (trans_total_count * BILLION), trans_init_time / (trans_init_count * BILLION), trans_process_time / (trans_process_count * BILLION),
           trans_get_access_time / (trans_get_access_count * BILLION), trans_store_access_time / (trans_store_access_count * BILLION), trans_get_row_time / (trans_get_row_count * BILLION),
           trans_2pc_time / (trans_2pc_count * BILLION),
@@ -694,7 +702,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
   ",trans_queue_count=%lu"
   ",trans_msg_queue_item_total=%lu"
   ",per_trans_queue_count=%f"
-  ",per_trans_msg_queue_count=%f",
+  ",per_trans_msg_queue_count=%f\n",
           trans_total_count, trans_init_count, trans_process_count,
           trans_get_access_count, trans_store_access_count, trans_get_row_count,
           trans_2pc_count,
@@ -739,7 +747,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
   ",txn_total_remote_wait_time_avg=%f"
   ",txn_remote_wait_time_avg=%f"
   ",txn_total_twopc_time_avg=%f"
-          ",txn_twopc_time_avg=%f",
+          ",txn_twopc_time_avg=%f\n",
           txn_total_process_time / BILLION, txn_process_time / BILLION,
           txn_total_local_wait_time / BILLION, txn_local_wait_time / BILLION,
           txn_total_remote_wait_time / BILLION, txn_remote_wait_time / BILLION,
@@ -764,7 +772,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
   ",abort_queue_penalty=%f"
   ",abort_queue_penalty_extra=%f"
   ",abort_queue_penalty_avg=%f"
-  ",abort_queue_penalty_extra_avg=%f"
+  ",abort_queue_penalty_extra_avg=%f\n"
   // Abort queue
           ,
           abort_queue_enqueue_cnt, abort_queue_dequeue_cnt, abort_queue_enqueue_time / BILLION,
@@ -800,7 +808,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
   ",work_queue_old_wait_avg_time=%f"
   ",work_queue_enqueue_time=%f"
   ",work_queue_dequeue_time=%f"
-          ",work_queue_conflict_cnt=%ld",
+          ",work_queue_conflict_cnt=%ld\n",
           work_queue_wait_time / BILLION, work_queue_cnt, work_queue_enq_cnt,
           work_queue_wait_avg_time / BILLION, work_queue_mtx_wait_time / BILLION,
           work_queue_mtx_wait_avg / BILLION, work_queue_new_cnt, work_queue_new_wait_time / BILLION,
@@ -819,7 +827,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
     ",worker_release_msg_time=%f"
     ",worker_process_time=%f"
     ",worker_process_cnt=%ld"
-          ",worker_process_avg_time=%f",
+          ",worker_process_avg_time=%f\n",
           worker_idle_time / BILLION, worker_activate_txn_time / BILLION,
           worker_deactivate_txn_time / BILLION, worker_release_msg_time / BILLION,
           worker_process_time / BILLION, worker_process_cnt, worker_process_avg_time / BILLION);
@@ -907,7 +915,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
   ",msg_unpack_time_avg=%f"
   ",mbuf_send_intv_time=%f"
   ",mbuf_send_intv_time_avg=%f"
-          ",msg_copy_output_time=%f",
+          ",msg_copy_output_time=%f\n",
           msg_queue_delay_time / BILLION, msg_queue_cnt, msg_queue_enq_cnt,
           msg_queue_delay_time_avg / BILLION, msg_send_time / BILLION, msg_send_time_avg / BILLION,
           msg_recv_time / BILLION, msg_recv_time_avg / BILLION, msg_recv_idle_time / BILLION,
@@ -945,7 +953,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
     ",twopl_getlock_cnt=%ld"
     ",twopl_getlock_time=%f"
     ",twopl_release_cnt=%ld"
-          ",twopl_release_time=%f",
+          ",twopl_release_time=%f\n",
           twopl_already_owned_cnt, twopl_owned_cnt, twopl_sh_owned_cnt, twopl_ex_owned_cnt,
           twopl_sh_bypass_cnt, twopl_owned_time / BILLION, twopl_sh_owned_time / BILLION,
           twopl_ex_owned_time / BILLION, twopl_sh_owned_avg_time / BILLION,
@@ -985,7 +993,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
   ",sched_idle_time=%f"
   ",sched_txn_table_time=%f"
   ",sched_epoch_cnt=%ld"
-          ",sched_epoch_diff=%f",
+          ",sched_epoch_diff=%f\n",
           seq_txn_cnt, seq_batch_cnt, seq_full_batch_cnt, seq_ack_time / BILLION,
           seq_batch_time / BILLION, seq_process_cnt, seq_complete_cnt, seq_process_time / BILLION,
           seq_prep_time / BILLION, seq_idle_time / BILLION, seq_queue_wait_time / BILLION,
@@ -1001,7 +1009,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
           ",dli_mvcc_occ_validate_time=%f"
           ",dli_mvcc_occ_check_cnt=%ld"
           ",dli_mvcc_occ_abort_check_cnt=%ld"
-          ",dli_mvcc_occ_ts_abort_cnt=%ld",
+          ",dli_mvcc_occ_ts_abort_cnt=%ld\n",
           dli_mvcc_occ_validate_time / BILLION, dli_mvcc_occ_check_cnt,
           dli_mvcc_occ_abort_check_cnt, dli_mvcc_occ_ts_abort_cnt);
   //OCC
@@ -1016,7 +1024,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
   ",occ_check_cnt=%ld"
   ",occ_abort_check_cnt=%ld"
   ",occ_ts_abort_cnt=%ld"
-          ",occ_finish_time=%f",
+          ",occ_finish_time=%f\n",
           occ_validate_time / BILLION, occ_cs_wait_time / BILLION, occ_cs_time / BILLION,
           occ_hist_validate_time / BILLION, occ_act_validate_time / BILLION,
           occ_hist_validate_fail_time / BILLION, occ_act_validate_fail_time / BILLION,
@@ -1047,7 +1055,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
   ",maat_range=%f"
   ",maat_commit_cnt=%ld"
   ",maat_commit_avg=%ld"
-          ",maat_range_avg=%f",
+          ",maat_range_avg=%f\n",
           maat_validate_cnt, maat_validate_time / BILLION, maat_validate_avg / BILLION,
           maat_cs_wait_time / BILLION, maat_cs_wait_avg / BILLION, maat_case1_cnt, maat_case2_cnt,
           maat_case3_cnt, maat_case4_cnt, maat_case5_cnt, maat_range / BILLION, maat_commit_cnt,
@@ -1077,7 +1085,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
           ",dta_range=%f"
           ",dta_commit_cnt=%ld"
           ",dta_commit_avg=%ld"
-          ",dta_range_avg=%f",
+          ",dta_range_avg=%f\n",
           dta_validate_cnt, dta_validate_time / BILLION, dta_validate_avg / BILLION,
           dta_cs_wait_time / BILLION, dta_cs_wait_avg / BILLION, dta_case1_cnt, dta_case2_cnt,
           dta_case3_cnt, dta_case4_cnt, dta_case5_cnt, dta_range / BILLION, dta_commit_cnt,
@@ -1094,7 +1102,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
     ",log_flush_cnt=%ld"
     ",log_flush_time=%f"
     ",log_flush_avg_time=%f"
-          ",log_process_time=%f",
+          ",log_process_time=%f\n",
           log_write_cnt, log_write_time / BILLION, log_write_avg_time / BILLION, log_flush_cnt,
           log_flush_time / BILLION, log_flush_avg_time / BILLION, log_process_time / BILLION);
 
@@ -1114,7 +1122,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
     ",txn_table_release_time=%f"
     ",txn_table_min_ts_time=%f"
     ",txn_table_get_avg_time=%f"
-    ",txn_table_release_avg_time=%f"
+    ",txn_table_release_avg_time=%f\n"
     // Transaction Table
           ,
           txn_table_new_cnt, txn_table_get_cnt, txn_table_release_cnt, txn_table_cflt_cnt,

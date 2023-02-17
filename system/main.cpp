@@ -54,6 +54,8 @@
 #include "key_xid.h"
 #include "rts_cache.h"
 #include "index_btree.h"
+#include "migrate_thread.h"
+#include "migmsg_queue.h"
 
 void network_test();
 void network_test_recv();
@@ -65,6 +67,7 @@ InputThread * input_thds;
 OutputThread * output_thds;
 AbortThread * abort_thds;
 LogThread * log_thds;
+MigrateThread * migrate_thds;
 #if CC_ALG == CALVIN
 CalvinLockThread * calvin_lock_thds;
 CalvinSequencerThread * calvin_seq_thds;
@@ -151,6 +154,10 @@ int main(int argc, char *argv[]) {
 	printf("Initializing message queue... ");
 	fflush(stdout);
 	msg_queue.init();
+	printf("Done\n");
+	printf("Initializing migrate message queue..."); //mirgrate message queue
+	fflush(stdout);
+	migmsg_queue.init();
 	printf("Done\n");
 	printf("Initializing transaction manager pool... ");
 	fflush(stdout);
@@ -278,7 +285,8 @@ int main(int argc, char *argv[]) {
 	uint64_t wthd_cnt = thd_cnt;
 	uint64_t rthd_cnt = g_rem_thread_cnt;
 	uint64_t sthd_cnt = g_send_thread_cnt;
-	uint64_t all_thd_cnt = thd_cnt + rthd_cnt + sthd_cnt + g_abort_thread_cnt + 1;
+	uint64_t migthd_cnt = g_migrate_thread_cnt;
+	uint64_t all_thd_cnt = thd_cnt + rthd_cnt + sthd_cnt + g_abort_thread_cnt + migthd_cnt + 1;
 #if LOGGING
 		all_thd_cnt += 1; // logger thread
 #endif
@@ -287,7 +295,7 @@ int main(int argc, char *argv[]) {
 #endif
 
 
-	printf("%ld, %ld, %ld, %d \n", thd_cnt, rthd_cnt, sthd_cnt, g_abort_thread_cnt);
+	printf("%ld, %ld, %ld, %d, %d\n", thd_cnt, rthd_cnt, sthd_cnt, g_abort_thread_cnt, g_migrate_thread_cnt);
 	printf("all_thd_cnt: %ld, g_this_total_thread_cnt: %d \n", all_thd_cnt, g_this_total_thread_cnt);
 	fflush(stdout);
 	assert(all_thd_cnt == g_this_total_thread_cnt);
@@ -302,6 +310,7 @@ int main(int argc, char *argv[]) {
 	output_thds = new OutputThread[sthd_cnt];
 	abort_thds = new AbortThread[1];
 	log_thds = new LogThread[1];
+	migrate_thds = new MigrateThread[migthd_cnt];
 #if CC_ALG == CALVIN
 	calvin_lock_thds = new CalvinLockThread[1];
 	calvin_seq_thds = new CalvinSequencerThread[1];
@@ -360,7 +369,7 @@ int main(int argc, char *argv[]) {
 	simulation->last_da_query_time = starttime;
 
 	uint64_t id = 0;
-	for (uint64_t i = 0; i < wthd_cnt-1; i++) {//最后一个thd是迁移thd
+	for (uint64_t i = 0; i < wthd_cnt; i++) {
 #if SET_AFFINITY
 		CPU_ZERO(&cpus);
 		CPU_SET(cpu_cnt, &cpus);
@@ -372,6 +381,7 @@ int main(int argc, char *argv[]) {
 		pthread_create(&p_thds[id++], &attr, run_thread, (void *)&worker_thds[i]);
 	}
 
+	/*
 	#if MIGRATION //启动迁移线程
 		uint64_t node_id_src=0, node_id_des=1;
 		uint64_t part_id = 0;
@@ -382,9 +392,19 @@ int main(int argc, char *argv[]) {
 		msg->data_size = g_synth_table_size / g_part_cnt;
 		msg->return_node_id = node_id_des;
 		msg->part_id = part_id;
-		work_queue.enqueue(0,msg,true);
-		pthread_create(&p_thds[id++], &attr, run_thread, (void *)&worker_thds[wthd_cnt-1]);
+		if (g_node_id == msg->part_id/g_node_cnt){//如果要迁移的part在该节点上，才进行处理
+			worker_thds[wthd_cnt-1].init(wthd_cnt-1,g_node_id,m_wl);
+			work_queue.enqueue(wthd_cnt-1,msg,true);
+			pthread_create(&p_thds[id++], &attr, run_thread, (void *)&worker_thds[wthd_cnt-1]);
+		}
+		else {//否则则继续开辟一个工作线程
+			assert(id >= 0 && id < wthd_cnt);
+			worker_thds[id].init(id,g_node_id,m_wl);
+			pthread_create(&p_thds[id], &attr, run_thread, (void *)&worker_thds[id]);
+			id++;
+		}
 	#endif
+	*/
 
 	for (uint64_t j = 0; j < rthd_cnt ; j++) {
 		assert(id >= wthd_cnt && id < wthd_cnt + rthd_cnt);
@@ -401,6 +421,23 @@ int main(int argc, char *argv[]) {
 	log_thds[0].init(id,g_node_id,m_wl);
 	pthread_create(&p_thds[id++], NULL, run_thread, (void *)&log_thds[0]);
 #endif
+
+	for (uint64_t i = 0; i < migthd_cnt; i++){ //创建迁移线程
+		migrate_thds[i].init(id, g_node_id, m_wl);
+		pthread_create(&p_thds[id++], NULL, run_thread, (void *)&migrate_thds[i]);
+	}
+
+	//搞一个迁移消息
+	uint64_t node_id_src=0, node_id_des=1;
+	uint64_t part_id = 0;
+	MigrationMessage* msg = new(MigrationMessage);
+	msg->node_id_src = node_id_src;
+	msg->node_id_des = node_id_des;
+	msg->rtype = SEND_MIGRATION;
+	msg->data_size = g_synth_table_size / g_part_cnt;
+	msg->return_node_id = node_id_des;
+	msg->part_id = part_id;
+	work_queue.enqueue(wthd_cnt-1,msg,false);
 
 #if CC_ALG != CALVIN
 	abort_thds[0].init(id,g_node_id,m_wl);

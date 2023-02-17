@@ -28,6 +28,7 @@
 #include "da_query.h"
 #include "query.h"
 #include "msg_queue.h"
+#include "migmsg_queue.h"
 #include "row.h"
 
 #define TRY_LIMIT 10

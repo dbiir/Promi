@@ -26,6 +26,7 @@
 #include "math.h"
 #include "message.h"
 #include "msg_queue.h"
+#include "migmsg_queue.h"
 #include "msg_thread.h"
 #include "query.h"
 #include "tpcc_query.h"
@@ -1027,6 +1028,28 @@ bool WorkerThread::is_mine(Message* msg) {  //TODO:have some problems!
   return false;
 }
 
+RC WorkerThread::process_send_migration(Message* msg){
+  DEBUG("SEND_MIGRATION %ld\n",msg->get_txn_id());
+  RC rc = RCOK;
+  migmsg_queue.enqueue(get_thd_id(), msg, g_node_id);
+  return rc;
+}
+
+RC WorkerThread::process_recv_migration(Message* msg){
+  DEBUG("RECV_MIGRATION %ld\n",msg->get_txn_id());
+  RC rc = RCOK;
+  migmsg_queue.enqueue(get_thd_id(), msg, g_node_id);
+  return rc;
+}
+
+RC WorkerThread::process_finish_migration(Message* msg){
+  DEBUG("FINISH_MIGRATION %ld\n",msg->get_txn_id());
+  RC rc = RCOK;
+  migmsg_queue.enqueue(get_thd_id(), msg, g_node_id);
+  return rc;
+}
+
+/*
 RC WorkerThread::process_send_migration(MigrationMessage* msg){
   DEBUG("SEND_MIGRATION %ld\n",msg->get_txn_id());
   RC rc =RCOK;
@@ -1042,9 +1065,11 @@ RC WorkerThread::process_send_migration(MigrationMessage* msg){
   idx_key_t key = 0;//起始的key，是迁移的part中第一个key，随着part_id变化而变化
 	for (size_t i=0;i<msg->data_size;i++){
 		itemid_t* item = new(itemid_t);
-		((YCSBWorkload*)_wl)->the_index->index_read(key,item,msg->part_id,0);
+		((YCSBWorkload*)_wl)->the_index->index_read(key,item,msg->part_id,g_thread_cnt-1);
     row_t* row = ((row_t*)item->location);
-    rc = txn_man->get_lock(row,WR);
+    //rc = txn_man->get_lock(row,WR); fix
+    row_t* row_rtn;
+    rc = txn_man->get_row(row,access_t::WR,row_rtn);
     msg->data.emplace_back(*row);
     //读row->data的数据
 		char* tmp_char = row->get_data();
@@ -1055,15 +1080,17 @@ RC WorkerThread::process_send_migration(MigrationMessage* msg){
 			k++;
 		}
 		msg->row_data.emplace_back(tmp_str);
-		key += (g_node_cnt*g_part_cnt);
+		key += g_part_cnt;
 	}
-  
+  std::cout<<"the size of msg row_data is "<<msg->row_data.size()<<endl;
+
   //生成RECV_MIGRATION消息发给目标节点
   if(rc != WAIT) {//记得初始化MigrationMessage的return_node_id
     msg_queue.enqueue(get_thd_id(),Message::create_message(txn_man,RECV_MIGRATION),msg->node_id_des);
   }
   return rc;
 }
+
 
 RC WorkerThread::process_recv_migration(MigrationMessage* msg){
   DEBUG("RECV_MIGRATION %ld\n",msg->get_txn_id());
@@ -1105,6 +1132,8 @@ RC WorkerThread::process_finish_migration(MigrationMessage* msg){
   txn_man->release_locks(rc);
   return rc;
 }
+
+*/
 
 
 void WorkerNumThread::setup() {

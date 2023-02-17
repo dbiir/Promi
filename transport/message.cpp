@@ -405,6 +405,24 @@ void Message::release_message(Message * msg) {
       delete m_msg;
       break;
                  }
+    case SEND_MIGRATION: {
+      MigrationMessage * m_msg = (MigrationMessage*) msg;
+      m_msg->release();
+      delete m_msg;
+      break;
+    }
+    case RECV_MIGRATION: {
+      MigrationMessage * m_msg = (MigrationMessage*) msg;
+      m_msg->release();
+      delete m_msg;
+      break;
+    }
+    case FINISH_MIGRATION: {
+      MigrationMessage * m_msg = (MigrationMessage*) msg;
+      m_msg->release();
+      delete m_msg;
+      break;
+    }
     default: {
       assert(false);
     }

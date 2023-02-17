@@ -115,7 +115,7 @@ RC index_btree::index_read(idx_key_t key, itemid_t *&item, int part_id, int thd_
 	params.part_id = part_id;
 	bt_node * leaf;
 	find_leaf(params, key, INDEX_READ, leaf);
-  if (leaf == NULL) M_ASSERT(false, "the leaf does not exist!");
+  	if (leaf == NULL) M_ASSERT(false, "the leaf does not exist!");
 	for (UInt32 i = 0; i < leaf->num_keys; i++)
 		if (leaf->keys[i] == key) {
 			item = (itemid_t *)leaf->pointers[i];
@@ -359,7 +359,7 @@ RC index_btree::find_leaf(glob_param params, idx_key_t key, idx_acc_t access_typ
 		//std::cout<<"c->key is"<<c->keys<<std::endl;
 		//std::cout<<"get_part_id is"<<tmp<<' '<<params.part_id<<endl;
 		//assert(get_part_id(c) == params.part_id);
-		std::cout<<c->keys[0]<<' '<<get_part_id(&c->keys[0])<<' '<<"part_id is"<<params.part_id<<endl;
+		//std::cout<<c->keys[0]<<' '<<get_part_id(&c->keys[0])<<' '<<"part_id is"<<params.part_id<<endl;
 		//assert(get_part_id(&c->keys[0]) == params.part_id);
 		assert(key_to_part(c->keys[0]) == params.part_id);
 		for (i = 0; i < c->num_keys; i++) {

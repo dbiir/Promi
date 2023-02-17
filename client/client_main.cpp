@@ -61,15 +61,15 @@ int main(int argc, char *argv[]) {
 	int64_t endtime;
     starttime = get_server_clock();
 	// per-partition malloc
-  printf("Initializing stats... ");
-  fflush(stdout);
+  	printf("Initializing stats... ");
+  	fflush(stdout);
 	stats.init(g_total_client_thread_cnt);
-  printf("Done\n");
-  printf("Initializing transport manager... ");
-  fflush(stdout);
+  	printf("Done\n");
+  	printf("Initializing transport manager... ");
+  	fflush(stdout);
 	tport_man.init();
-  printf("Done\n");
-  printf("Initializing client manager... ");
+  	printf("Done\n");
+  	printf("Initializing client manager... ");
 	Workload * m_wl;
 	switch (WORKLOAD) {
 		case YCSB :

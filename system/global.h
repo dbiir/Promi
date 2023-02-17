@@ -47,6 +47,7 @@
 #include "txn_table.h"
 #include "logger.h"
 #include "sim_manager.h"
+//#include "migmsg_queue.h"
 
 #include <boost/lockfree/queue.hpp>
 #include "da_block_queue.h"
@@ -94,6 +95,7 @@ class DABlockQueue;
 class DtaTimeTable;
 class KeyXidCache;
 class RtsCache;
+class MigrateMessageQueue;
 // class QTcpQueue;
 
 typedef uint32_t UInt32;
@@ -134,6 +136,7 @@ extern TxnTable txn_table;
 extern QWorkQueue work_queue;
 extern AbortQueue abort_queue;
 extern MessageQueue msg_queue;
+extern MigrateMessageQueue migmsg_queue;
 extern Client_txn client_man;
 extern Sequencer seq_man;
 extern Logger logger;
@@ -188,6 +191,7 @@ extern UInt32 g_abort_thread_cnt;
 extern UInt32 g_logger_thread_cnt;
 extern UInt32 g_tcp_thread_cnt;
 extern UInt32 g_send_thread_cnt;
+extern UInt32 g_migrate_thread_cnt;
 extern UInt32 g_rem_thread_cnt;
 extern ts_t g_abort_penalty;
 extern ts_t g_abort_penalty_max;
