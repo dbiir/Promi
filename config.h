@@ -72,7 +72,7 @@
 #define MIG_THREAD_CNT 1 //迁移线程
 #define CORE_CNT 2
 // PART_CNT should be at least NODE_CNT
-#define PART_CNT NODE_CNT*5
+#define PART_CNT NODE_CNT*300
 #define CLIENT_NODE_CNT 1
 #define CLIENT_THREAD_CNT 4
 #define CLIENT_REM_THREAD_CNT 2
@@ -155,6 +155,8 @@
 #define PRIORITY PRIORITY_ACTIVE
 #define MSG_SIZE_MAX 4096
 #define MSG_TIME_LIMIT 0
+
+#define SIM_FULL_ROW true
 
 /***********************************************/
 // Concurrency Control

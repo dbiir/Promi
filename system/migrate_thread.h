@@ -15,6 +15,7 @@ public:
     RC run();
     void setup();
     TxnManager * txn_man;
+    TxnManager * get_transaction_manager(MigrationMessage * msg);
     RC process_send_migration(MigrationMessage* msg);
     RC process_recv_migration(MigrationMessage* msg);
     RC process_finish_migration(MigrationMessage* msg);

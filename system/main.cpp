@@ -131,6 +131,15 @@ int main(int argc, char *argv[]) {
 	m_wl->init();
 	printf("Workload initialized!\n");
 	fflush(stdout);
+
+	std::cout<<"index addr is: "<<((YCSBWorkload*)m_wl)->the_index<<endl;
+	/*
+	itemid_t* item1 = (itemid_t*)mem_allocator.alloc(sizeof(itemid_t));
+	itemid_t* &item = item1;
+	idx_key_t key = 0;
+	RC rc = ((YCSBWorkload*)m_wl)->the_index->index_read(key,item,key_to_part(key),0);
+	std::cout<<rc<<endl;
+	*/
 #if NETWORK_TEST
 	tport_man.init(g_node_id,m_wl);
 	sleep(3);
@@ -295,7 +304,7 @@ int main(int argc, char *argv[]) {
 #endif
 
 
-	printf("%ld, %ld, %ld, %d, %d\n", thd_cnt, rthd_cnt, sthd_cnt, g_abort_thread_cnt, g_migrate_thread_cnt);
+	printf("%ld, %ld, %ld, %d, %ld\n", thd_cnt, rthd_cnt, sthd_cnt, g_abort_thread_cnt, migthd_cnt);
 	printf("all_thd_cnt: %ld, g_this_total_thread_cnt: %d \n", all_thd_cnt, g_this_total_thread_cnt);
 	fflush(stdout);
 	assert(all_thd_cnt == g_this_total_thread_cnt);
@@ -310,7 +319,7 @@ int main(int argc, char *argv[]) {
 	output_thds = new OutputThread[sthd_cnt];
 	abort_thds = new AbortThread[1];
 	log_thds = new LogThread[1];
-	migrate_thds = new MigrateThread[migthd_cnt];
+	migrate_thds = new MigrateThread[g_migrate_thread_cnt];
 #if CC_ALG == CALVIN
 	calvin_lock_thds = new CalvinLockThread[1];
 	calvin_seq_thds = new CalvinSequencerThread[1];
@@ -422,27 +431,17 @@ int main(int argc, char *argv[]) {
 	pthread_create(&p_thds[id++], NULL, run_thread, (void *)&log_thds[0]);
 #endif
 
-	for (uint64_t i = 0; i < migthd_cnt; i++){ //创建迁移线程
-		migrate_thds[i].init(id, g_node_id, m_wl);
-		pthread_create(&p_thds[id++], NULL, run_thread, (void *)&migrate_thds[i]);
-	}
-
-	//搞一个迁移消息
-	uint64_t node_id_src=0, node_id_des=1;
-	uint64_t part_id = 0;
-	MigrationMessage* msg = new(MigrationMessage);
-	msg->node_id_src = node_id_src;
-	msg->node_id_des = node_id_des;
-	msg->rtype = SEND_MIGRATION;
-	msg->data_size = g_synth_table_size / g_part_cnt;
-	msg->return_node_id = node_id_des;
-	msg->part_id = part_id;
-	work_queue.enqueue(wthd_cnt-1,msg,false);
-
 #if CC_ALG != CALVIN
 	abort_thds[0].init(id,g_node_id,m_wl);
 	pthread_create(&p_thds[id++], NULL, run_thread, (void *)&abort_thds[0]);
 #endif
+
+	#if MIGRATION
+	for (uint64_t i = 0; i < migthd_cnt; i++){ //创建迁移线程
+		migrate_thds[i].init(id, g_node_id, m_wl);
+		pthread_create(&p_thds[id++], NULL, run_thread, (void *)&migrate_thds[i]);
+	}
+	#endif
 
 #if CC_ALG == CALVIN
 #if SET_AFFINITY
@@ -467,6 +466,23 @@ int main(int argc, char *argv[]) {
 
 	worker_num_thds[0].init(id,g_node_id,m_wl);
 	pthread_create(&p_thds[id++], &attr, run_thread, (void *)&worker_num_thds[0]);
+	
+	#if MIGRATION
+	//搞一个迁移消息
+	uint64_t node_id_src=0, node_id_des=1;
+	uint64_t part_id = 0;
+	MigrationMessage* msg = new(MigrationMessage);
+	msg->node_id_src = node_id_src;
+	msg->node_id_des = node_id_des;
+	msg->rtype = SEND_MIGRATION;
+	msg->data_size = g_synth_table_size / g_part_cnt;
+	msg->return_node_id = node_id_des;
+	msg->part_id = part_id;
+	msg->isdata = false;
+	std::cout<<"msg size is:"<<msg->get_size()<<endl;
+	work_queue.enqueue(wthd_cnt-1,msg,false);
+	#endif
+
 	for (uint64_t i = 0; i < all_thd_cnt; i++) pthread_join(p_thds[i], NULL);
 
 	endtime = get_server_clock();

@@ -500,7 +500,7 @@ public:
   uint64_t node_id_src,node_id_des;//迁移源节点目标节点的id
   uint64_t part_id;//迁移分区id
   uint64_t data_size;
-  bool isdata;//是否真的传数据
+  bool isdata;//数据是否传入
   vector<row_t> data;
   vector<string> row_data;//row_t的真正信息保存在char[]中
 

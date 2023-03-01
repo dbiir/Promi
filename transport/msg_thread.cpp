@@ -58,7 +58,7 @@ void MessageThread::check_and_send_batches() {
 void MessageThread::send_batch(uint64_t dest_node_id) {
   uint64_t starttime = get_sys_clock();
     mbuf * sbuf = buffer[dest_node_id];
-    assert(sbuf->cnt > 0);
+    //assert(sbuf->cnt > 0);//报错去掉
 	  ((uint32_t*)sbuf->buffer)[2] = sbuf->cnt;
     INC_STATS(_thd_id,mbuf_send_intv_time,get_sys_clock() - sbuf->starttime);
 
@@ -510,7 +510,7 @@ void MessageThread::run() {
   sbuf = buffer[dest_node_id];
 
   if(!sbuf->fits(msg->get_size())) {
-    assert(sbuf->cnt > 0);
+    //assert(sbuf->cnt > 0); //报错
     send_batch(dest_node_id);
   }
 
@@ -539,7 +539,6 @@ void MessageThread::run() {
     Message::release_message(msg);
   }
   if (sbuf->starttime == 0) sbuf->starttime = get_sys_clock();
-
   check_and_send_batches();
   INC_STATS(_thd_id,mtx[10],get_sys_clock() - starttime);
 

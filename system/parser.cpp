@@ -179,7 +179,12 @@ void parser(int argc, char * argv[]) {
 			assert(false);
     }
 	}
-  g_total_thread_cnt = g_thread_cnt + g_rem_thread_cnt + g_send_thread_cnt + g_abort_thread_cnt + g_migrate_thread_cnt + 1;
+  #if MIGRATION
+    g_total_thread_cnt = g_thread_cnt + g_rem_thread_cnt + g_send_thread_cnt + g_abort_thread_cnt + g_migrate_thread_cnt + 1;
+  #else
+    g_total_thread_cnt = g_thread_cnt + g_rem_thread_cnt + g_send_thread_cnt + g_abort_thread_cnt + 1;
+  #endif
+
 #if LOGGING
   g_total_thread_cnt += g_logger_thread_cnt; // logger thread
 #endif

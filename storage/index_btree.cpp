@@ -29,8 +29,8 @@ RC index_btree::init(uint64_t part_cnt) {
 	roots = (bt_node **) malloc(part_cnt * sizeof(bt_node *));
 
 	// "cur_xxx_per_thd" is only for SCAN queries.
-	ARR_PTR(bt_node *, cur_leaf_per_thd, g_thread_cnt);
-	ARR_PTR(UInt32, cur_idx_per_thd, g_thread_cnt);
+	ARR_PTR(bt_node *, cur_leaf_per_thd, g_thread_cnt + g_migrate_thread_cnt);
+	ARR_PTR(UInt32, cur_idx_per_thd, g_thread_cnt + g_migrate_thread_cnt);
 	// the index tree of each partition musted be mapped to corresponding l2 slices
 	for (UInt32 part_id = 0; part_id < part_cnt; part_id ++) {
 		roots[part_id] = (bt_node*)malloc(sizeof(bt_node));
@@ -175,7 +175,7 @@ RC index_btree::index_insert(idx_key_t key, itemid_t * item, int part_id) {
 //			assert( release_latch(ex_list[i]) == LATCH_EX );
 	}
 //	assert(leaf->latch_type == LATCH_NONE);
-	std::cout<<"insert key "<<key<<std::endl;
+	std::cout<<"insert key "<<key<<endl;
 	return rc;
 }
 
@@ -359,7 +359,7 @@ RC index_btree::find_leaf(glob_param params, idx_key_t key, idx_acc_t access_typ
 		//std::cout<<"c->key is"<<c->keys<<std::endl;
 		//std::cout<<"get_part_id is"<<tmp<<' '<<params.part_id<<endl;
 		//assert(get_part_id(c) == params.part_id);
-		//std::cout<<c->keys[0]<<' '<<get_part_id(&c->keys[0])<<' '<<"part_id is"<<params.part_id<<endl;
+		//std::cout<<c->keys[0]<<' '<<key_to_part(c->keys[0])<<' '<<"part_id is"<<params.part_id<<endl;
 		//assert(get_part_id(&c->keys[0]) == params.part_id);
 		assert(key_to_part(c->keys[0]) == params.part_id);
 		for (i = 0; i < c->num_keys; i++) {

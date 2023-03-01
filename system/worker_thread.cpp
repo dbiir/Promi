@@ -187,13 +187,14 @@ void WorkerThread::process(Message * msg) {
         rc = process_rtxn_cont(msg);
 				break;
       case SEND_MIGRATION:
-        rc = process_send_migration((MigrationMessage*)msg);
+        std::cout<<"message type is:"<<msg->get_rtype()<<" by worker thread"<<endl;
+        rc = process_send_migration(msg);
         break;
       case RECV_MIGRATION:
-        rc = process_recv_migration((MigrationMessage*)msg);
+        rc = process_recv_migration(msg);
         break;
       case FINISH_MIGRATION:
-        rc = process_finish_migration((MigrationMessage*)msg);
+        rc = process_finish_migration(msg);
         break;
       case CL_QRY:
       case CL_QRY_O:
@@ -403,7 +404,6 @@ RC WorkerThread::run() {
   #endif
 
     msg = work_queue.dequeue(get_thd_id());
-
     if(!msg) {
       if (idle_starttime == 0) idle_starttime = get_sys_clock();
       //todo: add sleep 0.01ms
@@ -1030,22 +1030,33 @@ bool WorkerThread::is_mine(Message* msg) {  //TODO:have some problems!
 
 RC WorkerThread::process_send_migration(Message* msg){
   DEBUG("SEND_MIGRATION %ld\n",msg->get_txn_id());
+  std::cout<<"message type is:"<<msg->get_rtype()<<" by process_send_migration"<<endl;
   RC rc = RCOK;
-  migmsg_queue.enqueue(get_thd_id(), msg, g_node_id);
+  //MigrationMessage * msg1 =(MigrationMessage *) mem_allocator.alloc(sizeof(MigrationMessage));
+  MigrationMessage * msg1 = new(MigrationMessage);
+  *msg1 = *(MigrationMessage *)msg;
+  std::cout<<msg1->get_size()<<endl;
+  uint64_t txn_id = get_next_txn_id();
+  msg1->txn_id = txn_id;
+  migmsg_queue.enqueue(get_thd_id(), msg1, g_node_id);
   return rc;
 }
 
 RC WorkerThread::process_recv_migration(Message* msg){
   DEBUG("RECV_MIGRATION %ld\n",msg->get_txn_id());
   RC rc = RCOK;
-  migmsg_queue.enqueue(get_thd_id(), msg, g_node_id);
+  MigrationMessage * msg1 =(MigrationMessage *) mem_allocator.alloc(sizeof(MigrationMessage));
+  *msg1 = *(MigrationMessage *)msg;
+  migmsg_queue.enqueue(get_thd_id(), msg1, g_node_id);
   return rc;
 }
 
 RC WorkerThread::process_finish_migration(Message* msg){
   DEBUG("FINISH_MIGRATION %ld\n",msg->get_txn_id());
   RC rc = RCOK;
-  migmsg_queue.enqueue(get_thd_id(), msg, g_node_id);
+  MigrationMessage * msg1 =(MigrationMessage *) mem_allocator.alloc(sizeof(MigrationMessage));
+  *msg1 = *(MigrationMessage *)msg;
+  migmsg_queue.enqueue(get_thd_id(), msg1, g_node_id);
   return rc;
 }
 

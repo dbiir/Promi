@@ -2013,8 +2013,8 @@ uint64_t MigrationMessage::get_size(){
   size += sizeof(uint64_t)*4;
   size += sizeof(bool);
   if (isdata){
-    size += sizeof(row_t)*data_size;
-    size += data[0].get_tuple_size()*data_size;
+    size += sizeof(row_t) * data.size();
+    size += data[0].tuple_size * data.size();
   }
   return size;
 }
@@ -2028,19 +2028,17 @@ void MigrationMessage::copy_from_buf(char* buf){
   COPY_VAL(data_size,buf,ptr);
   COPY_VAL(isdata,buf,ptr);
   if (isdata){
-    vector<row_t> data(data_size);
     for (size_t i=0;i<data_size;i++){
       row_t tmp;
       COPY_VAL(tmp,buf,ptr);
-     data.emplace_back(tmp);
+      data.emplace_back(tmp);
     }
-    vector<string> row_data(data_size);
     for (size_t i=0;i<data_size;i++){
       //char* tmp = (char*)malloc(sizeof(char)*data[0].get_tuple_size());
-      string* tmp_str;
-      COPY_VAL(tmp_str,buf,ptr);
-      
-      row_data.emplace_back(*tmp_str);
+      char tmp_char[data[0].tuple_size];
+      COPY_VAL(tmp_char,buf,ptr);
+      string tmp_str = tmp_char;
+      row_data.emplace_back(tmp_str);
     }
   }
 }
@@ -2053,17 +2051,25 @@ void MigrationMessage::copy_to_buf(char* buf){
   COPY_BUF(buf,part_id,ptr);
   COPY_BUF(buf,data_size,ptr);
   COPY_BUF(buf,isdata,ptr);
+  std::cout<<sizeof(data[0])<<' '<<sizeof(row_data[0])<<endl;
+  std::cout<<"ptr is "<<ptr<<endl;
   if (isdata){
+    //COPY_BUF(buf, data, ptr);
+    //std::cout<<"ptr is "<<ptr<<endl;
+    //COPY_BUF(buf, row_data, ptr);
+    
     for (size_t i=0;i<data_size;i++){
       COPY_BUF(buf,data[i],ptr);
     }
+    
     for (size_t i=0;i<data_size;i++){
-      for (size_t j=0;i<data[0].get_tuple_size();j++){
-        COPY_BUF(buf,row_data[i][j],ptr);  
-      }
+      COPY_BUF(buf,row_data[i],ptr);
     }
+    
   }
+  std::cout<<"ptr is "<<ptr<<endl;
 }
+
 
 void MigrationMessage::init(){
 

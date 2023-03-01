@@ -29,7 +29,7 @@ OBJS_UNIT = $(addprefix obj/, $(notdir $(CPPS_UNIT:.cpp=.o)))
 
 #NOGRAPHITE=1
 
-all: zqs_tql tql_zqs
+all: rundb runcl
 #unit_test
 
 .PHONY: deps_db
@@ -61,7 +61,7 @@ unit_test : $(OBJS_UNIT)
 	$(CC) -c $(CFLAGS) $(INCLUDE) -o $@ $<
 
 
-zqs_tql : $(OBJS_DB)
+rundb : $(OBJS_DB)
 	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
 #	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
 ./obj/%.o: transport/%.cpp
@@ -85,7 +85,7 @@ zqs_tql : $(OBJS_DB)
 	$(CC) -c $(CFLAGS) $(INCLUDE) -o $@ $<
 
 
-tql_zqs : $(OBJS_CL)
+runcl : $(OBJS_CL)
 	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
 #	$(CC) -o $@ $^ $(LDFLAGS) $(LIBS)
 ./obj/%.o: transport/%.cpp
@@ -110,4 +110,4 @@ tql_zqs : $(OBJS_CL)
 
 .PHONY: clean
 clean:
-	rm -f obj/*.o obj/.depend zqs_tql tql_zqs runsq unit_test
+	rm -f obj/*.o obj/.depend rundb runcl runsq unit_test

@@ -46,7 +46,7 @@ void MigrateMessageQueue::statqueue(uint64_t thd_id, migmsg_entry * entry){//不
     } 
 }
 
-void MigrateMessageQueue::enqueue(uint64_t thd_id, Message * msg, uint64_t dest){
+void MigrateMessageQueue::enqueue(uint64_t thd_id, MigrationMessage * msg, uint64_t dest){
     DEBUG("MQ Enqueue %ld\n",dest)
     assert(dest < g_total_node_cnt);
     #if ONE_NODE_RECIEVE == 1 && defined(NO_REMOTE) && LESS_DIS_NUM == 10
@@ -68,6 +68,8 @@ void MigrateMessageQueue::enqueue(uint64_t thd_id, Message * msg, uint64_t dest)
     uint64_t rand = 0;
     #else
     uint64_t rand = mtx_time_start % g_migrate_thread_cnt;
+    //std::cout<<"the mod is "<<rand<<"by 71"<<endl;
+
     #endif
     #if NETWORK_DELAY_TEST
         if(ISCLIENTN(dest)) {
@@ -78,20 +80,33 @@ void MigrateMessageQueue::enqueue(uint64_t thd_id, Message * msg, uint64_t dest)
     #endif
     while (!m_queue[rand]->push(entry) && !simulation->is_done()) {
     }
+    // migmsg_entry * entry1 = (migmsg_entry*) mem_allocator.alloc(sizeof(struct migmsg_entry));
+
+    // bool valid = m_queue[0]->pop(entry1);
+    // assert(valid==1);
+    // std::cout<<"the message rtype is "<<entry1->msg->get_rtype()<<" by 84"<<endl;
+    // m_queue[rand]->push(entry1);
+
     INC_STATS(thd_id,mtx[3],get_sys_clock() - mtx_time_start);
     INC_STATS(thd_id,migmsg_queue_enq_cnt,1);
     sem_wait(&_semaphore);
     msg_queue_size++;
     sem_post(&_semaphore);
     INC_STATS(thd_id,trans_migmsg_queue_item_total,msg_queue_size);
+    //printf("the entry is %p, msg: %p. 133\n",entry, entry->msg);
+    std::cout<<"message type is:"<<entry->msg->get_rtype()<<" by enqueue"<<endl;
 }
 
-uint64_t MigrateMessageQueue::dequeue(uint64_t thd_id, Message *& msg){
+uint64_t MigrateMessageQueue::dequeue(uint64_t thd_id, MigrationMessage *& msg){
 
     migmsg_entry * entry = NULL;
+    //migmsg_entry * entry = (migmsg_entry*) mem_allocator.alloc(sizeof(struct migmsg_entry));
+
     uint64_t dest = UINT64_MAX;
     uint64_t mtx_time_start = get_sys_clock();
     bool valid = false;
+    valid = m_queue[thd_id % g_migrate_thread_cnt]->pop(entry);
+    //std::cout<<"the mod is "<<thd_id % g_migrate_thread_cnt<<"by 97"<<endl;
     #if NETWORK_DELAY_TEST
         valid = cl_m_queue[thd_id%g_this_send_thread_cnt]->pop(entry);
         if(!valid) {
@@ -103,10 +118,13 @@ uint64_t MigrateMessageQueue::dequeue(uint64_t thd_id, Message *& msg){
         }
     #elif WORKLOAD == DA
     valid = m_queue[0]->pop(entry);
+    /*
     #else
     //uint64_t ctr_id = thd_id % g_this_send_thread_cnt;
     //uint64_t start_ctr = *ctr[ctr_id];
     valid = m_queue[thd_id % g_migrate_thread_cnt]->pop(entry);
+    std::cout<<"the message rtype is "<<entry->msg->get_rtype()<<" by 111"<<endl;
+    */
     #endif
     /*
     while(!valid && !simulation->is_done()) {
@@ -118,10 +136,18 @@ uint64_t MigrateMessageQueue::dequeue(uint64_t thd_id, Message *& msg){
         break;
     }
     */
+    //std::cout<<"the message rtype is "<<entry->msg->rtype<<" by 123"<<endl;
+    //std::cout<<"if valid "<<valid<<endl;
+
     INC_STATS(thd_id,mtx[4],get_sys_clock() - mtx_time_start);
+    //std::cout<<"the message rtype is "<<entry->msg->get_rtype()<<" by 124"<<endl;
+    //std::cout<<"the message rtype is "<<entry->msg->get_rtype()<<" by 125"<<endl;
+    // std::cout<<"the message rtype is "<<entry<<" by 142"<<endl;
+    //printf("the entry is %p, msg: %p. 133\n",entry, entry->msg);
+
     uint64_t curr_time = get_sys_clock();
     if(valid) {
-        assert(entry);
+        //assert(entry);
         #if NETWORK_DELAY_TEST
             if(!ISCLIENTN(entry->dest)) {
                 if(ISSERVER && (get_sys_clock() - entry->starttime) < g_network_delay) {
@@ -140,7 +166,7 @@ uint64_t MigrateMessageQueue::dequeue(uint64_t thd_id, Message *& msg){
         dest = entry->dest;
         assert(dest < g_total_node_cnt);
         msg = entry->msg;
-        DEBUG("MQ Dequeue %ld\n",dest)
+        DEBUG("MQ Dequeue %ld\n",dest);
         statqueue(thd_id, entry);
         INC_STATS(thd_id,migmsg_queue_delay_time,curr_time - entry->starttime);
         INC_STATS(thd_id,migmsg_queue_cnt,1);
@@ -160,5 +186,5 @@ uint64_t MigrateMessageQueue::dequeue(uint64_t thd_id, Message *& msg){
 }
 
 uint64_t MigrateMessageQueue::get_size(){
-    return this->msg_queue_size;
+    return msg_queue_size;
 }

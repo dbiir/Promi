@@ -8,10 +8,10 @@
 #include <boost/lockfree/queue.hpp>
 #include "semaphore.h"
 
-class Message;
+class MigrationMessage;
 
 struct migmsg_entry{
-    Message * msg;
+    MigrationMessage * msg;
     uint64_t dest;
     uint64_t starttime;
 };
@@ -20,8 +20,8 @@ class MigrateMessageQueue{
 public:
     void init();
     void statqueue(uint64_t thd_id, migmsg_entry * entry);
-    void enqueue(uint64_t thd_id, Message * msg, uint64_t dest);
-    uint64_t dequeue(uint64_t thd_id, Message *& msg);
+    void enqueue(uint64_t thd_id, MigrationMessage * msg, uint64_t dest);
+    uint64_t dequeue(uint64_t thd_id, MigrationMessage *& msg);
     uint64_t get_size();
 private:
     boost::lockfree::queue<migmsg_entry*> ** m_queue;

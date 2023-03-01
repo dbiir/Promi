@@ -888,6 +888,11 @@ void TxnManager::cleanup(RC rc) {
 #endif
 	ts_t starttime = get_sys_clock();
 	uint64_t row_cnt = txn->accesses.get_count();
+	if (txn->accesses.get_count() != txn->row_cnt){
+		std::cout<<"OOOOOOOPPPPPPPPPSSSSS"<<endl;
+		std::cout<<"txn->accesses.get_count() is "<<txn->accesses.get_count()<<endl;
+		std::cout<<"txn->row_cnt is "<<txn->row_cnt<<endl;	
+	}
 	assert(txn->accesses.get_count() == txn->row_cnt);
 	// assert((WORKLOAD == YCSB && row_cnt <= g_req_per_query) || (WORKLOAD == TPCC && row_cnt <=
 	// g_max_items_per_txn*2 + 3));

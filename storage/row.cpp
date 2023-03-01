@@ -41,7 +41,7 @@
 #include "mem_alloc.h"
 #include "manager.h"
 
-#define SIM_FULL_ROW true
+//#define SIM_FULL_ROW true
 
 RC row_t::init(table_t *host_table, uint64_t part_id, uint64_t row_id) {
 	part_info = true;
