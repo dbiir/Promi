@@ -72,12 +72,20 @@
 #define MIG_THREAD_CNT 1 //迁移线程
 #define CORE_CNT 2
 // PART_CNT should be at least NODE_CNT
-#define PART_CNT NODE_CNT*300
+#define PART_CNT NODE_CNT*256
 #define CLIENT_NODE_CNT 1
 #define CLIENT_THREAD_CNT 4
 #define CLIENT_REM_THREAD_CNT 2
 #define CLIENT_SEND_THREAD_CNT 2
 #define CLIENT_RUNTIME false
+
+//key_to_part HASH_MODE: key_to_part(key) = key % g_part_cnt    CONST_MODE: key_to_part(key) = key / (SYNTH_TABLE_SIZE / g_part_cnt)
+#define KEY_TO_PART HASH_MODE
+#define HASH_MODE  0
+#define CONST_MODE 1
+
+//PART_TO_NODE 
+#define PART_TO_NODE HASH_MODE
 
 #define LOAD_METHOD LOAD_MAX
 #define LOAD_PER_SERVER 100
@@ -153,7 +161,7 @@
 
 #define PRIORITY_WORK_QUEUE false
 #define PRIORITY PRIORITY_ACTIVE
-#define MSG_SIZE_MAX 4096
+#define MSG_SIZE_MAX 4194304
 #define MSG_TIME_LIMIT 0
 
 #define SIM_FULL_ROW true
@@ -456,7 +464,7 @@ enum PPSTxnType {
 #define PROG_TIMER 10 * BILLION // in s
 #define BATCH_TIMER 0
 #define SEQ_BATCH_TIMER 5 * 1 * MILLION // ~5ms -- same as CALVIN paper
-#define DONE_TIMER 1 * 20 * BILLION // ~1 minutes  60 BILLION = 1 min
+#define DONE_TIMER 1 * 40 * BILLION // ~1 minutes  60 BILLION = 1 min
 #define WARMUP_TIMER 1 * 20 * BILLION // ~1 minutes
 
 #define SEED 0

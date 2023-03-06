@@ -66,11 +66,14 @@ RC YCSBWorkload::init_schema(const char * schema_file) {
 	return RCOK;
 }
 
-int
-YCSBWorkload::key_to_part(uint64_t key) {
+int YCSBWorkload::key_to_part(uint64_t key) {
 	//uint64_t rows_per_part = g_synth_table_size / g_part_cnt;
 	//return key / rows_per_part;
-  return key % g_part_cnt;
+	#if KEY_TO_PART == HASH_MODE
+  		return key % g_part_cnt;
+	#elif KEY_TO_PART == CONST_MODE 
+		return key / (g_synth_table_size / g_part_cnt);
+	#endif
 }
 
 RC YCSBWorkload::init_table() {
@@ -197,7 +200,11 @@ void * YCSBWorkload::init_table_slice() {
 		rc = the_index->index_insert(idx_key, m_item, part_id);
 		assert(rc == RCOK);
     	//key += g_part_cnt;
-		key += g_node_cnt;
+		#if KEY_TO_PART == HASH_MODE
+			key += g_node_cnt;
+		#elif KEY_TO_PART == CONST_MODE
+			key++;
+		#endif
 	}
   	printf("Thd %d inserted %ld keys\n",tid,key_cnt);
 	return NULL;

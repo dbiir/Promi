@@ -190,7 +190,7 @@ bool InputThread::fakeprocess(Message * msg) {
 				txn_man->set_rc(rc);
 				if(!((FinishMessage*)msg)->readonly || CC_ALG == MAAT || CC_ALG == OCC || CC_ALG == TICTOC || CC_ALG == BOCC || CC_ALG == SSI)
 				// if(!((FinishMessage*)msg)->readonly || CC_ALG == MAAT || CC_ALG == OCC)
-					msg_queue.enqueue(get_thd_id(),Message::create_message(txn_man,RACK_FIN),GET_NODE_ID(msg->get_txn_id()));
+					msg_queue.enqueue(get_thd_id(),Message::create_message(txn_man,RACK_FIN),GET_TXN_NODE_ID(msg->get_txn_id()));
 				// rc = process_rfin(msg);
 				break;
 			default:

@@ -365,7 +365,15 @@ enum TsType {R_REQ = 0, W_REQ, P_REQ, XP_REQ};
 
 
 #define GET_THREAD_ID(id)	(id % g_thread_cnt)
-#define GET_NODE_ID(id)	(id % g_node_cnt)
+
+#if (PART_TO_NODE == HASH_MODE) 
+  #define GET_NODE_ID(id)	(id % g_node_cnt)
+#elif (PART_TO_NODE == CONST_MODE) 
+  #define GET_NODE_ID(id) (id / (g_part_cnt / g_node_cnt))
+#endif
+
+#define GET_TXN_NODE_ID(id)  (id % g_node_cnt)
+  
 #define GET_PART_ID(t,n)	(n)
 #define GET_PART_ID_FROM_IDX(idx)	(g_node_id + idx * g_node_cnt)
 #define GET_PART_ID_IDX(p)	(p / g_node_cnt)
@@ -381,7 +389,7 @@ enum TsType {R_REQ = 0, W_REQ, P_REQ, XP_REQ};
 #define ISCLIENTN(id) (id >= g_node_cnt && id < g_node_cnt + g_client_node_cnt)
 #define IS_LOCAL(tid) (tid % g_node_cnt == g_node_id || CC_ALG == CALVIN)
 #define IS_REMOTE(tid) (tid % g_node_cnt != g_node_id || CC_ALG == CALVIN)
-#define IS_LOCAL_KEY(key) (key % g_node_cnt == g_node_id)
+#define IS_LOCAL_KEY(key) (GET_NODE_ID(key_to_part(key)) == g_node_id)
 
 /*
 #define GET_THREAD_ID(id)	(id % g_thread_cnt)

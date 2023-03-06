@@ -391,6 +391,7 @@ void MessageThread::run() {
   mbuf * sbuf;
 
   dest_node_id = msg_queue.dequeue(get_thd_id(), msg);
+
   if(!msg) {
     check_and_send_batches();
     INC_STATS(_thd_id,mtx[9],get_sys_clock() - starttime);
@@ -513,6 +514,7 @@ void MessageThread::run() {
     //assert(sbuf->cnt > 0); //报错
     send_batch(dest_node_id);
   }
+  if (msg->rtype == SEND_MIGRATION) std::cout<<"SEND_MIGRATION MSG IS SENDING"<<endl;
 
   #if WORKLOAD == DA
   if(!is_server&&true)

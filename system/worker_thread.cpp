@@ -87,7 +87,7 @@ void WorkerThread::fakeprocess(Message * msg) {
         txn_man->set_rc(rc);
         if(!((FinishMessage*)msg)->readonly || CC_ALG == MAAT || CC_ALG == OCC || CC_ALG == TICTOC || CC_ALG == BOCC || CC_ALG == SSI)
         // if(!((FinishMessage*)msg)->readonly || CC_ALG == MAAT || CC_ALG == OCC)
-          msg_queue.enqueue(get_thd_id(),Message::create_message(txn_man,RACK_FIN),GET_NODE_ID(msg->get_txn_id()));
+          msg_queue.enqueue(get_thd_id(),Message::create_message(txn_man,RACK_FIN),GET_TXN_NODE_ID(msg->get_txn_id()));
         // rc = process_rfin(msg);
 				break;
 			case RACK_PREP:
@@ -507,7 +507,7 @@ RC WorkerThread::process_rfin(Message * msg) {
     txn_man->reset();
     txn_man->reset_query();
     msg_queue.enqueue(get_thd_id(), Message::create_message(txn_man, RACK_FIN),
-                      GET_NODE_ID(msg->get_txn_id()));
+                      GET_TXN_NODE_ID(msg->get_txn_id()));
     return Abort;
   }
   txn_man->commit();
@@ -516,7 +516,7 @@ RC WorkerThread::process_rfin(Message * msg) {
        CC_ALG == BOCC || CC_ALG == SSI || CC_ALG == DLI_BASE ||
        CC_ALG == DLI_OCC || CC_ALG == SILO)
     msg_queue.enqueue(get_thd_id(), Message::create_message(txn_man, RACK_FIN),
-                      GET_NODE_ID(msg->get_txn_id()));
+                      GET_TXN_NODE_ID(msg->get_txn_id()));
   release_txn_man();
 
   return RCOK;
@@ -954,7 +954,7 @@ RC WorkerThread::process_log_flushed(Message * msg) {
   DEBUG("LOG FLUSHED %ld\n",msg->get_txn_id());
   if(ISREPLICA) {
     msg_queue.enqueue(get_thd_id(), Message::create_message(msg->txn_id, LOG_MSG_RSP),
-                      GET_NODE_ID(msg->txn_id));
+                      GET_TXN_NODE_ID(msg->txn_id));
     return RCOK;
   }
 

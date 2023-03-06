@@ -100,11 +100,12 @@ RC MigrateThread::run(){
         //std::cout<<"the size is "<<migmsg_queue.get_size()<<endl;
 
         assert(dest>=0);
-        if (msg->node_id_src != g_node_id) continue;
+        printf("get message111!\n");
+        //if (msg->node_id_src != g_node_id) continue;
         printf("get message!\n");
         //std::cout<<"node_id_des is "<<msg->node_id_des<<endl;
         std::cout<<"message type is:"<<msg->get_rtype()<<" by migrate dequeue"<<endl;
-        std::cout<<"the size of msg is "<<msg->get_size()<<endl;
+        //std::cout<<"the size of msg is "<<msg->get_size()<<endl;
     
         //std::cout<<"node_id_des is "<<msg->node_id_des<<endl;
         RC rc;
@@ -141,12 +142,14 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
     //std::cout<<"copy!"<<endl;
     txn_man->return_id = msg->return_node_id;
     txn_man->h_wl = _wl;
+    /*
     for (size_t i=0;i<msg->data_size;i++){
         Access* access = new(Access);
         access->type = WR;
         access->data = &msg->data[i];
         txn_man->txn->accesses.add(access);
     }
+    */
     msg->isdata = false;
     //std::cout<<&msg<<endl;
     std::cout<<"the size of msg is "<<msg->get_size()<<endl;
@@ -168,6 +171,12 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
         //rc = txn_man->get_lock(row,WR); fix
         row_t* row_rtn = new(row_t);
         rc = txn_man->get_row(row,access_t::WR,row_rtn);
+        if (rc != RCOK){
+            std::cout<<"trying to get lock..."<<endl;
+        }
+        while(rc != RCOK){
+            rc = txn_man->get_row(row,access_t::WR,row_rtn);
+        }
         //std::cout<<"key is"<<row_rtn->get_primary_key();
         //std::cout<<" "<<(string)(row_rtn->get_data())<<endl;
         msg->data.emplace_back(*row_rtn);
@@ -198,7 +207,8 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
         std::cout<<"lock "<<key<<" ";
         //std::cout<<"key is "<<msg->data[i].get_primary_key();
         //std::cout<<" data is "<<msg->row_data[i]<<endl;
-        key += g_part_cnt;
+        if (KEY_TO_PART == HASH_MODE) key += g_part_cnt;
+        else key ++;
 	}
     msg->isdata=true;
     printf("the size of msg row_data is %ld\n",msg->row_data.size());
@@ -223,7 +233,7 @@ RC MigrateThread::process_recv_migration(MigrationMessage* msg){
     RC rc = RCOK;
     //把数据从msg里复制出来
     auto* data_ptr = mem_allocator.alloc(sizeof(row_t)*msg->data_size); //存row_t
-    char* row_data_ptr = (char* )malloc(msg->data[0].get_tuple_size() *  msg->data_size); //存row_t->data
+    char* row_data_ptr = (char* )malloc((msg->data[0].tuple_size) *  (msg->data_size)); //存row_t->data
     uint64_t ptr = 0;
     uint64_t ptr_data = 0;
     for (size_t i=0;i<msg->data_size;i++){
@@ -254,8 +264,8 @@ RC MigrateThread::process_finish_migration(MigrationMessage* msg){
     DEBUG("FINISH_MIGRATION %ld\n",msg->get_txn_id());
     printf("FINISH_MIGRATION\n");
     RC rc = RCOK;
-    msg->copy_to_txn(txn_man);
-    txn_man->h_wl = _wl;
+    //msg->copy_to_txn(txn_man);
+    //txn_man->h_wl = _wl;
     txn_man->release_locks(rc);
     return rc;
 }

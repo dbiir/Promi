@@ -160,7 +160,7 @@ bool YCSBTxnManager::is_local_request(uint64_t idx) {
 
 RC YCSBTxnManager::send_remote_request() {
   YCSBQuery* ycsb_query = (YCSBQuery*) query;
-  uint64_t dest_node_id = GET_NODE_ID(ycsb_query->requests[next_record_id]->key);
+  uint64_t dest_node_id = GET_NODE_ID(key_to_part(ycsb_query->requests[next_record_id]->key));
   ycsb_query->partitions_touched.add_unique(GET_PART_ID(0,dest_node_id));
   DEBUG("ycsb send remote request %ld, %ld\n",txn->txn_id,txn->batch_id);
   msg_queue.enqueue(get_thd_id(),Message::create_message(this,RQRY),dest_node_id);
@@ -171,12 +171,12 @@ RC YCSBTxnManager::send_remote_request() {
 void YCSBTxnManager::copy_remote_requests(YCSBQueryMessage * msg) {
   YCSBQuery* ycsb_query = (YCSBQuery*) query;
   //msg->requests.init(ycsb_query->requests.size());
-  uint64_t dest_node_id = GET_NODE_ID(ycsb_query->requests[next_record_id]->key);
+  uint64_t dest_node_id = GET_NODE_ID(key_to_part(ycsb_query->requests[next_record_id]->key));
 #if ONE_NODE_RECIEVE == 1 && defined(NO_REMOTE) && LESS_DIS_NUM == 10
-  while (next_record_id < ycsb_query->requests.size() && GET_NODE_ID(ycsb_query->requests[next_record_id]->key) == dest_node_id) {
+  while (next_record_id < ycsb_query->requests.size() && GET_NODE_ID(key_to_part(ycsb_query->requests[next_record_id]->key)) == dest_node_id) {
 #else
   while (next_record_id < ycsb_query->requests.size() && !is_local_request(next_record_id) &&
-         GET_NODE_ID(ycsb_query->requests[next_record_id]->key) == dest_node_id) {
+         GET_NODE_ID(key_to_part(ycsb_query->requests[next_record_id]->key)) == dest_node_id) {
 #endif
     YCSBQuery::copy_request_to_msg(ycsb_query,msg,next_record_id++);
   }

@@ -2059,6 +2059,8 @@ void MigrationMessage::copy_to_buf(char* buf){
     //COPY_BUF(buf, row_data, ptr);
     
     for (size_t i=0;i<data_size;i++){
+      //std::cout<<i<<" "<<buf<<" "<<&(data[i])<<endl;
+      //std::cout<<i<<" "<<ptr<<endl;
       COPY_BUF(buf,data[i],ptr);
     }
     

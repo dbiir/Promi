@@ -244,6 +244,7 @@ RC Row_lock::lock_release(TxnManager * txn) {
       // If CC is NO_WAIT or WAIT_DIE, txn should own this lock
       // What about Calvin?
 #if CC_ALG == NO_WAIT
+      //这里assert=0，先改一下看看:注释掉assert if (owner_cnt==0) 改成 (owner_cnt<=0)
       assert(owner_cnt > 0);
       owner_cnt--;
       if (owner_cnt == 0) {

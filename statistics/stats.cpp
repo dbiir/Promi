@@ -551,8 +551,9 @@ void Stats_thd::print(FILE * outf, bool prog) {
   if(single_part_txn_cnt > 0)
     single_part_txn_avg_time = single_part_txn_run_time / single_part_txn_cnt;
   fprintf(outf,
-  ",tput=%f"
-  ",txn_cnt=%ld"
+  ",tput=%f\n"
+  "[Execution]\n"
+  "txn_cnt=%ld"
   ",remote_txn_cnt=%ld"
   ",local_txn_cnt=%ld"
   ",local_txn_start_cnt=%ld"
@@ -574,7 +575,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
   ",single_part_txn_avg_time=%f"
   ",txn_write_cnt=%ld"
   ",record_write_cnt=%ld"
-  ",parts_touched=%ld\n"
+  ",parts_touched=%ld"
           ",avg_parts_touched=%f",
           tput, txn_cnt, remote_txn_cnt, local_txn_cnt, local_txn_start_cnt, total_txn_commit_cnt,
           local_txn_commit_cnt, remote_txn_commit_cnt, total_txn_abort_cnt,positive_txn_abort_cnt, unique_txn_abort_cnt,
@@ -586,6 +587,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
 
   // Breakdown
   fprintf(outf,
+  "\n[Breakdown]\n"
   ",ts_alloc_time=%f"
   ",abort_time=%f"
   ",txn_manager_time=%f"
@@ -596,6 +598,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
           txn_index_time / BILLION, txn_validate_time / BILLION, txn_cleanup_time / BILLION);
   // trans
   fprintf(outf,
+  "\n[trans]\n"
   ",trans_total_run_time=%f"
   ",trans_init_time=%f"
   ",trans_process_time=%f"
@@ -609,26 +612,31 @@ void Stats_thd::print(FILE * outf, bool prog) {
   ",trans_finish_time=%f"
   ",trans_commit_time=%f"
   ",trans_abort_time=%f"
-  ",trans_access_lock_wait_time=%f"
+  ",trans_access_lock_wait_time=%f\n"
   // trans network
+  "[trans network]\n"
   ",trans_process_network=%f"
   ",trans_validation_network=%f"
   ",trans_commit_network=%f"
-  ",trans_abort_network=%f"
+  ",trans_abort_network=%f\n"
   // trans mvcc
+  "[trans mvcc]\n"
   ",trans_mvcc_clear_history=%f"
-  ",trans_mvcc_access=%f"
+  ",trans_mvcc_access=%f\n"
     // trans get row
+  "[trans get row]\n"
   ",trans_cur_row_copy_time=%f"
-  ",trans_cur_row_init_time=%f"
+  ",trans_cur_row_init_time=%f\n"
     // trans dli
+  "[trans dli]\n"  
   ",dli_init_time=%f"
   ",dli_lock_time=%f"
   ",dli_check_conflict_time=%f"
   ",dli_final_validate=%f"
   ",dli_get_rwset=%f"
-  ",dli_push_front_time=%f"
+  ",dli_push_front_time=%f\n"
   // trans queue
+  "[trans queue]\n"
   ",trans_local_process=%f"
   ",trans_remote_process=%f"
   ",trans_work_local_wait=%f"
@@ -662,6 +670,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
           trans_get_client_wait / BILLION, trans_return_client_wait / BILLION, trans_process_client / BILLION);
 
   fprintf(outf,
+  "[trans network]\n"
   ",avg_trans_total_run_time=%f"
   ",avg_trans_init_time=%f"
   ",avg_trans_process_time=%f"
@@ -687,6 +696,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
           // trans network
           trans_process_network / (trans_process_count * BILLION), trans_validation_network /(trans_validate_count * BILLION), trans_commit_network / (trans_commit_count * BILLION), trans_abort_network / (trans_abort_count * BILLION));
   fprintf(outf,
+  "[concurrency]\n"
   ",trans_total_run_count=%ld"
   ",trans_init_count=%ld"
   ",trans_process_count=%ld"
@@ -732,6 +742,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
     txn_twopc_time_avg = txn_twopc_time / local_txn_commit_cnt;
   }
   fprintf(outf,
+  "[trans time]\n"
   ",txn_total_process_time=%f"
   ",txn_process_time=%f"
   ",txn_total_local_wait_time=%f"
@@ -765,6 +776,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
   if(abort_queue_dequeue_cnt > 0)
     abort_queue_penalty_avg = abort_queue_penalty / abort_queue_enqueue_cnt;
   fprintf(outf,
+  "[abort cnt]\n"
   ",abort_queue_enqueue_cnt=%ld"
   ",abort_queue_dequeue_cnt=%ld"
   ",abort_queue_enqueue_time=%f"
@@ -794,6 +806,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
     work_queue_old_wait_avg_time = work_queue_old_wait_time / work_queue_old_cnt;
   // Work queue
   fprintf(outf,
+  "[work queue cnt]\n"
   ",work_queue_wait_time=%f"
   ",work_queue_cnt=%ld"
   ",work_queue_enq_cnt=%ld"
@@ -821,6 +834,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
   double worker_process_avg_time = 0;
   if (worker_process_cnt > 0) worker_process_avg_time = worker_process_time / worker_process_cnt;
   fprintf(outf,
+    "[worker thread cnt]\n"
     ",worker_idle_time=%f"
     ",worker_activate_txn_time=%f"
     ",worker_deactivate_txn_time=%f"
@@ -831,13 +845,14 @@ void Stats_thd::print(FILE * outf, bool prog) {
           worker_idle_time / BILLION, worker_activate_txn_time / BILLION,
           worker_deactivate_txn_time / BILLION, worker_release_msg_time / BILLION,
           worker_process_time / BILLION, worker_process_cnt, worker_process_avg_time / BILLION);
+  fprintf(outf,"\n[msg type]\n");
   for(uint64_t i = 0; i < NO_MSG; i ++) {
     fprintf(outf,
       ",proc_cnt_type%ld=%ld"
             ",proc_time_type%ld=%f",
             i, worker_process_cnt_by_type[i], i, worker_process_time_by_type[i] / BILLION);
   }
-
+  /*不知道是什么，全是0
   for(uint64_t i = 0; i < SECOND; i ++) {
     fprintf(outf,
       ",work_queue_wq_cnt%lu=%lu"
@@ -848,7 +863,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
       ,work_queue_tx_cnt[i]
     );
   }
-
+  
   for(uint64_t i = 0; i < SECOND; i ++) {
     fprintf(outf,
       ",work_queue_ewq_cnt%lu=%lu"
@@ -870,7 +885,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
       ,work_queue_dtx_cnt[i]
     );
   }
-
+  */
   // IO
   double mbuf_send_intv_time_avg = 0;
   double msg_unpack_time_avg = 0;
@@ -893,6 +908,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
     msg_send_time_avg = msg_send_time / msg_send_cnt;
   }
   fprintf(outf,
+  "\n[msg]\n"
   ",msg_queue_delay_time=%f"
   ",msg_queue_cnt=%ld"
   ",msg_queue_enq_cnt=%ld"
@@ -927,6 +943,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
 
   // Concurrency control, general
   fprintf(outf,
+    "[conflict]\n"
     ",cc_conflict_cnt=%ld"
     ",txn_wait_cnt=%ld"
           ",txn_conflict_cnt=%ld",
@@ -938,6 +955,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
   double twopl_ex_owned_avg_time = 0;
   if (twopl_ex_owned_cnt > 0) twopl_ex_owned_avg_time = twopl_ex_owned_time / twopl_ex_owned_cnt;
   fprintf(outf,
+    "\n[2PL]\n"
     ",twopl_already_owned_cnt=%ld"
     ",twopl_owned_cnt=%ld"
     ",twopl_sh_owned_cnt=%ld"
@@ -967,6 +985,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
   double sched_queue_wait_avg_time = 0;
   if (sched_queue_cnt > 0) sched_queue_wait_avg_time = sched_queue_wait_time / sched_queue_cnt;
   fprintf(outf,
+  "[Calvin]\n"
   ",seq_txn_cnt=%ld"
   ",seq_batch_cnt=%ld"
   ",seq_full_batch_cnt=%ld"
