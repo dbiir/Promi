@@ -138,34 +138,26 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
     printf("SEND_MIGRATION\n");
     std::cout<<&msg<<endl;
     RC rc =RCOK;
-    //msg->copy_to_txn(txn_man);
-    //std::cout<<"copy!"<<endl;
+    start_time = get_sys_clock();
     txn_man->return_id = msg->return_node_id;
     txn_man->h_wl = _wl;
-    /*
-    for (size_t i=0;i<msg->data_size;i++){
-        Access* access = new(Access);
-        access->type = WR;
-        access->data = &msg->data[i];
-        txn_man->txn->accesses.add(access);
-    }
-    */
+    
     msg->isdata = false;
     //std::cout<<&msg<<endl;
     std::cout<<"the size of msg is "<<msg->get_size()<<endl;
     //对迁移数据加锁, 将迁移数据读入msg
     idx_key_t key = 0;//起始的key，是迁移的part中第一个key，随着part_id变化而变化
 	for (size_t i=0;i<msg->data_size;i++){
-        //itemid_t* item = new(itemid_t);
-        //std::cout<<"index addr is: "<<((YCSBWorkload*)txn_man->h_wl)->the_index<<endl;
-        //item = txn_man->index_read(((YCSBWorkload*)txn_man->h_wl)->the_index,key,key_to_part(key),get_thd_id());
-        
         itemid_t* item1 = (itemid_t*)mem_allocator.alloc(sizeof(itemid_t));
 	    itemid_t* &item = item1;
         RC rc = ((YCSBWorkload*)_wl)->the_index->index_read(key,item,key_to_part(key),g_thread_cnt); //使用g_thread_cnt是为了访问索引的cur_leaf_per_thd数组，索引只允许工作线程和迁移线程访问，数组大小和这两个线程数量之和相同
-        assert(rc==RCOK);
+        if (rc!=RCOK) {
+            miss_cnt++;
+            if (KEY_TO_PART == HASH_MODE) key += g_part_cnt;
+            else key ++;
+            continue;
+        }
         //std::cout<<"OK"<<endl;
-        
 		//((YCSBWorkload*)_wl)->the_index->index_read(key,item,msg->part_id,get_thd_id());        
         row_t* row = ((row_t*)item->location);
         //rc = txn_man->get_lock(row,WR); fix
@@ -177,33 +169,19 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
         while(rc != RCOK){
             rc = txn_man->get_row(row,access_t::WR,row_rtn);
         }
-        //std::cout<<"key is"<<row_rtn->get_primary_key();
-        //std::cout<<" "<<(string)(row_rtn->get_data())<<endl;
+        /*
+        //读data的数据
         msg->data.emplace_back(*row_rtn);
         //读row->data的数据
-        /*fix
-		char* tmp_char = row->get_data();
-		string tmp_str;
-		size_t k=0;
-		while (tmp_char[k]!='\0'){
-			tmp_str[k]=tmp_char[k];
-			k++;
-		}
-        std::cout<<"k is "<<k<<" ";
-        std::cout<<"tmp_str is "<<tmp_str<<endl;
-		msg->row_data.emplace_back(tmp_str);
-        std::cout<<"lock "<<key<<" ";
-        std::cout<<"key is "<<msg->data[i].get_primary_key();
-        std::cout<<" data is "<<msg->row_data[i]<<endl;
-        key += g_part_cnt;
-        */
         char* tmp_char = new char[row->tuple_size];
         memcpy(tmp_char, row->get_data(), row->tuple_size);
         string tmp_str = tmp_char;
         //std::cout<<"tuple_size is "<<row->tuple_size<<' ';
         //std::cout<<"tmp_char is "<<tmp_char[0]<<' ';
         //std::cout<<"tmp_str is "<<tmp_str<<endl;
-		msg->row_data.emplace_back(tmp_str);
+		//把下面去掉，不让rowdata放进来
+        //msg->row_data.emplace_back(tmp_str);
+        */
         std::cout<<"lock "<<key<<" ";
         //std::cout<<"key is "<<msg->data[i].get_primary_key();
         //std::cout<<" data is "<<msg->row_data[i]<<endl;
@@ -211,7 +189,7 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
         else key ++;
 	}
     msg->isdata=true;
-    printf("the size of msg row_data is %ld\n",msg->row_data.size());
+    printf("the size of msg row is %ld\n",msg->data_size);
     std::cout<<"the size of msg is "<<msg->get_size()<<endl;
 
     //生成RECV_MIGRATION消息发给目标节点
@@ -224,6 +202,7 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
         free(msg);
         std::cout<<"enqueue finished!"<<endl;
     }
+    std::cout<<"miss is:"<<miss_cnt<<endl;
     return rc;
 }
 
@@ -231,8 +210,20 @@ RC MigrateThread::process_recv_migration(MigrationMessage* msg){
     DEBUG("RECV_MIGRATION %ld\n",msg->get_txn_id());
     printf("RECV_MIGRATION\n");
     RC rc = RCOK;
+    sleep(1);
+    /*不要本地生成数据了
     //把数据从msg里复制出来
-    auto* data_ptr = mem_allocator.alloc(sizeof(row_t)*msg->data_size); //存row_t
+    row_t * data_ptr = (row_t*)mem_allocator.alloc(sizeof(row_t)*(msg->data_size));
+    //char* row_data_ptr = (char* )malloc((msg->data[0].tuple_size) *  (msg->data_size));
+    for (size_t i=0;i<msg->data_size;i++){
+        row_t* data_ = &msg->data[i];
+        memcpy(data_ptr,data_,sizeof(row_t));
+        //memcpy(row_data_ptr,&msg->row_data,msg->data[0].tuple_size);
+    }
+    */
+
+    /*去除本地恢复数据的过程
+    void* data_ptr = mem_allocator.alloc(sizeof(row_t)*(msg->data_size)); //存row_t
     char* row_data_ptr = (char* )malloc((msg->data[0].tuple_size) *  (msg->data_size)); //存row_t->data
     uint64_t ptr = 0;
     uint64_t ptr_data = 0;
@@ -242,7 +233,8 @@ RC MigrateThread::process_recv_migration(MigrationMessage* msg){
         ptr += sizeof(row_t);
         memcpy(row_data_ptr,(const void*)&msg->row_data,ptr_data);
         ptr_data += sizeof(data_->get_tuple_size());
-        //本地生成索引
+        //本地生成索引 索引是全局的不需要再次生成
+        
         ((YCSBWorkload*)_wl)->the_table->get_new_row(data_);
         itemid_t * m_item = (itemid_t *) mem_allocator.alloc(sizeof(itemid_t));
 	    assert(m_item != NULL);
@@ -252,7 +244,11 @@ RC MigrateThread::process_recv_migration(MigrationMessage* msg){
 	    uint64_t idx_key = data_->get_primary_key();
 	    rc = ((YCSBWorkload*)_wl)->the_index->index_insert(idx_key, m_item, msg->part_id);
         assert(rc == RCOK);
+        
     }
+    */
+
+
     //生成FINISH_MIGRATION消息给源节点
     if (rc==RCOK){
         msg_queue.enqueue(get_thd_id(),Message::create_message(txn_man,FINISH_MIGRATION),msg->node_id_src);
@@ -266,6 +262,10 @@ RC MigrateThread::process_finish_migration(MigrationMessage* msg){
     RC rc = RCOK;
     //msg->copy_to_txn(txn_man);
     //txn_man->h_wl = _wl;
-    txn_man->release_locks(rc);
+    update_part_map(msg->part_id, msg->node_id_des);
+    double migration_time = get_sys_clock() - start_time;
+    std::cout<<"M Time:"<<migration_time / BILLION <<endl;
+    txn_man->txn_stats.migration_time = migration_time;
+    txn_man->commit();
     return rc;
 }

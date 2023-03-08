@@ -144,6 +144,84 @@ void YCSBWorkload::init_table_parallel() {
 	enable_thread_mem_pool = false;
 }
 
+void * YCSBWorkload::init_table_slice(){
+	UInt32 tid = ATOM_FETCH_ADD(next_tid, 1);
+	RC rc;
+	assert(g_synth_table_size % g_init_parallelism == 0);
+	assert(tid < g_init_parallelism);
+  	uint64_t key_cnt = 0;
+	while ((UInt32)ATOM_FETCH_ADD(next_tid, 0) < g_init_parallelism) {}
+	assert((UInt32)ATOM_FETCH_ADD(next_tid, 0) == g_init_parallelism);
+	uint64_t slice_size = g_synth_table_size / g_part_cnt;
+	#if KEY_TO_PART == HASH_MODE
+		uint64_t key = tid * g_node_cnt + g_node_id;
+		for (uint64_t i = 0; i < slice_size; i++){
+			row_t * new_row = NULL;
+			uint64_t row_id;
+			int part_id = key_to_part(key); // % g_part_cnt;
+			rc = the_table->get_new_row(new_row, part_id, row_id);
+			assert(rc == RCOK);
+			uint64_t primary_key = key;
+			new_row->set_primary_key(primary_key);
+			#if SIM_FULL_ROW
+				new_row->set_value(0, &primary_key,sizeof(uint64_t));
+				Catalog * schema = the_table->get_schema();
+				for (UInt32 fid = 0; fid < schema->get_field_cnt(); fid ++) {
+					char value[6] = "hello";
+					new_row->set_value(fid, value,sizeof(value));
+				}
+			#endif
+			itemid_t * m_item =
+			(itemid_t *) mem_allocator.alloc( sizeof(itemid_t));
+			assert(m_item != NULL);
+			m_item->type = DT_row;
+			m_item->location = new_row;
+			m_item->valid = true;
+			uint64_t idx_key = primary_key;
+			rc = the_index->index_insert(idx_key, m_item, part_id);
+			assert(rc == RCOK);
+			key_cnt ++;
+			key += g_part_cnt;
+		}
+  		printf("Thd %d inserted %ld keys\n",tid,key_cnt);
+		return NULL;
+	#elif KEY_TO_PART == CONST_MODE
+		uint64_t key = tid * slice_size + (g_synth_table_size / g_node_cnt) * g_node_id;
+		for (uint64_t i = 0; i < slice_size; i++){
+			row_t * new_row = NULL;
+			uint64_t row_id;
+			int part_id = key_to_part(key); // % g_part_cnt;
+			rc = the_table->get_new_row(new_row, part_id, row_id);
+			assert(rc == RCOK);
+			uint64_t primary_key = key;
+			new_row->set_primary_key(primary_key);
+			#if SIM_FULL_ROW
+				new_row->set_value(0, &primary_key,sizeof(uint64_t));
+				Catalog * schema = the_table->get_schema();
+				for (UInt32 fid = 0; fid < schema->get_field_cnt(); fid ++) {
+					char value[6] = "hello";
+					new_row->set_value(fid, value,sizeof(value));
+				}
+			#endif
+			itemid_t * m_item =
+			(itemid_t *) mem_allocator.alloc( sizeof(itemid_t));
+			assert(m_item != NULL);
+			m_item->type = DT_row;
+			m_item->location = new_row;
+			m_item->valid = true;
+			uint64_t idx_key = primary_key;
+			rc = the_index->index_insert(idx_key, m_item, part_id);
+			assert(rc == RCOK);
+			key_cnt ++;
+			key ++;
+		}
+  		printf("Thd %d inserted %ld keys\n",tid,key_cnt);
+		return NULL;
+	#endif
+}
+
+//多个线程并行插入可能会导致种种错误，因此修改为一个线程插入一个part
+/*
 void * YCSBWorkload::init_table_slice() {
 	UInt32 tid = ATOM_FETCH_ADD(next_tid, 1);
 	RC rc;
@@ -209,6 +287,7 @@ void * YCSBWorkload::init_table_slice() {
   	printf("Thd %d inserted %ld keys\n",tid,key_cnt);
 	return NULL;
 }
+*/
 
 RC YCSBWorkload::get_txn_man(TxnManager *& txn_manager){
   DEBUG_M("YCSBWorkload::get_txn_man YCSBTxnManager alloc\n");

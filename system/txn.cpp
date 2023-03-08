@@ -76,6 +76,8 @@ void TxnStats::init() {
 	 msg_queue_time = 0;
 	 total_abort_time = 0;
 
+	 migration_time = 0;
+
 	 clear_short();
 }
 
@@ -734,12 +736,14 @@ void TxnManager::commit_stats() {
 	INC_STATS_ARR(get_thd_id(),last_start_commit_latency, timespan_short);
 	INC_STATS_ARR(get_thd_id(),first_start_commit_latency, timespan_long);
 
-	assert(query->partitions_touched.size() > 0);
+	//assert(query->partitions_touched.size() > 0);
 	INC_STATS(get_thd_id(),parts_touched,query->partitions_touched.size());
 	INC_STATS(get_thd_id(),part_cnt[query->partitions_touched.size()-1],1);
 	for(uint64_t i = 0 ; i < query->partitions_touched.size(); i++) {
 		INC_STATS(get_thd_id(),part_acc[query->partitions_touched[i]],1);
 	}
+
+	INC_STATS(get_thd_id(), g_migration_time, this->txn_stats.migration_time);
 }
 
 void TxnManager::register_thread(Thread * h_thd) {

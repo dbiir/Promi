@@ -127,6 +127,12 @@ RC index_btree::index_read(idx_key_t key, itemid_t *&item, int part_id, int thd_
 	// release the latch after reading the node
 
 	printf("key = %ld\n", key);
+	/*
+	std::cout<<"node id is"<<GET_NODE_ID(key_to_part(key))<<" "<<g_node_id<<endl;
+	for (uint64_t i=0;i<g_part_cnt;i++){
+		std::cout<<"part "<<i<<" node is "<<GET_NODE_ID(i)<<endl;
+	}
+	*/
 	M_ASSERT(false, "the key does not exist!");
 	return rc;
 }
@@ -163,7 +169,7 @@ RC index_btree::index_insert(idx_key_t key, itemid_t * item, int part_id) {
 	// so the system should not abort anymore.
 //	M_ASSERT(!index_exist(key), "the index does not exist!");
 	// insert into btree if the leaf is not full
-	if (leaf->num_keys < order - 1 || leaf_has_key(leaf, key) >= 0) {
+	if (leaf->num_keys < order-1  || leaf_has_key(leaf, key) >= 0) {
 		rc = insert_into_leaf(params, leaf, key, item);
 		// only the leaf should be ex latched.
 //		assert( release_latch(leaf) == LATCH_EX );
@@ -175,7 +181,7 @@ RC index_btree::index_insert(idx_key_t key, itemid_t * item, int part_id) {
 //			assert( release_latch(ex_list[i]) == LATCH_EX );
 	}
 //	assert(leaf->latch_type == LATCH_NONE);
-	std::cout<<"insert key "<<key<<endl;
+	//std::cout<<" insert key"<<key;
 	return rc;
 }
 
@@ -551,7 +557,7 @@ RC index_btree::insert_into_new_root(glob_param params, bt_node *left, idx_key_t
 	left->next = right;
 	roots[part_id]->next = new_root;//生成新root的必要操作
 
-	std::cout<<"*************"<<"create the new root "<<params.part_id<<std::endl;
+	std::cout<<endl<<"*************"<<"create the new root "<<params.part_id<<std::endl;
 	release_latch(new_root);
 	// TODO this new root is not latched, at this point, other threads
 	// may start to access this new root. Is this ok?

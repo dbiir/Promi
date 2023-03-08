@@ -264,3 +264,24 @@ UInt32 g_repl_type = REPL_TYPE;
 UInt32 g_repl_cnt = REPLICA_CNT;
 
 map<string, string> g_params;
+
+//part_table:记录每个part所在的node
+map <uint64_t,uint64_t> part_map;
+
+void part_map_init(){
+  for (uint64_t i=0;i<g_part_cnt;i++){
+    #if (PART_TO_NODE == HASH_MODE)
+      part_map[i] = i % g_node_cnt;
+    #elif (PART_TO_NODE == CONST_MODE)
+      part_map[i] = i / (g_part_cnt / g_node_cnt);
+    #endif
+  }
+}
+
+uint64_t get_part_node_id(uint64_t part_id){
+  return part_map[part_id];
+}
+
+void update_part_map(uint64_t part_id, uint64_t node_id){
+  part_map[part_id] = node_id;
+}

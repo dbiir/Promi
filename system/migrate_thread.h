@@ -19,6 +19,8 @@ public:
     RC process_send_migration(MigrationMessage* msg);
     RC process_recv_migration(MigrationMessage* msg);
     RC process_finish_migration(MigrationMessage* msg);
+    uint64_t start_time;
+    int miss_cnt=0;
 };
 
 #endif

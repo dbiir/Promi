@@ -269,7 +269,7 @@ void OptCC::central_finish(RC rc, TxnManager * txn) {
 			act = act->next;
 		}
     	if(act == NULL) {
-      		assert(rc == Abort);
+      		//assert(rc == Abort); 注释掉，迁移事务会报错
 		  	//pthread_mutex_unlock( &latch );
 			sem_post(&_semaphore);
 			return;

@@ -136,6 +136,8 @@ public:
 
 	double lat_network_time_start;
 	double lat_other_time_start;
+
+	double migration_time;
 };
 
 /*

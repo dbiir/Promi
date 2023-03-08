@@ -1045,7 +1045,8 @@ RC WorkerThread::process_send_migration(Message* msg){
 RC WorkerThread::process_recv_migration(Message* msg){
   DEBUG("RECV_MIGRATION %ld\n",msg->get_txn_id());
   RC rc = RCOK;
-  MigrationMessage * msg1 =(MigrationMessage *) mem_allocator.alloc(sizeof(MigrationMessage));
+  //MigrationMessage * msg1 =(MigrationMessage *) mem_allocator.alloc(sizeof(MigrationMessage));
+  MigrationMessage * msg1 = new(MigrationMessage);
   *msg1 = *(MigrationMessage *)msg;
   migmsg_queue.enqueue(get_thd_id(), msg1, g_node_id);
   return rc;
@@ -1054,7 +1055,8 @@ RC WorkerThread::process_recv_migration(Message* msg){
 RC WorkerThread::process_finish_migration(Message* msg){
   DEBUG("FINISH_MIGRATION %ld\n",msg->get_txn_id());
   RC rc = RCOK;
-  MigrationMessage * msg1 =(MigrationMessage *) mem_allocator.alloc(sizeof(MigrationMessage));
+  //MigrationMessage * msg1 =(MigrationMessage *) mem_allocator.alloc(sizeof(MigrationMessage));
+  MigrationMessage * msg1 = new(MigrationMessage);
   *msg1 = *(MigrationMessage *)msg;
   migmsg_queue.enqueue(get_thd_id(), msg1, g_node_id);
   return rc;

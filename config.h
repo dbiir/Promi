@@ -72,7 +72,7 @@
 #define MIG_THREAD_CNT 1 //迁移线程
 #define CORE_CNT 2
 // PART_CNT should be at least NODE_CNT
-#define PART_CNT NODE_CNT*256
+#define PART_CNT NODE_CNT*2
 #define CLIENT_NODE_CNT 1
 #define CLIENT_THREAD_CNT 4
 #define CLIENT_REM_THREAD_CNT 2
@@ -161,7 +161,7 @@
 
 #define PRIORITY_WORK_QUEUE false
 #define PRIORITY PRIORITY_ACTIVE
-#define MSG_SIZE_MAX 4194304
+#define MSG_SIZE_MAX 134217728
 #define MSG_TIME_LIMIT 0
 
 #define SIM_FULL_ROW true
@@ -172,7 +172,7 @@
 
 // WAIT_DIE, NO_WAIT, TIMESTAMP, MVCC, CALVIN, MAAT, WOOKONG, TICTOC, SI
 #define ISOLATION_LEVEL SERIALIZABLE
-#define CC_ALG NO_WAIT
+#define CC_ALG SSI
 #define YCSB_ABORT_MODE false
 #define QUEUE_CAPACITY_NEW 1000000
 // all transactions acquire tuples according to the primary key order.
@@ -190,7 +190,7 @@
 #define CENTRAL_INDEX       false
 #define CENTRAL_MANAGER       false
 #define INDEX_STRUCT        IDX_BTREE
-#define BTREE_ORDER         16
+#define BTREE_ORDER         4
 
 // [TIMESTAMP]
 #define TS_TWR            false
@@ -237,7 +237,7 @@
 #define QUERY_INTVL         1UL
 #define MAX_TXN_PER_PART 500000
 #define FIRST_PART_LOCAL      true
-#define MAX_TUPLE_SIZE        1024 // in bytes
+#define MAX_TUPLE_SIZE        512 // in bytes
 #define GEN_BY_MPR false
 // ==== [YCSB] ====
 // SKEW_METHOD:
@@ -246,8 +246,8 @@
 #define SKEW_METHOD ZIPF
 #define DATA_PERC 100
 #define ACCESS_PERC 0.03
-#define INIT_PARALLELISM 8
-#define SYNTH_TABLE_SIZE 65536
+#define INIT_PARALLELISM (PART_CNT / NODE_CNT)
+#define SYNTH_TABLE_SIZE 131072
 #define ZIPF_THETA 0.6
 #define TXN_WRITE_PERC 0.5
 #define TUP_WRITE_PERC 0.5
@@ -464,7 +464,7 @@ enum PPSTxnType {
 #define PROG_TIMER 10 * BILLION // in s
 #define BATCH_TIMER 0
 #define SEQ_BATCH_TIMER 5 * 1 * MILLION // ~5ms -- same as CALVIN paper
-#define DONE_TIMER 1 * 40 * BILLION // ~1 minutes  60 BILLION = 1 min
+#define DONE_TIMER 1 * 20 * BILLION // ~1 minutes  60 BILLION = 1 min
 #define WARMUP_TIMER 1 * 20 * BILLION // ~1 minutes
 
 #define SEED 0

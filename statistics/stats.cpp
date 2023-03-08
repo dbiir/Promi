@@ -424,6 +424,8 @@ void Stats_thd::clear() {
   ano_4_trans_read_skew = 0;
   ano_unknown = 0;
 
+  g_migration_time = 0;
+
   client_client_latency.clear();
     last_start_commit_latency.clear();
     first_start_commit_latency.clear();
@@ -551,7 +553,8 @@ void Stats_thd::print(FILE * outf, bool prog) {
   if(single_part_txn_cnt > 0)
     single_part_txn_avg_time = single_part_txn_run_time / single_part_txn_cnt;
   fprintf(outf,
-  ",tput=%f\n"
+  ",tput=%f"
+  ",g_migration_time=%f\n"
   "[Execution]\n"
   "txn_cnt=%ld"
   ",remote_txn_cnt=%ld"
@@ -577,7 +580,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
   ",record_write_cnt=%ld"
   ",parts_touched=%ld"
           ",avg_parts_touched=%f",
-          tput, txn_cnt, remote_txn_cnt, local_txn_cnt, local_txn_start_cnt, total_txn_commit_cnt,
+          tput, g_migration_time / BILLION, txn_cnt, remote_txn_cnt, local_txn_cnt, local_txn_start_cnt, total_txn_commit_cnt,
           local_txn_commit_cnt, remote_txn_commit_cnt, total_txn_abort_cnt,positive_txn_abort_cnt, unique_txn_abort_cnt,
           local_txn_abort_cnt, remote_txn_abort_cnt, txn_run_time / BILLION,
           txn_run_avg_time / BILLION, multi_part_txn_cnt, multi_part_txn_run_time / BILLION,

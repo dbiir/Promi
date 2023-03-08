@@ -415,6 +415,9 @@ public:
   uint64_t ano_4_trans_read_skew;
   uint64_t ano_unknown;
 
+  //stat for migration
+  double g_migration_time;
+
   double * mtx;
 
 	char _pad[CL_SIZE];

@@ -187,6 +187,7 @@ RC YCSBTxnManager::run_txn_state() {
 	ycsb_request * req = ycsb_query->requests[next_record_id];
 	uint64_t part_id = _wl->key_to_part( req->key );
   bool loc = GET_NODE_ID(part_id) == g_node_id;
+  //std::cout<<"key is:"<<req->key<<" node is "<<GET_NODE_ID(part_id)<<" part is "<<part_id<<endl;
 
 	RC rc = RCOK;
 
