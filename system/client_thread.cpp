@@ -63,6 +63,17 @@ RC ClientThread::run() {
 	#if CC_ALG == BOCC || CC_ALG == FOCC || ONE_NODE_RECIEVE == 1
 		uint32_t next_node = 0;
 		uint32_t next_node_id = next_node;
+	#elif REMUS
+		uint32_t next_node;
+		uint32_t next_node_id;
+		if (remus_status == 0 || remus_status == 1) {
+			next_node = 0;
+			next_node_id = next_node + g_server_start_node;
+		}
+		else if (remus_status == 2) {
+			next_node = 1;
+			next_node_id = next_node + g_server_start_node;
+		}
 	#else
 		uint32_t next_node = (((iters++) * g_client_thread_cnt) + _thd_id )% g_servers_per_client;
 		uint32_t next_node_id = next_node + g_server_start_node;
@@ -76,6 +87,7 @@ RC ClientThread::run() {
 		if ((inf_cnt = client_man.inc_inflight(next_node)) < 0)
 			continue;
 	#endif
+
 		m_query = client_query_queue.get_next_query(next_node,_thd_id);
 		if(last_send_time > 0) {
 			INC_STATS(get_thd_id(),cl_send_intv,get_sys_clock() - last_send_time);
@@ -99,6 +111,10 @@ RC ClientThread::run() {
 
 		DEBUG("Client: thread %lu sending query to node: %u, %d, %f\n",
 				_thd_id, next_node_id,inf_cnt,simulation->seconds_from_start(get_sys_clock()));
+		//std::cout<<"remus status is "<<remus_status<<" ";
+
+		//printf("Client: thread %lu sending query to node: %u, %d, %f\n",
+		//		_thd_id, next_node_id,inf_cnt,simulation->seconds_from_start(get_sys_clock()));
 #if ONE_NODE_RECIEVE == 1 && defined(NO_REMOTE) && LESS_DIS_NUM == 10
 		Message * msg = Message::create_message((BaseQuery*)m_query,CL_QRY_O);
 #else
@@ -113,7 +129,7 @@ RC ClientThread::run() {
 			delete m_query;
 		#endif
 	}
-
+	std::cout<<"remus status is "<<remus_status<<endl;
 	for (uint64_t l = 0; l < g_servers_per_client; ++l)
 		printf("Txns sent to node %lu: %d\n", l+g_server_start_node, txns_sent[l]);
 

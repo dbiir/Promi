@@ -141,6 +141,7 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
     start_time = get_sys_clock();
     txn_man->return_id = msg->return_node_id;
     txn_man->h_wl = _wl;
+    update_part_map_status(msg->part_id, 1); //migrating
     
     msg->isdata = false;
     //std::cout<<&msg<<endl;
@@ -162,12 +163,18 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
         row_t* row = ((row_t*)item->location);
         //rc = txn_man->get_lock(row,WR); fix
         row_t* row_rtn = new(row_t);
-        rc = txn_man->get_row(row,access_t::WR,row_rtn);
+        access_t access;
+        #if REMUS 
+            access = access_t::RD;
+        #else
+            access = access_t::WR;
+        #endif
+        rc = txn_man->get_row(row,access,row_rtn);
         if (rc != RCOK){
             std::cout<<"trying to get lock..."<<endl;
         }
         while(rc != RCOK){
-            rc = txn_man->get_row(row,access_t::WR,row_rtn);
+            rc = txn_man->get_row(row,access,row_rtn);
         }
         /*
         //读data的数据
@@ -182,7 +189,7 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
 		//把下面去掉，不让rowdata放进来
         //msg->row_data.emplace_back(tmp_str);
         */
-        std::cout<<"lock "<<key<<" ";
+        std::cout<<"copy "<<key<<" ";
         //std::cout<<"key is "<<msg->data[i].get_primary_key();
         //std::cout<<" data is "<<msg->row_data[i]<<endl;
         if (KEY_TO_PART == HASH_MODE) key += g_part_cnt;
@@ -263,9 +270,21 @@ RC MigrateThread::process_finish_migration(MigrationMessage* msg){
     //msg->copy_to_txn(txn_man);
     //txn_man->h_wl = _wl;
     update_part_map(msg->part_id, msg->node_id_des);
+    update_part_map_status(msg->part_id, 2);//migrated
+    #if REMUS
+        sleep(2);
+        update_remus_status(1);
+        msg_queue.enqueue(get_thd_id(),Message::create_message(SET_REMUS, g_node_cnt, 1),g_node_cnt); //g_node_cnt对应着client节点,发消息通知client修改remus状态
+    #endif
+    std::cout<<"remus status is "<<remus_status<<endl;
     double migration_time = get_sys_clock() - start_time;
     std::cout<<"M Time:"<<migration_time / BILLION <<endl;
     txn_man->txn_stats.migration_time = migration_time;
     txn_man->commit();
+    #if REMUS
+        sleep(synctime);
+        std::cout<<"Finish Sync"<<endl;
+        msg_queue.enqueue(get_thd_id(),Message::create_message(SET_REMUS, g_node_cnt, 2),g_node_cnt); //g_node_cnt对应着client节点,发消息通知client修改remus状态
+    #endif
     return rc;
 }

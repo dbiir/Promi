@@ -278,6 +278,9 @@ public:
 	//void send_rfin_messages(RC rc) {assert(false);}
 	void send_finish_messages();
 	void send_prepare_messages();
+	void send_update_messages();
+
+	bool check_update();//true:synchronize the update, false:not
 
 	TxnStats txn_stats;
 

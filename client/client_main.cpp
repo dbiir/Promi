@@ -85,6 +85,7 @@ int main(int argc, char *argv[]) {
 	}
 	m_wl->Workload::init();
 	printf("workload initialized!\n");
+	std::cout<<"remus status is "<<remus_status<<" "<<&remus_status<<endl;
 
   printf("Initializing simulation... ");
   fflush(stdout);

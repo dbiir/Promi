@@ -39,6 +39,7 @@ public:
   static Message * create_message(uint64_t txn_id,uint64_t batch_id, RemReqType rtype);
   static Message * create_message(LogRecord * record, RemReqType rtype);
   static Message * create_message(RemReqType rtype);
+  static Message * create_message(RemReqType rtype, uint64_t node_id, int status);
   static std::vector<Message*> * create_messages(char * buf);
   static void release_message(Message * msg);
   RemReqType rtype;
@@ -504,6 +505,18 @@ public:
   vector<row_t> data;
   vector<string> row_data;//row_t的真正信息保存在char[]中
 
+  uint64_t get_size();
+  void copy_from_buf(char * buf);
+  void copy_to_buf(char * buf);
+  void copy_from_txn(TxnManager * txn);
+  void copy_to_txn(TxnManager * txn);
+  void init();
+  void release();
+};
+
+class SetRemusMessage : public Message{
+public:
+  int status;
   uint64_t get_size();
   void copy_from_buf(char * buf);
   void copy_to_buf(char * buf);

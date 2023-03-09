@@ -204,6 +204,9 @@ Message * Message::create_message(RemReqType rtype) {
     case CL_RSP:
       msg = new ClientResponseMessage;
       break;
+    case SET_REMUS:
+      msg = new SetRemusMessage;
+      break;
     default:
       assert(false);
   }
@@ -225,6 +228,14 @@ Message * Message::create_message(RemReqType rtype) {
   msg->lat_other_time = 0;
 
 
+  return msg;
+}
+
+Message * Message::create_message(RemReqType rtype,uint64_t node_id, int status){
+  assert(rtype == SET_REMUS);
+  SetRemusMessage * msg = new SetRemusMessage;
+  msg->rtype = SET_REMUS;
+  msg->status = status;
   return msg;
 }
 
@@ -419,6 +430,12 @@ void Message::release_message(Message * msg) {
     }
     case FINISH_MIGRATION: {
       MigrationMessage * m_msg = (MigrationMessage*) msg;
+      m_msg->release();
+      delete m_msg;
+      break;
+    }
+    case SET_REMUS: {
+      SetRemusMessage * m_msg = (SetRemusMessage*) msg;
       m_msg->release();
       delete m_msg;
       break;
@@ -2098,3 +2115,30 @@ void MigrationMessage::copy_from_txn(TxnManager* txn){
 void MigrationMessage::copy_to_txn(TxnManager* txn){
   Message::mcopy_to_txn(txn);
 }
+
+uint64_t SetRemusMessage::get_size(){
+  uint64_t size;
+  size = Message::mget_size();
+  size += sizeof(int);
+  return size;
+}
+
+void SetRemusMessage::copy_from_buf(char* buf){
+  Message::mcopy_from_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_VAL(status,buf,ptr);
+}
+
+void SetRemusMessage::copy_to_buf(char* buf){
+  Message::mcopy_to_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_BUF(buf,status,ptr);
+}
+
+void SetRemusMessage::copy_from_txn(TxnManager* txn){}
+
+void SetRemusMessage::copy_to_txn(TxnManager* txn){}
+
+void SetRemusMessage::init(){}
+
+void SetRemusMessage::release(){}

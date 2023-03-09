@@ -320,6 +320,7 @@ enum RemReqType {
     SEND_MIGRATION,
     RECV_MIGRATION,
     FINISH_MIGRATION,
+    SET_REMUS,
   NO_MSG
 };
 
@@ -362,12 +363,20 @@ enum TsType {R_REQ = 0, W_REQ, P_REQ, XP_REQ};
 /*DA query build queue*/
 //queue<DAQuery> query_build_queue;
 
-//part_table:记录每个part所在的node
-extern map <uint64_t,uint64_t> part_map;
+//part_table:记录每个part的信息,<part_id, <node_id,migrate_status> >, migrate_status{0:not migrated, 1:migrating, 2:migrated}
+extern map <uint64_t,vector<uint64_t> > part_map;
 void part_map_init();
 uint64_t get_part_node_id(uint64_t part_id);
-void update_part_map(uint64_t part_id, uint64_t node_id);
+uint64_t get_part_status(uint64_t part_id);
+void update_part_map(uint64_t part_id, uint64_t node_id);//修改part_map的node_id
+void update_part_map_status(uint64_t part_id, uint64_t status);//修改part_map的migrate_status
 
+//remus状态,记录每个阶段路由事务导哪个节点
+extern int remus_status;
+void update_remus_status(int status);
+
+//remus同步时间
+extern int synctime;
 
 #define GET_THREAD_ID(id)	(id % g_thread_cnt)
 

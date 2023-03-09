@@ -90,6 +90,10 @@
 #define LOAD_METHOD LOAD_MAX
 #define LOAD_PER_SERVER 100
 
+//Remus Migration
+#define REMUS true
+#define SYNCTIME 2
+
 //MIGRATION
 #define MIGRATION true
 // Replication

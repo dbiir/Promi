@@ -114,6 +114,16 @@ RC InputThread::client_recv_loop() {
 		while(!msgs->empty()) {
 			Message * msg = msgs->front();
 			//assert(msg->rtype == CL_RSP); 注释掉看看
+			#if REMUS
+				if (msg->rtype == SET_REMUS) {
+					std::cout<<((SetRemusMessage*)msg)->status<<endl;
+					remus_status = ((SetRemusMessage*)msg)->status;
+					msgs->erase(msgs->begin());
+					std::cout<<"remus_stats is "<<remus_status<<endl;
+					continue;
+				}
+				
+			#endif
 		#if CC_ALG == BOCC || CC_ALG == FOCC || ONE_NODE_RECIEVE == 1
 			return_node_offset = msg->return_node_id;
 		#else

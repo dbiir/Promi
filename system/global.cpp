@@ -266,22 +266,43 @@ UInt32 g_repl_cnt = REPLICA_CNT;
 map<string, string> g_params;
 
 //part_table:记录每个part所在的node
-map <uint64_t,uint64_t> part_map;
+map <uint64_t,vector<uint64_t> > part_map;
 
 void part_map_init(){
   for (uint64_t i=0;i<g_part_cnt;i++){
     #if (PART_TO_NODE == HASH_MODE)
-      part_map[i] = i % g_node_cnt;
+      vector<uint64_t> vtmp;
+      vtmp.emplace_back(i % g_node_cnt);
+      vtmp.emplace_back(0);
+      part_map[i] = vtmp;
     #elif (PART_TO_NODE == CONST_MODE)
-      part_map[i] = i / (g_part_cnt / g_node_cnt);
+      vector<uint64_t> vtmp;
+      vtmp.emplace_back(i / (g_part_cnt / g_node_cnt));
+      vtmp.emplace_back(0);
+      part_map[i] = vtmp;
     #endif
   }
 }
 
 uint64_t get_part_node_id(uint64_t part_id){
-  return part_map[part_id];
+  return part_map[part_id][0];
+}
+
+uint64_t get_part_status(uint64_t part_id){
+  return part_map[part_id][1];
 }
 
 void update_part_map(uint64_t part_id, uint64_t node_id){
-  part_map[part_id] = node_id;
+  part_map[part_id][0] = node_id;
 }
+
+void update_part_map_status(uint64_t part_id, uint64_t status){
+  part_map[part_id][1] = status;
+}
+
+int remus_status; //0:发送快照 1:同步副本 2:迁移完成
+void update_remus_status(int status){
+  remus_status = status;
+}
+
+int synctime = SYNCTIME;

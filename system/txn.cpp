@@ -620,7 +620,17 @@ RC TxnManager::start_commit() {
 			txn_stats.trans_commit_network_start_time = get_sys_clock();
 			send_finish_messages();
 			rsp_cnt = 0;
-			rc = commit();
+			#if REMUS
+				if (remus_status == 0 || remus_status == 1){
+					if (check_update()){
+						send_update_messages();
+					}
+				}
+				else if (remus_status == 2){
+					send_update_messages();
+				}
+			#endif
+			rc = WAIT_REM;
 		}
 	} else { // is not multi-part
 		rc = validate();
@@ -635,8 +645,19 @@ RC TxnManager::start_commit() {
 		if(CC_ALG == WSI) {
 			wsi_man.gene_finish_ts(this);
 		}
-		if(rc == RCOK)
-			rc = commit();
+		if(rc == RCOK){
+			#if REMUS
+				if (remus_status == 0 || remus_status == 1){
+					if (check_update()){
+						send_update_messages();
+					}
+				}
+				else if (remus_status == 2){
+					send_update_messages();
+				}
+			#endif
+			rc = WAIT_REM;
+		}
 		else {
 			txn->rc = Abort;
 			DEBUG("%ld start_abort\n",get_txn_id());
@@ -649,9 +670,19 @@ RC TxnManager::start_commit() {
 			rc = abort();
 		}
 	}
+		
 	return rc;
 }
 #endif
+
+bool TxnManager::check_update(){
+	bool update = false;
+	for (uint i=0; i< query->partitions_touched.size(); i++){
+		if (GET_NODE_ID(	query->partitions_touched[i]) == 0) update = true;
+	}
+	return update;
+}
+
 void TxnManager::send_prepare_messages() {
 	rsp_cnt = query->partitions_touched.size() - 1;
 	DEBUG("%ld Send PREPARE messages to %d\n",get_txn_id(),rsp_cnt);
@@ -674,6 +705,17 @@ void TxnManager::send_finish_messages() {
     }
 		msg_queue.enqueue(get_thd_id(), Message::create_message(this, RFIN),
 											GET_NODE_ID(query->partitions_touched[i]));
+	}
+}
+
+void TxnManager::send_update_messages(){
+	for(uint64_t i = 0; i < query->partitions_touched.size(); i++) {
+		if(GET_NODE_ID(query->partitions_touched[i]) == g_node_id) {
+			continue;
+    	}
+		else{
+			msg_queue.enqueue(get_thd_id(), Message::create_message(this, RFIN), GET_NODE_ID(query->partitions_touched[i]));
+		}
 	}
 }
 

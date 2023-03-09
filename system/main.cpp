@@ -79,6 +79,11 @@ void parser(int argc, char * argv[]);
 int main(int argc, char *argv[]) {
 	// 0. initialize global data structure
 	if (g_node_id == 1 || g_node_id == 0) part_map_init();
+	#if REMUS == true
+		remus_status = 0;
+	#endif
+	std::cout<<"remus status is "<<remus_status<<" "<<&remus_status<<endl;
+
 	parser(argc, argv);
 #if SEED != 0
 	uint64_t seed = SEED + g_node_id;
@@ -469,7 +474,7 @@ int main(int argc, char *argv[]) {
 	pthread_create(&p_thds[id++], &attr, run_thread, (void *)&worker_num_thds[0]);
 	
 	#if MIGRATION
-	//搞一个迁移消息
+	//搞一个迁移消息,Remus的snapshot copying
 	if (g_node_id ==0){
 		uint64_t node_id_src=0, node_id_des=1;
 		uint64_t part_id = 0;
