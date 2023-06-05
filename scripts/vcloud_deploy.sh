@@ -21,15 +21,15 @@ for HOSTNAME in ${HOSTS}; do
 done
 
 sleep 90
-OLD_IFS="$IFS"
-IFS=" "
-HOSTLIST=($HOSTS)
-IFS="$OLD_IFS"
-scp wkdbperf.sh ${USERNAME}@${HOSTLIST[0]}:${PATHE}
-ssh ${USERNAME}@${HOSTLIST[0]} "bash ${PATHE}/wkdbperf.sh $4"
+##OLD_IFS="$IFS"
+##IFS=" "
+##HOSTLIST=($HOSTS)
+##IFS="$OLD_IFS"
+##scp wkdbperf.sh ${USERNAME}@${HOSTLIST[0]}:${PATHE}
+##ssh ${USERNAME}@${HOSTLIST[0]} "bash ${PATHE}/wkdbperf.sh $4"
 
-while [ $count -gt 0 ]
-do
-    wait $pids
-    count=`expr $count - 1`
-done
+##while [ $count -gt 0 ]
+##do
+##    wait $pids
+##    count=`expr $count - 1`
+##done

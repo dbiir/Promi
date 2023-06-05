@@ -166,6 +166,8 @@ extern UInt32 g_client_node_cnt;
 extern UInt32 g_servers_per_client;
 extern UInt32 g_clients_per_server;
 extern UInt32 g_server_start_node;
+extern vector<int> query_to_part;
+extern vector<int> query_to_row;
 
 /******************************************/
 // Global Parameter
@@ -178,6 +180,7 @@ extern UInt32 g_node_id;
 extern UInt32 g_node_cnt;
 extern UInt32 g_part_cnt;
 extern UInt32 g_virtual_part_cnt;
+extern UInt32 g_part_split_cnt;
 extern UInt32 g_core_cnt;
 extern UInt32 g_total_node_cnt;
 extern UInt32 g_total_thread_cnt;
@@ -216,6 +219,7 @@ extern UInt64 g_seq_batch_time_limit;
 extern UInt64 g_prog_timer;
 extern UInt64 g_warmup_timer;
 extern UInt64 g_msg_time_limit;
+extern UInt64 g_starttime;
 
 // MVCC
 extern UInt64 g_max_read_req;
@@ -321,6 +325,9 @@ enum RemReqType {
     RECV_MIGRATION,
     FINISH_MIGRATION,
     SET_REMUS,
+    SET_PARTMAP,
+    SET_DETEST,
+    SET_MINIPARTMAP,
   NO_MSG
 };
 
@@ -362,7 +369,11 @@ enum TsType {R_REQ = 0, W_REQ, P_REQ, XP_REQ};
 
 /*DA query build queue*/
 //queue<DAQuery> query_build_queue;
+uint64_t get_node_id_mini(uint64_t key);
 
+extern bool g_migrate_flag;
+extern uint64_t g_mig_starttime;
+extern uint64_t g_mig_endtime;
 //part_table:记录每个part的信息,<part_id, <node_id,migrate_status> >, migrate_status{0:not migrated, 1:migrating, 2:migrated}
 extern map <uint64_t,vector<uint64_t> > part_map;
 void part_map_init();
@@ -370,6 +381,19 @@ uint64_t get_part_node_id(uint64_t part_id);
 uint64_t get_part_status(uint64_t part_id);
 void update_part_map(uint64_t part_id, uint64_t node_id);//修改part_map的node_id
 void update_part_map_status(uint64_t part_id, uint64_t status);//修改part_map的migrate_status
+
+//minipart_table:记录迁移中的minipart的状态信息 < <minipart_id, <node_id,status> >, status{0:not migrated, 1:migrating, 2:migrated}
+extern map <uint64_t, vector<uint64_t> > minipart_map;
+void minipart_map_init();
+uint64_t get_minipart_id(uint64_t key);
+uint64_t get_minipart_node_id(uint64_t part_id);
+uint64_t get_minipart_status(uint64_t part_id);
+void update_minipart_map(uint64_t part_id, uint64_t node_id);//修改part_map的node_id
+void update_minipart_map_status(uint64_t part_id, uint64_t status);//修改part_map的migrate_status
+
+//detest状态，split push pull阶段
+extern int detest_status;
+void update_detest_status(int status);
 
 //remus状态,记录每个阶段路由事务导哪个节点
 extern int remus_status;
@@ -381,6 +405,8 @@ extern int synctime;
 #define GET_THREAD_ID(id)	(id % g_thread_cnt)
 
 #define GET_NODE_ID(id) (get_part_node_id(id))
+
+#define GET_NODE_ID_MINI(key) (get_node_id_mini(key)) //确定key所在的part或者minipart
 /*
 #if (PART_TO_NODE == HASH_MODE) 
   #define GET_NODE_ID(id)	(id % g_node_cnt)

@@ -59,8 +59,8 @@ RC YCSBTxnManager::acquire_locks() {
 		ycsb_request * req = ycsb_query->requests[rid];
 		uint64_t part_id = _wl->key_to_part( req->key );
     DEBUG("LK Acquire (%ld,%ld) %d,%ld -> %ld\n", get_txn_id(), get_batch_id(), req->acctype,
-          req->key, GET_NODE_ID(part_id));
-    if (GET_NODE_ID(part_id) != g_node_id) continue;
+          req->key, GET_NODE_ID_MINI(req->key));
+		if (GET_NODE_ID_MINI(req->key) != g_node_id) continue;
 		INDEX * index = _wl->the_index;
 		itemid_t * item;
 		item = index_read(index, req->key, part_id);
@@ -108,6 +108,8 @@ RC YCSBTxnManager::run_txn() {
   txn_stats.process_time_short += curr_time - starttime;
   txn_stats.wait_starttime = get_sys_clock();
 
+  //只允许本地节点提交，有病吧注释掉
+  /*
   if(IS_LOCAL(get_txn_id())) {
     if(is_done() && rc == RCOK)
       rc = start_commit();
@@ -116,6 +118,11 @@ RC YCSBTxnManager::run_txn() {
   } else if(rc == Abort){
     rc = abort();
   }
+  */
+  if(is_done() && rc == RCOK)
+    rc = start_commit();
+  else if(rc == Abort)
+    rc = start_abort();
 
   return rc;
 
@@ -155,12 +162,12 @@ void YCSBTxnManager::next_ycsb_state() {
 }
 
 bool YCSBTxnManager::is_local_request(uint64_t idx) {
-  return GET_NODE_ID(_wl->key_to_part(((YCSBQuery*)query)->requests[idx]->key)) == g_node_id;
+  return GET_NODE_ID_MINI(((YCSBQuery*)query)->requests[idx]->key) == g_node_id;
 }
 
 RC YCSBTxnManager::send_remote_request() {
   YCSBQuery* ycsb_query = (YCSBQuery*) query;
-  uint64_t dest_node_id = GET_NODE_ID(key_to_part(ycsb_query->requests[next_record_id]->key));
+  uint64_t dest_node_id = GET_NODE_ID_MINI(ycsb_query->requests[next_record_id]->key);
   ycsb_query->partitions_touched.add_unique(GET_PART_ID(0,dest_node_id));
   DEBUG("ycsb send remote request %ld, %ld\n",txn->txn_id,txn->batch_id);
   msg_queue.enqueue(get_thd_id(),Message::create_message(this,RQRY),dest_node_id);
@@ -171,12 +178,12 @@ RC YCSBTxnManager::send_remote_request() {
 void YCSBTxnManager::copy_remote_requests(YCSBQueryMessage * msg) {
   YCSBQuery* ycsb_query = (YCSBQuery*) query;
   //msg->requests.init(ycsb_query->requests.size());
-  uint64_t dest_node_id = GET_NODE_ID(key_to_part(ycsb_query->requests[next_record_id]->key));
+  uint64_t dest_node_id = GET_NODE_ID_MINI(ycsb_query->requests[next_record_id]->key);
 #if ONE_NODE_RECIEVE == 1 && defined(NO_REMOTE) && LESS_DIS_NUM == 10
   while (next_record_id < ycsb_query->requests.size() && GET_NODE_ID(key_to_part(ycsb_query->requests[next_record_id]->key)) == dest_node_id) {
 #else
   while (next_record_id < ycsb_query->requests.size() && !is_local_request(next_record_id) &&
-         GET_NODE_ID(key_to_part(ycsb_query->requests[next_record_id]->key)) == dest_node_id) {
+         GET_NODE_ID_MINI(ycsb_query->requests[next_record_id]->key) == dest_node_id) {
 #endif
     YCSBQuery::copy_request_to_msg(ycsb_query,msg,next_record_id++);
   }
@@ -186,7 +193,11 @@ RC YCSBTxnManager::run_txn_state() {
   YCSBQuery* ycsb_query = (YCSBQuery*) query;
 	ycsb_request * req = ycsb_query->requests[next_record_id];
 	uint64_t part_id = _wl->key_to_part( req->key );
-  bool loc = GET_NODE_ID(part_id) == g_node_id;
+  bool loc = GET_NODE_ID_MINI(req->key) == g_node_id;
+  if (loc == false && get_part_status(part_id) == 2 && get_sys_clock() > g_mig_endtime){ 
+    //要访问的数据被迁移走了，但是事务是在迁移开始前就开始了，继续保持在本地执行
+    loc = true;
+  }
   //std::cout<<"key is:"<<req->key<<" node is "<<GET_NODE_ID(part_id)<<" part is "<<part_id<<endl;
 
 	RC rc = RCOK;
@@ -346,8 +357,8 @@ RC YCSBTxnManager::run_ycsb() {
     if (this->phase == CALVIN_LOC_RD && req->acctype == WR) continue;
     if (this->phase == CALVIN_EXEC_WR && req->acctype == RD) continue;
 
-		uint64_t part_id = _wl->key_to_part( req->key );
-    bool loc = GET_NODE_ID(part_id) == g_node_id;
+		//uint64_t part_id = _wl->key_to_part( req->key );
+    bool loc = GET_NODE_ID_MINI(req->key) == g_node_id;
 
     if (!loc) continue;
 

@@ -102,7 +102,7 @@ Message * Message::create_message(LogRecord * record, RemReqType rtype) {
 
 
 Message * Message::create_message(BaseQuery * query, RemReqType rtype) {
- assert(rtype == RQRY || rtype == CL_QRY || rtype == CL_QRY_O);
+ assert(rtype == RQRY || rtype == CL_QRY || rtype == CL_QRY_O || rtype == SEND_MIGRATION);
  Message * msg = create_message(rtype);
 #if WORKLOAD == YCSB
  ((YCSBClientQueryMessage*)msg)->copy_from_query(query);
@@ -207,6 +207,15 @@ Message * Message::create_message(RemReqType rtype) {
     case SET_REMUS:
       msg = new SetRemusMessage;
       break;
+    case SET_PARTMAP:
+      msg = new SetPartMapMessage;
+      break;
+    case SET_MINIPARTMAP:
+      msg = new SetMiniPartMapMessage;
+      break;
+    case SET_DETEST:
+      msg = new SetDetestMessage;
+      break;
     default:
       assert(false);
   }
@@ -231,11 +240,41 @@ Message * Message::create_message(RemReqType rtype) {
   return msg;
 }
 
-Message * Message::create_message(RemReqType rtype,uint64_t node_id, int status){
-  assert(rtype == SET_REMUS);
-  SetRemusMessage * msg = new SetRemusMessage;
-  msg->rtype = SET_REMUS;
-  msg->status = status;
+Message * Message::create_message0(RemReqType rtype,uint64_t part_id, uint64_t status){
+  assert(rtype == SET_REMUS || rtype == SET_DETEST);
+  Message * msg = create_message(rtype);
+  if (rtype == SET_REMUS) {
+    //SetRemusMessage* msg = (SetRemusMessage*)msg;
+    ((SetRemusMessage*) msg)->rtype = rtype;
+    ((SetRemusMessage*) msg)->part_id = part_id;
+    ((SetRemusMessage*) msg)->status = status;
+  }
+  else if (rtype == SET_DETEST) {
+    //SetDetestMessage* msg = (SetDetestMessage*)msg;
+    ((SetDetestMessage*) msg)->rtype = rtype;
+    ((SetDetestMessage*) msg)->minipart_id = part_id;
+    ((SetDetestMessage*) msg)->status = status;
+  }
+  return msg;
+}
+
+Message * Message::create_message1(RemReqType rtype,uint64_t part_id, uint64_t node_id, int status){
+  assert(rtype == SET_PARTMAP || rtype == SET_MINIPARTMAP);
+  Message * msg = create_message(rtype);
+  if (rtype == SET_PARTMAP) {
+    //msg = (SetPartMapMessage*)msg;
+    ((SetPartMapMessage*) msg)->rtype = rtype;
+    ((SetPartMapMessage*) msg)->part_id = part_id;
+    ((SetPartMapMessage*) msg)->node_id = node_id;
+    ((SetPartMapMessage*) msg)->status = status;
+  }
+  else if (rtype == SET_MINIPARTMAP) {
+    //(SetMiniPartMapMessage*)msg;
+    ((SetMiniPartMapMessage*) msg)->rtype = rtype;
+    ((SetMiniPartMapMessage*) msg)->minipart_id = part_id;
+    ((SetMiniPartMapMessage*) msg)->node_id = node_id;
+    ((SetMiniPartMapMessage*) msg)->status = status;
+  }
   return msg;
 }
 
@@ -436,6 +475,24 @@ void Message::release_message(Message * msg) {
     }
     case SET_REMUS: {
       SetRemusMessage * m_msg = (SetRemusMessage*) msg;
+      m_msg->release();
+      delete m_msg;
+      break;
+    }
+    case SET_PARTMAP: {
+      SetPartMapMessage * m_msg = (SetPartMapMessage*) msg;
+      m_msg->release();
+      delete m_msg;
+      break;
+    }
+    case SET_DETEST: {
+      SetPartMapMessage * m_msg = (SetPartMapMessage*) msg;
+      m_msg->release();
+      delete m_msg;
+      break;
+    }
+    case SET_MINIPARTMAP: {
+      SetPartMapMessage * m_msg = (SetPartMapMessage*) msg;
       m_msg->release();
       delete m_msg;
       break;
@@ -1522,6 +1579,7 @@ void YCSBQueryMessage::copy_to_txn(TxnManager * txn) {
   //((YCSBQuery*)(txn->query))->requests.copy(requests);
 #if ONE_NODE_RECIEVE == 1 && defined(NO_REMOTE) && LESS_DIS_NUM == 10
 #else
+  //std::cout<<requests.size()<<' ';
   ((YCSBQuery*)(txn->query))->requests.append(requests);
   ((YCSBQuery*)(txn->query))->orig_request = &requests;
 #endif
@@ -2027,8 +2085,9 @@ void DAQueryMessage::release() { QueryMessage::release(); }
 
 uint64_t MigrationMessage::get_size(){
   uint64_t size = Message::mget_size();
-  size += sizeof(uint64_t)*4;
-  size += sizeof(bool);
+  size += sizeof(uint64_t)*6;
+  size += sizeof(int64_t);
+  size += sizeof(bool)*2;
   if (isdata){
     //size += sizeof(row_t) * data.size();
     //size += data[0].tuple_size * data.size();
@@ -2042,8 +2101,12 @@ void MigrationMessage::copy_from_buf(char* buf){
   COPY_VAL(node_id_src,buf,ptr);
   COPY_VAL(node_id_des,buf,ptr);
   COPY_VAL(part_id,buf,ptr);
+  COPY_VAL(minipart_id,buf,ptr);
+  COPY_VAL(key_start,buf,ptr);
+  COPY_VAL(key_end,buf,ptr);
   COPY_VAL(data_size,buf,ptr);
   COPY_VAL(isdata,buf,ptr);
+  COPY_VAL(islast,buf,ptr);
   if (isdata){
     /*
     for (size_t i=0;i<data_size;i++){
@@ -2070,8 +2133,12 @@ void MigrationMessage::copy_to_buf(char* buf){
   COPY_BUF(buf,node_id_src,ptr);
   COPY_BUF(buf,node_id_des,ptr);
   COPY_BUF(buf,part_id,ptr);
+  COPY_BUF(buf,minipart_id,ptr);
+  COPY_BUF(buf,key_start,ptr);
+  COPY_BUF(buf,key_end,ptr);
   COPY_BUF(buf,data_size,ptr);
   COPY_BUF(buf,isdata,ptr);
+  COPY_BUF(buf,islast,ptr);
   //std::cout<<sizeof(data[0])<<' '<<sizeof(row_data[0])<<endl;
   std::cout<<"ptr is "<<ptr<<endl;
   if (isdata){
@@ -2119,19 +2186,21 @@ void MigrationMessage::copy_to_txn(TxnManager* txn){
 uint64_t SetRemusMessage::get_size(){
   uint64_t size;
   size = Message::mget_size();
-  size += sizeof(int);
+  size += 2 * sizeof(uint64_t);
   return size;
 }
 
 void SetRemusMessage::copy_from_buf(char* buf){
   Message::mcopy_from_buf(buf);
   uint64_t ptr = Message::mget_size();
+  COPY_VAL(part_id,buf,ptr);
   COPY_VAL(status,buf,ptr);
 }
 
 void SetRemusMessage::copy_to_buf(char* buf){
   Message::mcopy_to_buf(buf);
   uint64_t ptr = Message::mget_size();
+  COPY_BUF(buf,part_id,ptr);
   COPY_BUF(buf,status,ptr);
 }
 
@@ -2142,3 +2211,96 @@ void SetRemusMessage::copy_to_txn(TxnManager* txn){}
 void SetRemusMessage::init(){}
 
 void SetRemusMessage::release(){}
+
+uint64_t SetPartMapMessage::get_size(){
+  uint64_t size;
+  size = Message::mget_size();
+  size += 2 * sizeof(uint64_t);
+  size += sizeof(int);
+  return size;
+}
+
+void SetPartMapMessage::copy_from_buf(char* buf){
+  Message::mcopy_from_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_VAL(part_id,buf,ptr);
+  COPY_VAL(node_id,buf,ptr);
+  COPY_VAL(status,buf,ptr);
+}
+
+void SetPartMapMessage::copy_to_buf(char* buf){
+  Message::mcopy_to_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_BUF(buf,part_id,ptr);
+  COPY_BUF(buf,node_id,ptr);
+  COPY_BUF(buf,status,ptr);
+}
+
+void SetPartMapMessage::copy_from_txn(TxnManager* txn){}
+
+void SetPartMapMessage::copy_to_txn(TxnManager* txn){}
+
+void SetPartMapMessage::init(){}
+
+void SetPartMapMessage::release(){}
+
+uint64_t SetDetestMessage::get_size(){
+  uint64_t size;
+  size = Message::mget_size();
+  size += 2 * sizeof(uint64_t);
+  return size;
+}
+
+void SetDetestMessage::copy_from_buf(char* buf){
+  Message::mcopy_from_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_VAL(minipart_id,buf,ptr);
+  COPY_VAL(status,buf,ptr);
+}
+
+void SetDetestMessage::copy_to_buf(char* buf){
+  Message::mcopy_to_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_BUF(buf,minipart_id,ptr);
+  COPY_BUF(buf,status,ptr);
+}
+
+void SetDetestMessage::copy_from_txn(TxnManager* txn){}
+
+void SetDetestMessage::copy_to_txn(TxnManager* txn){}
+
+void SetDetestMessage::init(){}
+
+void SetDetestMessage::release(){}
+
+uint64_t SetMiniPartMapMessage::get_size(){
+  uint64_t size;
+  size = Message::mget_size();
+  size += 2 * sizeof(uint64_t);
+  size += sizeof(int);
+  return size;
+}
+
+void SetMiniPartMapMessage::copy_from_buf(char* buf){
+  Message::mcopy_from_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_VAL(minipart_id,buf,ptr);
+  COPY_VAL(node_id,buf,ptr);
+  COPY_VAL(status,buf,ptr);
+}
+
+void SetMiniPartMapMessage::copy_to_buf(char* buf){
+  Message::mcopy_to_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_BUF(buf,minipart_id,ptr);
+  COPY_BUF(buf,node_id,ptr);
+  COPY_BUF(buf,status,ptr);
+}
+
+void SetMiniPartMapMessage::copy_from_txn(TxnManager* txn){}
+
+void SetMiniPartMapMessage::copy_to_txn(TxnManager* txn){}
+
+void SetMiniPartMapMessage::init(){}
+
+void SetMiniPartMapMessage::release(){}

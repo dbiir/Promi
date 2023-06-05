@@ -48,9 +48,18 @@ void parser(int argc, char * argv[]);
 int main(int argc, char *argv[]) {
     printf("Running client...\n\n");
 	// 0. initialize global data structure
+	part_map_init();
+	minipart_map_init();
 	parser(argc, argv);
     assert(g_node_id >= g_node_cnt);
     //assert(g_client_node_cnt <= g_node_cnt);
+
+	for (size_t i=0; i<query_to_part.size(); i++){
+		query_to_part[i] = 0;
+	}
+	for (size_t i=0; i<query_to_row.size(); i++){
+		query_to_row[i] = 0;
+	}
 
 	uint64_t seed = get_sys_clock();
 	srand(seed);
@@ -85,7 +94,9 @@ int main(int argc, char *argv[]) {
 	}
 	m_wl->Workload::init();
 	printf("workload initialized!\n");
-	std::cout<<"remus status is "<<remus_status<<" "<<&remus_status<<endl;
+	#if (MIGRATION_ALG == REMUS)
+	std::cout<<"remus status is "<<remus_status<<" "<<&remus_status<<" Time is:"<<get_sys_clock() <<endl;
+	#endif
 
   printf("Initializing simulation... ");
   fflush(stdout);
@@ -198,6 +209,19 @@ int main(int argc, char *argv[]) {
 		pthread_join(p_thds[i], NULL);
 
 	endtime = get_server_clock();
+
+	std::cout<<"Query to partition:"<<endl;
+	for (size_t i=0; i<query_to_part.size(); i++){
+		std::cout<<"  partition"<<i<<" "<<query_to_part[i]<<endl;
+	}
+	/*
+	std::cout<<"Query to row:"<<endl;
+	for (size_t i=0; i<query_to_row.size(); i++){
+		std::cout<<"  row"<<i<<" "<<query_to_row[i]<<endl;
+	}
+	*/
+	query_to_part.clear();
+	query_to_row.clear();
 
   fflush(stdout);
   printf("CLIENT PASS! SimTime = %ld\n", endtime - starttime);

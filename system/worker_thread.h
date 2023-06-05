@@ -57,6 +57,10 @@ public:
     RC process_send_migration(Message* msg);
     RC process_recv_migration(Message* msg);
     RC process_finish_migration(Message* msg);
+    RC process_set_partmap(Message* msg);
+    RC process_set_minipartmap(Message* msg);
+    RC process_set_remus(Message* msg);
+    RC process_set_detest(Message* msg);
     RC init_phase();
     uint64_t get_next_txn_id();
     bool is_cc_new_timestamp();

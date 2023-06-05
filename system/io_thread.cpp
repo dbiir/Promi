@@ -114,13 +114,55 @@ RC InputThread::client_recv_loop() {
 		while(!msgs->empty()) {
 			Message * msg = msgs->front();
 			//assert(msg->rtype == CL_RSP); 注释掉看看
-			#if REMUS
-				if (msg->rtype == SET_REMUS) {
-					std::cout<<((SetRemusMessage*)msg)->status<<endl;
-					remus_status = ((SetRemusMessage*)msg)->status;
-					msgs->erase(msgs->begin());
-					std::cout<<"remus_stats is "<<remus_status<<endl;
-					continue;
+			#if MIGRATION
+				switch(msg->get_rtype()){
+					case SET_REMUS: {
+						std::cout<<((SetRemusMessage*)msg)->status<<endl;
+						remus_status = ((SetRemusMessage*)msg)->status;
+						update_remus_status(remus_status);
+						std::cout<<"remus_stats is "<<remus_status<<endl;
+						break;
+					}
+					case SET_PARTMAP:{
+						update_part_map(((SetPartMapMessage*)msg)->part_id, ((SetPartMapMessage*)msg)->node_id);
+						//std::cout<<"Time is"<<(get_sys_clock()-g_starttime)/BILLION<<endl;
+						std::cout<<"!!!!!!!!!!!partition 0 is on node "<<GET_NODE_ID(0)<<endl;
+						std::cout<<"!!!!!!!!!!!partition 1 is on node "<<GET_NODE_ID(1)<<endl;
+						//std::cout<<"!!!!!!!!!!!partition 2 is on node "<<GET_NODE_ID(2)<<endl;
+						//std::cout<<"!!!!!!!!!!!partition 3 is on node "<<GET_NODE_ID(3)<<endl;
+						break;
+					}
+					case SET_DETEST:{
+						std::cout<<((SetDetestMessage*)msg)->status<<endl;
+						detest_status = ((SetRemusMessage*)msg)->status;
+						update_detest_status(detest_status);
+						std::cout<<"remus_stats is "<<remus_status<<endl;
+						break;
+					}
+					case SET_MINIPARTMAP:{
+						update_minipart_map(((SetMiniPartMapMessage*)msg)->minipart_id, ((SetMiniPartMapMessage*)msg)->node_id);
+						update_minipart_map_status(((SetMiniPartMapMessage*)msg)->minipart_id, ((SetMiniPartMapMessage*)msg)->status);
+						std::cout<<"minipart "<<((SetMiniPartMapMessage*)msg)->minipart_id<<" is on node "<<get_minipart_node_id(((SetMiniPartMapMessage*)msg)->minipart_id)<<endl;
+						if (((SetMiniPartMapMessage*)msg)->minipart_id < PART_SPLIT_CNT-1){//发送其他的minipart的迁移消息
+							Message * msg = Message::create_message(SEND_MIGRATION);
+							((MigrationMessage*)msg)->node_id_src = 0;
+							((MigrationMessage*)msg)->node_id_des = 1;
+							((MigrationMessage*)msg)->part_id = 0;
+							((MigrationMessage*)msg)->minipart_id = ((SetMiniPartMapMessage*)msg)->minipart_id + 1;
+							((MigrationMessage*)msg)->rtype = SEND_MIGRATION;
+							((MigrationMessage*)msg)->data_size = g_synth_table_size / g_part_cnt / PART_SPLIT_CNT;
+							((MigrationMessage*)msg)->return_node_id = 1;
+							((MigrationMessage*)msg)->isdata = false;
+							((MigrationMessage*)msg)->key_start = ((MigrationMessage*)msg)->minipart_id * (g_synth_table_size / PART_SPLIT_CNT) ;
+							std::cout<<"msg size is:"<<msg->get_size()<<endl;
+							std::cout<<"begin migration!"<<endl;
+							std::cout<<"Time is "<<(get_sys_clock() - run_starttime) / BILLION<<endl;
+							msg_queue.enqueue(get_thd_id(),msg,0);
+						}
+						break;
+					}
+					default:
+						break;
 				}
 				
 			#endif

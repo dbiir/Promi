@@ -135,38 +135,50 @@ RC MigrateThread::run(){
 
 RC MigrateThread::process_send_migration(MigrationMessage* msg){
     DEBUG("SEND_MIGRATION %ld\n",msg->get_txn_id());
-    printf("SEND_MIGRATION\n");
+    std::cout<<"SEND_MIGRATION Time:"<<(get_sys_clock() - g_starttime) / BILLION<<endl;
+    g_mig_starttime = get_sys_clock();
     std::cout<<&msg<<endl;
     RC rc =RCOK;
     start_time = get_sys_clock();
     txn_man->return_id = msg->return_node_id;
     txn_man->h_wl = _wl;
     update_part_map_status(msg->part_id, 1); //migrating
+    #if (MIGRATION_ALG == DETEST)
+        update_minipart_map_status(msg->minipart_id, 1);
+    #endif
     
     msg->isdata = false;
     //std::cout<<&msg<<endl;
     std::cout<<"the size of msg is "<<msg->get_size()<<endl;
     //对迁移数据加锁, 将迁移数据读入msg
-    idx_key_t key = 0;//起始的key，是迁移的part中第一个key，随着part_id变化而变化
+    idx_key_t key;//起始的key，是迁移的part中第一个key，随着part_id变化而变化
+    key = msg->key_start;
 	for (size_t i=0;i<msg->data_size;i++){
         itemid_t* item1 = (itemid_t*)mem_allocator.alloc(sizeof(itemid_t));
 	    itemid_t* &item = item1;
         RC rc = ((YCSBWorkload*)_wl)->the_index->index_read(key,item,key_to_part(key),g_thread_cnt); //使用g_thread_cnt是为了访问索引的cur_leaf_per_thd数组，索引只允许工作线程和迁移线程访问，数组大小和这两个线程数量之和相同
+        /*
         if (rc!=RCOK) {
             miss_cnt++;
             if (KEY_TO_PART == HASH_MODE) key += g_part_cnt;
             else key ++;
             continue;
         }
+        */
         //std::cout<<"OK"<<endl;
 		//((YCSBWorkload*)_wl)->the_index->index_read(key,item,msg->part_id,get_thd_id());        
         row_t* row = ((row_t*)item->location);
         //rc = txn_man->get_lock(row,WR); fix
         row_t* row_rtn = new(row_t);
         access_t access;
-        #if REMUS 
+        #if (MIGRATION_ALG == REMUS )
+            access = access_t::RD;
+        #elif (MIGRATION_ALG == DETEST)
             access = access_t::RD;
         #else
+            access = access_t::WR;
+        #endif
+        #if CC_ALG == NO_WAIT || CC_ALG==WAIT_DIE || CC_ALG == DL_DELETE
             access = access_t::WR;
         #endif
         rc = txn_man->get_row(row,access,row_rtn);
@@ -189,9 +201,10 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
 		//把下面去掉，不让rowdata放进来
         //msg->row_data.emplace_back(tmp_str);
         */
-        std::cout<<"copy "<<key<<" ";
+        //std::cout<<"copy "<<key<<" ";
         //std::cout<<"key is "<<msg->data[i].get_primary_key();
         //std::cout<<" data is "<<msg->row_data[i]<<endl;
+        //std::cout<<"lock "<<key<<' ';
         if (KEY_TO_PART == HASH_MODE) key += g_part_cnt;
         else key ++;
 	}
@@ -215,9 +228,10 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
 
 RC MigrateThread::process_recv_migration(MigrationMessage* msg){
     DEBUG("RECV_MIGRATION %ld\n",msg->get_txn_id());
-    printf("RECV_MIGRATION\n");
+    std::cout<<"RECV_MIGRATION Time:"<<(get_server_clock() - g_starttime) / BILLION<<endl;
     RC rc = RCOK;
-    sleep(1);
+    std::cout<<"msg data_size is: "<<msg->data_size<<endl;
+    sleep(msg->data_size / 2000);
     /*不要本地生成数据了
     //把数据从msg里复制出来
     row_t * data_ptr = (row_t*)mem_allocator.alloc(sizeof(row_t)*(msg->data_size));
@@ -255,10 +269,46 @@ RC MigrateThread::process_recv_migration(MigrationMessage* msg){
     }
     */
 
+    //重构本地索引结构
+    uint64_t key;
+    if (MIGRATION_ALG == DETEST) key = msg->key_start;
+    else key = msg->part_id;
+    uint64_t slice_size = msg->data_size;
+    for (uint64_t i = 0; i < slice_size; i++){
+        row_t * new_row = NULL;
+        uint64_t row_id;
+        rc = this->_wl->tables["MAIN_TABLE"]->get_new_row(new_row, msg -> part_id, row_id);
+        assert(rc == RCOK);
+        uint64_t primary_key = key;
+		new_row->set_primary_key(primary_key);
+        #if SIM_FULL_ROW
+			new_row->set_value(0, &primary_key,sizeof(uint64_t));
+			Catalog * schema = this->_wl->tables["MAIN_TABLE"]->get_schema();
+			for (UInt32 fid = 0; fid < schema->get_field_cnt(); fid ++) {
+				char value[6] = "hello";
+				new_row->set_value(fid, value,sizeof(value));				
+            }
+		#endif
+        itemid_t * m_item = (itemid_t *) mem_allocator.alloc( sizeof(itemid_t));
+		assert(m_item != NULL);
+		m_item->type = DT_row;
+		m_item->location = new_row;
+		m_item->valid = true;
+		uint64_t idx_key = primary_key;
+		rc = this->_wl->indexes["MAIN_INDEX"]->index_insert(idx_key, m_item, msg->part_id);
+		assert(rc == RCOK);
+		key += g_part_cnt;
+    }
 
+    
     //生成FINISH_MIGRATION消息给源节点
     if (rc==RCOK){
-        msg_queue.enqueue(get_thd_id(),Message::create_message(txn_man,FINISH_MIGRATION),msg->node_id_src);
+        MigrationMessage * msg1 = new(MigrationMessage);
+        *msg1 = *msg;
+        msg1->rtype = FINISH_MIGRATION;
+        msg_queue.enqueue(get_thd_id(), msg1, msg1->node_id_src);
+        free(msg);
+        std::cout<<"enqueue finished!"<<endl<<"part is "<<msg1->part_id<<endl<<"node_id_src is "<<msg1->node_id_src<<endl<<"node_id_des is "<<msg1->node_id_des<<endl;
     }
     return rc;
 }
@@ -269,22 +319,49 @@ RC MigrateThread::process_finish_migration(MigrationMessage* msg){
     RC rc = RCOK;
     //msg->copy_to_txn(txn_man);
     //txn_man->h_wl = _wl;
-    update_part_map(msg->part_id, msg->node_id_des);
-    update_part_map_status(msg->part_id, 2);//migrated
-    #if REMUS
-        sleep(2);
+    #if (MIGRATION_ALG == DETEST)
+        update_minipart_map(msg->minipart_id, msg->node_id_des);
+        update_minipart_map_status(msg->minipart_id, 2);
+        msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_MINIPARTMAP, msg->minipart_id, msg->node_id_des, 2),g_node_cnt);
+        msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_DETEST, msg->minipart_id, 2),g_node_cnt);
+        msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_MINIPARTMAP, msg->minipart_id, msg->node_id_des, 2),msg->node_id_des);
+        msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_DETEST, msg->minipart_id, 2),msg->node_id_des);
+        if (msg->minipart_id == PART_SPLIT_CNT-1){//子分区迁移完毕
+            //update_part_map(msg->part_id, msg->node_id_des);
+            update_part_map_status(msg->part_id, 2);//migrated
+            msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 2),g_node_cnt); //g_node_cnt对应着client节点,发消息通知client修改remus状态
+            msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 2),msg->node_id_des);
+            msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_DETEST, msg->part_id, 2),msg->node_id_des);
+            msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_DETEST, msg->part_id, 2),g_node_cnt);
+        }
+    #elif (MIGRATION_ALG == REMUS)
+        //update_part_map(msg->part_id, msg->node_id_des);
+        update_part_map_status(msg->part_id, 2);//migrated
+        msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 2),g_node_cnt); //g_node_cnt对应着client节点,发消息通知client修改remus状态
+        msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 2),msg->node_id_des);
         update_remus_status(1);
-        msg_queue.enqueue(get_thd_id(),Message::create_message(SET_REMUS, g_node_cnt, 1),g_node_cnt); //g_node_cnt对应着client节点,发消息通知client修改remus状态
+        msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_REMUS, msg->part_id, 1),g_node_cnt);
+        msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_REMUS, msg->part_id, 1),msg->node_id_des);
+        std::cout<<"remus status is "<<remus_status<<"Time is: "<<(get_sys_clock() - g_starttime) / BILLION <<endl;
+        
+        std::cout<<"part is "<<msg->part_id<<endl<<"node_id_src is "<<msg->node_id_src<<endl<<"node_id_des is "<<msg->node_id_des<<endl;
+    #else
+        //update_part_map(msg->part_id, msg->node_id_des);
+        update_part_map_status(msg->part_id, 2);
+        msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 2),g_node_cnt);
+        msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 2),msg->node_id_des);
     #endif
-    std::cout<<"remus status is "<<remus_status<<endl;
+    #if (MIGRATION_ALG == REMUS)
+        sleep(SYNCTIME);
+        update_remus_status(3);
+        std::cout<<"Finish Sync"<<endl;
+        msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_REMUS, g_node_cnt, 2),g_node_cnt); //g_node_cnt对应着client节点,发消息通知client修改remus状态
+    #endif
     double migration_time = get_sys_clock() - start_time;
     std::cout<<"M Time:"<<migration_time / BILLION <<endl;
+    g_mig_endtime = get_sys_clock();
+    std::cout<<"Time:"<<(get_server_clock()-g_starttime) / BILLION<<endl;
     txn_man->txn_stats.migration_time = migration_time;
     txn_man->commit();
-    #if REMUS
-        sleep(synctime);
-        std::cout<<"Finish Sync"<<endl;
-        msg_queue.enqueue(get_thd_id(),Message::create_message(SET_REMUS, g_node_cnt, 2),g_node_cnt); //g_node_cnt对应着client节点,发消息通知client修改remus状态
-    #endif
     return rc;
 }

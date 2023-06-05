@@ -620,13 +620,16 @@ RC TxnManager::start_commit() {
 			txn_stats.trans_commit_network_start_time = get_sys_clock();
 			send_finish_messages();
 			rsp_cnt = 0;
-			#if REMUS
+			#if (MIGRATION_ALG == REMUS)
 				if (remus_status == 0 || remus_status == 1){
 					if (check_update()){
 						send_update_messages();
 					}
 				}
-				else if (remus_status == 2){
+				else if (remus_status ==2){
+					sleep(SYNCTIME);
+				}
+				else if (remus_status == 3){
 					send_update_messages();
 				}
 			#endif
@@ -646,7 +649,7 @@ RC TxnManager::start_commit() {
 			wsi_man.gene_finish_ts(this);
 		}
 		if(rc == RCOK){
-			#if REMUS
+			#if (MIGRATION_ALG == REMUS)
 				if (remus_status == 0 || remus_status == 1){
 					if (check_update()){
 						send_update_messages();
@@ -745,15 +748,19 @@ void TxnManager::commit_stats() {
 	INC_STATS(get_thd_id(),total_txn_commit_cnt,1);
 
 	uint64_t warmuptime = get_sys_clock() - simulation->run_starttime;
+	//INC_STATS(get_thd_id(), throughput[warmuptime/BILLION], 1);
 	DEBUG("Commit_stats execute_time %ld warmup_time %ld\n",warmuptime,g_warmup_timer);
 	if (simulation->is_warmup_done())
 		DEBUG("Commit_stats total_txn_commit_cnt %ld\n",stats._stats[get_thd_id()]->total_txn_commit_cnt);
+	//IS_LOCAL禁用
+	/*
 	if(!IS_LOCAL(get_txn_id()) && CC_ALG != CALVIN) {
 		INC_STATS(get_thd_id(),remote_txn_commit_cnt,1);
 		txn_stats.commit_stats(get_thd_id(), get_txn_id(), get_batch_id(), timespan_long,
 													 timespan_short);
 		return;
 	}
+	*/
 
 
 	INC_STATS(get_thd_id(),txn_cnt,1);
@@ -886,6 +893,10 @@ void TxnManager::cleanup_row(RC rc, uint64_t rid) {
 			version = orig_r->return_row(rc, type, this, txn->accesses[rid]->data);
 		}
 #else
+	if (txn->accesses[rid]->data == NULL) {
+		rc = Abort;
+		return;
+	}
 		version = orig_r->return_row(rc, type, this, txn->accesses[rid]->data);
 #endif
 	}

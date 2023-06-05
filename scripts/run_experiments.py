@@ -29,7 +29,7 @@ skip = False
 exps=[]
 arg_cluster = False
 merge_mode = False
-perfTime = 60
+perfTime = 30
 fromtimelist=[]
 totimelist=[]
 
@@ -65,14 +65,20 @@ for arg in sys.argv[1:]:
     else:
         exps.append(arg)
 
-for exp in exps:
-    fmt,experiments = experiment_map[exp]()
+##for exp in exps:
+##    fmt,experiments = experiment_map[exp]()
 
-    for e in experiments:
-        cfgs = get_cfgs(fmt,e)
-        if remote:
-            cfgs["TPORT_TYPE"], cfgs["TPORT_TYPE_IPC"], cfgs["TPORT_PORT"] = "tcp", "false", 7000
-        output_f = get_outfile_name(cfgs, fmt)
+##    for e in experiments:
+##        cfgs = get_cfgs(fmt,e)
+##        if remote:
+##            cfgs["TPORT_TYPE"], cfgs["TPORT_TYPE_IPC"], cfgs["TPORT_PORT"] = ##"tcp", "false", 7000
+        ##output_f = get_outfile_name(cfgs, fmt)
+if remote:
+    cfgs["TPORT_TYPE"], cfgs["TPORT_TYPE_IPC"], cfgs["TPORT_PORT"] = "tcp",  "false", 7200
+
+if 1:
+    if 1:
+        output_f = '00'
         output_dir = output_f + "/"
         output_f += strnow
 
@@ -90,7 +96,7 @@ for exp in exps:
                 if not found_cfg:
                     f_cfg.write(line)
 
-        cmd = "make clean; make deps; make -j32"
+        cmd = "make clean; make -j"
         print cmd
         os.system(cmd)
         if not execute:
@@ -117,7 +123,7 @@ for exp in exps:
                 else:
                     assert(False)
 
-                machines = machines_[:(cfgs["NODE_CNT"]*2)]
+                machines = machines_[:(cfgs["NODE_CNT"] + cfgs["CLIENT_NODE_CNT"])]
                 with open("ifconfig.txt", 'w') as f_ifcfg:
                     for m in machines:
                         f_ifcfg.write(m + "\n")
@@ -146,15 +152,17 @@ for exp in exps:
                 os.system(cmd)
                 totimelist.append(str(int(time.time())) + "000")
                 perfip = machines[0]
-                cmd = "scp getFlame.sh {}:/{}/".format(perfip, uname2)
+                '''
+                cmd = "scp getFlame.sh {}:/{}/".format(perfip, uname)
                 print cmd
                 os.system(cmd)
                 cmd = 'ssh {}@{} "bash /{}/getFlame.sh"'.format(uname2, perfip, vcloud_uname)
                 print cmd
                 os.system(cmd)
-                cmd = "scp {}:/{}/perf.svg {}{}.svg".format(perfip, uname2, perf_dir, output_f)
+                cmd = "scp {}:/{}/perf.svg {}{}.svg".format(perfip, uname, perf_dir, output_f)
                 print cmd
                 os.system(cmd)
+                '''
                 os.chdir('..')
                 for m, n in zip(machines, range(len(machines))):
                     if cluster == 'istc':
@@ -162,13 +170,16 @@ for exp in exps:
                         print cmd
                         os.system(cmd)
                     elif cluster == 'vcloud':
-                        cmd = 'scp {}:/{}/dbresults.out results/{}/{}_{}.out'.format(m,uname,strnow,n,output_f)
+                        if n < cfgs["NODE_CNT"]:
+                            cmd = 'scp {}:/{}/dbresults.out results/{}/{}_{}.out'.format(m,uname,strnow,n,output_f)
+                        else:
+                            cmd = 'scp {}:/{}/clresults.out results/{}/{}_{}.out'.format(m,uname,strnow,n,output_f)
                         print cmd
                         os.system(cmd)
 
             else:
                 nnodes = cfgs["NODE_CNT"]
-                nclnodes = cfgs["NODE_CNT"]
+                nclnodes = cfgs["CLIENT_CNT"]
                 pids = []
                 print("Deploying: {}".format(output_f))
                 for n in range(nnodes+nclnodes):
@@ -184,7 +195,7 @@ for exp in exps:
                     pids.insert(0,p)
                 for n in range(nnodes + nclnodes):
                     pids[n].wait()
-
+"""
     al = []
     for e in experiments:
         al.append(e[2])
@@ -258,3 +269,4 @@ for exp in exps:
        cmd='./deneva-plot-his.sh -a tpcc_cstress -c {} -t {}'.format(','.join([str(x) for x in al]), strnow)
     print cmd
     os.system(cmd)
+"""

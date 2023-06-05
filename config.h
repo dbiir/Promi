@@ -7,9 +7,9 @@
 #define WRITE_PERMISSION_LOCK         false
 #define MULTI_VERSION                 false
 #define ENABLE_LOCAL_CACHING          false
-#define OCC_LOCK_TYPE                 WAIT_DIE
+#define OCC_LOCK_TYPE WAIT_DIE
 #define TICTOC_MV                     false
-#define OCC_WAW_LOCK                  true
+#define OCC_WAW_LOCK true
 #define RO_LEASE                      false
 #define ATOMIC_WORD                   false
 #define TRACK_LAST                    false
@@ -43,56 +43,66 @@
 
 // ! Parameters used to locate distributed performance bottlenecks.
 
-#define SECOND 100 // Set the queue monitoring time.
+#define SECOND 100
 // #define THD_ID_QUEUE
-#define ONE_NODE_RECIEVE 0 // only node 0 will receive the txn query
+#define ONE_NODE_RECIEVE 0
 #if 0
 // #define LESS_DIS // Reduce the number of yCSB remote data to 1
 // #define LESS_DIS_NUM 10 // Reduce the number of yCSB remote data to 1
 // #define NEW_WORK_QUEUE  // The workQueue data structure has been modified to perform 10,000 better than the original implementation.
 // #define NO_2PC  // Removing 2PC, of course, would be problematic in distributed transactions.
 // #define FAKE_PROCESS  // Io_thread returns as soon as it gets the request from the remote. Avoid waiting in the WORK_queue.
-// #define NO_REMOTE // remove all remote txn
+//  #define NO_REMOTE // remove all remote txn
 #endif 
-#define TXN_QUEUE_PERCENT 0.0 // The proportion of the transaction to take from txn_queue firstly.
-#define MALLOC_TYPE 0 // 0 represent normal malloc. 1 represent je-malloc
+//#define NO_REMOTE 1
+#define TXN_QUEUE_PERCENT 0.0
+#define MALLOC_TYPE 0
 // ! end of these parameters
 // ! Parameters used to locate distributed performance bottlenecks.
-#define SEND_TO_SELF_PAHSE 0 // 0 means do not send to self, 1 will execute the phase1, 2 will execute phase2, 3 will exeute phase1 and phase 2
+#define SEND_TO_SELF_PAHSE 0
 // msg send can be split into three stage, stage1 encapsulates msg; stage2 send msg; stgae3 parse msg;
-#define SEND_STAGE 1 // 1 will execute the stage1, 2 will execute stage1 and 3, 3 will exeute all
+#define SEND_STAGE 1
 // ! end of these parameters
 /***********************************************/
 // Simulation + Hardware
 /***********************************************/
 #define NODE_CNT 2
-#define THREAD_CNT 4
-#define REM_THREAD_CNT 2
-#define SEND_THREAD_CNT 2
-#define MIG_THREAD_CNT 1 //迁移线程
+#define THREAD_CNT 16
+#define REM_THREAD_CNT 8
+#define SEND_THREAD_CNT 8
+#define MIG_THREAD_CNT 1
 #define CORE_CNT 2
 // PART_CNT should be at least NODE_CNT
-#define PART_CNT NODE_CNT*2
+#define PART_CNT NODE_CNT * 1
 #define CLIENT_NODE_CNT 1
-#define CLIENT_THREAD_CNT 4
+#define CLIENT_THREAD_CNT 2
 #define CLIENT_REM_THREAD_CNT 2
 #define CLIENT_SEND_THREAD_CNT 2
 #define CLIENT_RUNTIME false
 
 //key_to_part HASH_MODE: key_to_part(key) = key % g_part_cnt    CONST_MODE: key_to_part(key) = key / (SYNTH_TABLE_SIZE / g_part_cnt)
 #define KEY_TO_PART HASH_MODE
-#define HASH_MODE  0
+#define HASH_MODE 0
 #define CONST_MODE 1
 
 //PART_TO_NODE 
-#define PART_TO_NODE HASH_MODE
+#define PART_TO_NODE KEY_TO_PART
 
 #define LOAD_METHOD LOAD_MAX
 #define LOAD_PER_SERVER 100
 
+#define DETEST 0
+#define REMUS 1
+#define LOCK 2
+
+//migartion_alg DETEST REMUS LOCK
+#define MIGRATION_ALG REMUS
+
+//DETEST Migration
+#define PART_SPLIT_CNT 4
+#define PART_HOT_CNT 2
 //Remus Migration
-#define REMUS true
-#define SYNCTIME 2
+#define SYNCTIME 1
 
 //MIGRATION
 #define MIGRATION true
@@ -104,24 +114,24 @@
 // each transaction only accesses only 1 virtual partition. But the lock/ts manager and index are
 // not aware of such partitioning. VIRTUAL_PART_CNT describes the request distribution and is only
 // used to generate queries. For HSTORE, VIRTUAL_PART_CNT should be the same as PART_CNT.
-#define VIRTUAL_PART_CNT    PART_CNT
-#define PAGE_SIZE         4096
-#define CL_SIZE           64
-#define CPU_FREQ          2.6
+#define VIRTUAL_PART_CNT PART_CNT
+#define PAGE_SIZE 4096
+#define CL_SIZE 64
+#define CPU_FREQ 2.6
 // enable hardware migration.
-#define HW_MIGRATE          false
+#define HW_MIGRATE false
 
 // # of transactions to run for warmup
-#define WARMUP            0
+#define WARMUP 0
 // YCSB or TPCC or PPS or DA
 #define WORKLOAD YCSB
 // print the transaction latency distribution
 #define PRT_LAT_DISTR false
-#define STATS_ENABLE        true
-#define TIME_ENABLE         true //STATS_ENABLE
+#define STATS_ENABLE true
+#define TIME_ENABLE true
 
 #define FIN_BY_TIME true
-#define MAX_TXN_IN_FLIGHT 10000
+#define MAX_TXN_IN_FLIGHT 100000
 
 #define SERVER_GENERATE_QUERIES false
 
@@ -134,27 +144,27 @@
 //    pool
 // 3. per-partition malloc. each partition has its own memory pool
 //    which is mapped to a unique tile on the chip.
-#define MEM_ALLIGN          8
+#define MEM_ALLIGN 8
 
 // [THREAD_ALLOC]
-#define THREAD_ALLOC        false
+#define THREAD_ALLOC false
 #define THREAD_ARENA_SIZE     (1UL << 22)
-#define MEM_PAD           true
+#define MEM_PAD true
 
 // [PART_ALLOC]
-#define PART_ALLOC          true
+#define PART_ALLOC true
 #define MEM_SIZE          (1UL << 30)
-#define NO_FREE           false
+#define NO_FREE false
 
 /***********************************************/
 // Message Passing
 /***********************************************/
 #define TPORT_TYPE tcp
-#define TPORT_PORT 7000
+#define TPORT_PORT 7200
 #define SET_AFFINITY true
 
 #define MAX_TPORT_NAME 128
-#define MSG_SIZE 128 // in bytes
+#define MSG_SIZE 128
 #define HEADER_SIZE sizeof(uint32_t)*2 // in bits
 #define MSG_TIMEOUT 5000000000UL // in ns
 #define NETWORK_TEST false
@@ -180,39 +190,39 @@
 #define YCSB_ABORT_MODE false
 #define QUEUE_CAPACITY_NEW 1000000
 // all transactions acquire tuples according to the primary key order.
-#define KEY_ORDER         false
+#define KEY_ORDER false
 // transaction roll back changes after abort
-#define ROLL_BACK         true
+#define ROLL_BACK true
 // per-row lock/ts management or central lock/ts management
-#define CENTRAL_MAN         false
-#define BUCKET_CNT          31
+#define CENTRAL_MAN false
+#define BUCKET_CNT 31
 #define ABORT_PENALTY 10 * 1000000UL   // in ns.
 #define ABORT_PENALTY_MAX 5 * 100 * 1000000UL   // in ns.
 #define BACKOFF true
 // [ INDEX ]
-#define ENABLE_LATCH        false
-#define CENTRAL_INDEX       false
-#define CENTRAL_MANAGER       false
-#define INDEX_STRUCT        IDX_BTREE
-#define BTREE_ORDER         4
+#define ENABLE_LATCH false
+#define CENTRAL_INDEX false
+#define CENTRAL_MANAGER false
+#define INDEX_STRUCT IDX_BTREE
+#define BTREE_ORDER 4
 
 // [TIMESTAMP]
-#define TS_TWR            false
-#define TS_ALLOC          TS_CLOCK
-#define TS_BATCH_ALLOC        false
-#define TS_BATCH_NUM        1
+#define TS_TWR false
+#define TS_ALLOC TS_CLOCK
+#define TS_BATCH_ALLOC false
+#define TS_BATCH_NUM 1
 // [MVCC]
 // when read/write history is longer than HIS_RECYCLE_LEN
 // the history should be recycled.
-#define HIS_RECYCLE_LEN       10
-#define MAX_PRE_REQ         MAX_TXN_IN_FLIGHT * NODE_CNT//1024
-#define MAX_READ_REQ        MAX_TXN_IN_FLIGHT * NODE_CNT//1024
-#define MIN_TS_INTVL        10 * 1000000UL // 10ms
+#define HIS_RECYCLE_LEN 10
+#define MAX_PRE_REQ MAX_TXN_IN_FLIGHT * NODE_CNT//1024
+#define MAX_READ_REQ MAX_TXN_IN_FLIGHT * NODE_CNT//1024
+#define MIN_TS_INTVL 10 * 1000000UL // 10ms
 // [OCC]
-#define MAX_WRITE_SET       10
-#define PER_ROW_VALID       false
+#define MAX_WRITE_SET 10
+#define PER_ROW_VALID false
 // [VLL]
-#define TXN_QUEUE_SIZE_LIMIT    THREAD_CNT
+#define TXN_QUEUE_SIZE_LIMIT THREAD_CNT
 // [CALVIN]
 #define SEQ_THREAD_CNT 4
 // [TICTOC]
@@ -237,10 +247,10 @@
 // Benchmark
 /***********************************************/
 // max number of rows touched per transaction
-#define MAX_ROW_PER_TXN       65536
-#define QUERY_INTVL         1UL
-#define MAX_TXN_PER_PART 500000
-#define FIRST_PART_LOCAL      true
+#define MAX_ROW_PER_TXN 65536
+#define QUERY_INTVL 1UL
+#define MAX_TXN_PER_PART 100000
+#define FIRST_PART_LOCAL false
 #define MAX_TUPLE_SIZE        512 // in bytes
 #define GEN_BY_MPR false
 // ==== [YCSB] ====
@@ -248,25 +258,25 @@
 //    ZIPF: use ZIPF_THETA distribution
 //    HOT: use ACCESS_PERC of the accesses go to DATA_PERC of the data
 #define SKEW_METHOD ZIPF
-#define DATA_PERC 100
-#define ACCESS_PERC 0.03
+#define DATA_PERC (SYNTH_TABLE_SIZE / 64)
+#define ACCESS_PERC 0.3
 #define INIT_PARALLELISM (PART_CNT / NODE_CNT)
-#define SYNTH_TABLE_SIZE 131072
+#define SYNTH_TABLE_SIZE 65536
 #define ZIPF_THETA 0.6
-#define TXN_WRITE_PERC 0.5
-#define TUP_WRITE_PERC 0.5
-#define SCAN_PERC           0
-#define SCAN_LEN          20
-#define PART_PER_TXN 2
-#define PERC_MULTI_PART     MPR
+#define TXN_WRITE_PERC 0.7
+#define TUP_WRITE_PERC 0.3
+#define SCAN_PERC 0
+#define SCAN_LEN 20
+#define PART_PER_TXN 1
+#define PERC_MULTI_PART MPR
 #define REQ_PER_QUERY 10
-#define FIELD_PER_TUPLE       10
+#define FIELD_PER_TUPLE 10
 #define CREATE_TXN_FILE false
 #define STRICT_PPT 0
 // ==== [TPCC] ====
 // For large warehouse count, the tables do not fit in memory
 // small tpcc schemas shrink the table size.
-#define TPCC_SMALL          false
+#define TPCC_SMALL false
 #define MAX_ITEMS_SMALL 10000
 #define CUST_PER_DIST_SMALL 2000
 #define MAX_ITEMS_NORM 100000
@@ -275,13 +285,13 @@
 // Some of the transactions read the data but never use them.
 // If TPCC_ACCESS_ALL == fales, then these parts of the transactions
 // are not modeled.
-#define TPCC_ACCESS_ALL       false
-#define WH_UPDATE         true
+#define TPCC_ACCESS_ALL false
+#define WH_UPDATE true
 #define NUM_WH PART_CNT
 // % of transactions that access multiple partitions
 #define MPR 1.0
 #define MPIR 0.01
-#define MPR_NEWORDER      20 // In %
+#define MPR_NEWORDER 20 // In %
 enum TPCCTable {
   TPCC_WAREHOUSE,
           TPCC_DISTRICT,
@@ -354,20 +364,20 @@ enum PPSTxnType {
 /***********************************************/
 // DEBUG info
 /***********************************************/
-#define WL_VERB           true
-#define IDX_VERB          false
-#define VERB_ALLOC          true
+#define WL_VERB true
+#define IDX_VERB false
+#define VERB_ALLOC true
 
-#define DEBUG_LOCK          false
-#define DEBUG_TIMESTAMP       false
-#define DEBUG_SYNTH         false
-#define DEBUG_ASSERT        false
+#define DEBUG_LOCK false
+#define DEBUG_TIMESTAMP false
+#define DEBUG_SYNTH false
+#define DEBUG_ASSERT false
 #define DEBUG_DISTR false
 #define DEBUG_ALLOC false
 #define DEBUG_RACE false
-#define DEBUG_TIMELINE        false
-#define DEBUG_BREAKDOWN       false
-#define DEBUG_LATENCY       false
+#define DEBUG_TIMELINE false
+#define DEBUG_BREAKDOWN false
+#define DEBUG_LATENCY false
 
 /***********************************************/
 // MODES
@@ -384,33 +394,33 @@ enum PPSTxnType {
 // Constant
 /***********************************************/
 // INDEX_STRUCT
-#define IDX_HASH          1
-#define IDX_BTREE         2
+#define IDX_HASH 1
+#define IDX_BTREE 2
 // WORKLOAD
-#define YCSB            1
-#define TPCC            2
-#define PPS             3
-#define TEST            4
+#define YCSB 1
+#define TPCC 2
+#define PPS 3
+#define TEST 4
 #define DA 5
 // Concurrency Control Algorithm
-#define NO_WAIT           1
-#define WAIT_DIE          2
-#define DL_DETECT         3
-#define TIMESTAMP         4
-#define MVCC            5
-#define HSTORE            6
-#define HSTORE_SPEC           7
-#define OCC             8
-#define VLL             9
-#define CALVIN      10
-#define MAAT      11
-#define WDL           12
-#define WOOKONG     13
-#define TICTOC     14
-#define FOCC       15
-#define BOCC       16
-#define SSI        17
-#define WSI        18
+#define NO_WAIT 1
+#define WAIT_DIE 2
+#define DL_DETECT 3
+#define TIMESTAMP 4
+#define MVCC 5
+#define HSTORE 6
+#define HSTORE_SPEC 7
+#define OCC 8
+#define VLL 9
+#define CALVIN 10
+#define MAAT 11
+#define WDL 12
+#define WOOKONG 13
+#define TICTOC 14
+#define FOCC 15
+#define BOCC 16
+#define SSI 17
+#define WSI 18
 #define DLI_BASE 19
 #define DLI_OCC 20
 #define DLI_MVCC_OCC 21
@@ -422,16 +432,16 @@ enum PPSTxnType {
 #define SILO 27
 #define CNULL 28
 // TIMESTAMP allocation method.
-#define TS_MUTEX          1
-#define TS_CAS            2
-#define TS_HW           3
-#define TS_CLOCK          4
+#define TS_MUTEX 1
+#define TS_CAS 2
+#define TS_HW 3
+#define TS_CLOCK 4
 #define LTS_CURL_CLOCK          5
-#define LTS_TCP_CLOCK          6
-#define LTS_HLC_CLOCK          7
+#define LTS_TCP_CLOCK 6
+#define LTS_HLC_CLOCK 7
 
-#define LTS_TCP_IP  "10.77.110.147"
-#define LTS_TCP_PORT  62389
+#define LTS_TCP_IP 10.77.110.147
+#define LTS_TCP_PORT 62389
 // MODES
 // NORMAL < NOCC < QRY_ONLY < SETUP < SIMPLE
 #define NORMAL_MODE 1
@@ -468,8 +478,8 @@ enum PPSTxnType {
 #define PROG_TIMER 10 * BILLION // in s
 #define BATCH_TIMER 0
 #define SEQ_BATCH_TIMER 5 * 1 * MILLION // ~5ms -- same as CALVIN paper
-#define DONE_TIMER 1 * 20 * BILLION // ~1 minutes  60 BILLION = 1 min
-#define WARMUP_TIMER 1 * 20 * BILLION // ~1 minutes
+#define DONE_TIMER 1 * 45 * BILLION // ~1 minutes  60 BILLION = 1 min
+#define WARMUP_TIMER 1 * 15 * BILLION // ~1 minutes
 
 #define SEED 0
 #define SHMEM_ENV false

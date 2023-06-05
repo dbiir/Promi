@@ -40,6 +40,8 @@ public:
   static Message * create_message(LogRecord * record, RemReqType rtype);
   static Message * create_message(RemReqType rtype);
   static Message * create_message(RemReqType rtype, uint64_t node_id, int status);
+  static Message * create_message0(RemReqType rtype,uint64_t part_id, uint64_t status);
+  static Message * create_message1(RemReqType rtype,uint64_t part_id, uint64_t node_id, int status);
   static std::vector<Message*> * create_messages(char * buf);
   static void release_message(Message * msg);
   RemReqType rtype;
@@ -500,8 +502,11 @@ class MigrationMessage : public Message {
 public:
   uint64_t node_id_src,node_id_des;//迁移源节点目标节点的id
   uint64_t part_id;//迁移分区id
+  int64_t minipart_id;
+  uint64_t key_start,key_end;
   uint64_t data_size;
   bool isdata;//数据是否传入
+  bool islast;//子分区是否传输完毕
   vector<row_t> data;
   vector<string> row_data;//row_t的真正信息保存在char[]中
 
@@ -514,8 +519,47 @@ public:
   void release();
 };
 
+
 class SetRemusMessage : public Message{
 public:
+  uint64_t part_id,status;
+  uint64_t get_size();
+  void copy_from_buf(char * buf);
+  void copy_to_buf(char * buf);
+  void copy_from_txn(TxnManager * txn);
+  void copy_to_txn(TxnManager * txn);
+  void init();
+  void release();
+};
+
+class SetPartMapMessage : public Message{
+public:
+  uint64_t part_id, node_id;
+  int status;
+  uint64_t get_size();
+  void copy_from_buf(char * buf);
+  void copy_to_buf(char * buf);
+  void copy_from_txn(TxnManager * txn);
+  void copy_to_txn(TxnManager * txn);
+  void init();
+  void release();
+};
+
+class SetDetestMessage : public Message{
+public:
+  uint64_t minipart_id, status;
+  uint64_t get_size();
+  void copy_from_buf(char * buf);
+  void copy_to_buf(char * buf);
+  void copy_from_txn(TxnManager * txn);
+  void copy_to_txn(TxnManager * txn);
+  void init();
+  void release();
+};
+
+class SetMiniPartMapMessage : public Message{
+public:
+  uint64_t minipart_id, node_id;
   int status;
   uint64_t get_size();
   void copy_from_buf(char * buf);

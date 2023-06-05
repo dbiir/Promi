@@ -18,6 +18,7 @@
 #define _CLIENT_THREAD_H_
 
 #include "global.h"
+#include "helper.h"
 
 class Workload;
 
@@ -26,6 +27,7 @@ public:
 	RC 			run();
   void setup();
 private:
+  myrand* mrand;
   uint64_t last_send_time;
   uint64_t send_interval;
 };

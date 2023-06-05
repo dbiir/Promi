@@ -7,6 +7,8 @@
 #include "ycsb.h"
 #include "row.h"
 #include "thread.h"
+#include "table.h"
+#include "catalog.h"
 
 class Workload;
 
@@ -20,7 +22,7 @@ public:
     RC process_recv_migration(MigrationMessage* msg);
     RC process_finish_migration(MigrationMessage* msg);
     uint64_t start_time;
-    int miss_cnt=0;
+    int miss_cnt;
 };
 
 #endif

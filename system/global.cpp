@@ -132,6 +132,10 @@ int32_t g_load_per_server = LOAD_PER_SERVER;
 
 bool g_hw_migrate = HW_MIGRATE;
 
+bool g_migrate_flag = MIGRATION;
+uint64_t g_mig_starttime;
+uint64_t g_mig_endtime;
+
 volatile UInt64 g_row_id = 0;
 bool g_part_alloc = PART_ALLOC;
 bool g_mem_pad = MEM_PAD;
@@ -150,6 +154,7 @@ bool g_prt_lat_distr = PRT_LAT_DISTR;
 UInt32 g_node_id = 0;
 UInt32 g_node_cnt = NODE_CNT;
 UInt32 g_part_cnt = PART_CNT;
+UInt32 g_part_split_cnt = PART_SPLIT_CNT;
 UInt32 g_virtual_part_cnt = VIRTUAL_PART_CNT;
 UInt32 g_core_cnt = CORE_CNT;
 
@@ -196,6 +201,8 @@ UInt32 g_client_send_thread_cnt = CLIENT_SEND_THREAD_CNT;
 UInt32 g_servers_per_client = 0;
 UInt32 g_clients_per_server = 0;
 UInt32 g_server_start_node = 0;
+vector<int> query_to_part(g_part_cnt);
+vector<int> query_to_row(g_synth_table_size);
 
 UInt32 g_this_thread_cnt = ISCLIENT ? g_client_thread_cnt : g_thread_cnt;
 UInt32 g_this_rem_thread_cnt = ISCLIENT ? g_client_rem_thread_cnt : g_rem_thread_cnt;
@@ -210,6 +217,7 @@ UInt64 g_seq_batch_time_limit = SEQ_BATCH_TIMER;
 UInt64 g_prog_timer = PROG_TIMER;
 UInt64 g_warmup_timer = WARMUP_TIMER;
 UInt64 g_msg_time_limit = MSG_TIME_LIMIT;
+UInt64 g_starttime=0;
 
 UInt64 g_log_buf_max = LOG_BUF_MAX;
 UInt64 g_log_flush_timeout = LOG_BUF_TIMEOUT;
@@ -265,6 +273,17 @@ UInt32 g_repl_cnt = REPLICA_CNT;
 
 map<string, string> g_params;
 
+uint64_t get_node_id_mini(uint64_t key){
+  #if MIGRATION_ALG == DETEST
+    if (key_to_part(key) != 0) return GET_NODE_ID(key_to_part(key));
+    else {
+      return get_minipart_node_id(get_minipart_id(key));
+    }
+  #else
+    return GET_NODE_ID(key_to_part(key));
+  #endif
+}
+
 //part_table:记录每个part所在的node
 map <uint64_t,vector<uint64_t> > part_map;
 
@@ -300,7 +319,44 @@ void update_part_map_status(uint64_t part_id, uint64_t status){
   part_map[part_id][1] = status;
 }
 
-int remus_status; //0:发送快照 1:同步副本 2:迁移完成
+//minipart_table:记录迁移中的minipart的状态信息
+map <uint64_t, vector<uint64_t> > minipart_map;
+
+void minipart_map_init(){
+  for (uint64_t i=0; i<g_part_split_cnt; i++){
+    vector<uint64_t> vtmp;
+    vtmp.emplace_back(0);
+    vtmp.emplace_back(0);
+    minipart_map[i] = vtmp;
+  }
+}
+
+uint64_t get_minipart_id(uint64_t key){//只针对0分区
+  return key / g_part_cnt / (g_synth_table_size / g_part_cnt / g_part_split_cnt);
+}
+
+uint64_t get_minipart_node_id(uint64_t minipart_id){
+  return minipart_map[minipart_id][0];
+}
+
+uint64_t get_minipart_status(uint64_t minipart_id){
+  return minipart_map[minipart_id][1];
+}
+
+void update_minipart_map(uint64_t minipart_id, uint64_t node_id){
+  minipart_map[minipart_id][0] = node_id;
+}
+
+void update_minipart_map_status(uint64_t minipart_id, uint64_t status){
+  minipart_map[minipart_id][1] = status;
+}
+
+int detest_status;
+void update_detest_status(int status){//0:init 1:push 2:pull
+  detest_status = status;
+}
+
+int remus_status; //0:发送快照 1:同步副本 2:模式切换 3:双边执行
 void update_remus_status(int status){
   remus_status = status;
 }

@@ -125,7 +125,7 @@ uint64_t YCSBQuery::get_participants(Workload * wl) {
 	assert(participant_nodes.size()==g_node_cnt);
 	assert(active_nodes.size()==g_node_cnt);
 	for(uint64_t i = 0; i < requests.size(); i++) {
-		uint64_t req_nid = GET_NODE_ID(((YCSBWorkload*)wl)->key_to_part(requests[i]->key));
+		uint64_t req_nid = GET_NODE_ID_MINI(requests[i]->key);
 		if(requests[i]->acctype == RD) {
 			if (participant_nodes[req_nid] == 0) ++participant_cnt;
 			participant_nodes.set(req_nid,1);
@@ -140,7 +140,7 @@ uint64_t YCSBQuery::participants(bool *& pps,Workload * wl) {
 	for (uint64_t i = 0; i < g_node_cnt; i++) pps[i] = false;
 
 	for(uint64_t i = 0; i < requests.size(); i++) {
-		uint64_t req_nid = GET_NODE_ID(((YCSBWorkload*)wl)->key_to_part(requests[i]->key));
+		uint64_t req_nid = GET_NODE_ID_MINI(requests[i]->key);
 		if (!pps[req_nid]) n++;
 		pps[req_nid] = true;
 	}
@@ -151,7 +151,7 @@ std::set<uint64_t> YCSBQuery::participants(Message * msg, Workload * wl) {
 	std::set<uint64_t> participant_set;
 	YCSBClientQueryMessage* ycsb_msg = ((YCSBClientQueryMessage*)msg);
 	for(uint64_t i = 0; i < ycsb_msg->requests.size(); i++) {
-		uint64_t req_nid = GET_NODE_ID(((YCSBWorkload*)wl)->key_to_part(ycsb_msg->requests[i]->key));
+		uint64_t req_nid = GET_NODE_ID_MINI(ycsb_msg->requests[i]->key);
 		participant_set.insert(req_nid);
 	}
 	return participant_set;
@@ -239,6 +239,13 @@ BaseQuery * YCSBQueryGenerator::gen_requests_hot(uint64_t home_partition_id, Wor
 			while(1) {
 				if(hot < g_access_perc) {
 					row_id = (uint64_t)(mrand->next() % hot_key_max);
+					#if (MIGRATION_ALG == DETEST)//偏移一下热点row
+						if ((row_id % g_part_cnt) % g_node_cnt == 1){
+							if (mrand->next() % 100 < 90){
+								row_id--;
+							}
+						}
+					#endif
 				} else {
 					row_id = ((uint64_t)(mrand->next() % (g_synth_table_size - hot_key_max))) + hot_key_max;
 				}
@@ -253,6 +260,8 @@ BaseQuery * YCSBQueryGenerator::gen_requests_hot(uint64_t home_partition_id, Wor
 				break;
 			}
 		}
+		
+		query_to_row[row_id] ++;
 		partitions_accessed.insert(partition_id);
 		assert(row_id < g_synth_table_size);
 		uint64_t primary_key = row_id;
@@ -322,7 +331,11 @@ BaseQuery * YCSBQueryGenerator::gen_requests_zipf(uint64_t home_partition_id, Wo
 		partition_id = home_partition_id;
 	#else
 		if ( FIRST_PART_LOCAL && rid == 0) {
-			partition_id = home_partition_id;
+			#if KEY_TO_PART == HASH_MODE
+				partition_id = home_partition_id;
+			#elif KEY_TO_PART == CONST_MODE
+				partition_id = g_part_cnt / g_node_cnt * home_partition_id;
+			#endif
 		} else {
 			partition_id = mrand->next() % g_part_cnt;
 			if(g_strict_ppt && g_part_per_txn <= g_part_cnt) {
@@ -336,6 +349,7 @@ BaseQuery * YCSBQueryGenerator::gen_requests_zipf(uint64_t home_partition_id, Wo
 		}
 	#endif
 #endif
+		
 		ycsb_request * req = (ycsb_request*) mem_allocator.alloc(sizeof(ycsb_request));
 		if (r_twr < g_txn_read_perc || r < g_tup_read_perc)
 			req->acctype = RD;
@@ -345,6 +359,7 @@ BaseQuery * YCSBQueryGenerator::gen_requests_zipf(uint64_t home_partition_id, Wo
 		assert(row_id < table_size);
 		uint64_t primary_key = row_id * g_part_cnt + partition_id;
 		assert(primary_key < g_synth_table_size);
+		query_to_row[primary_key] ++;
 
 		req->key = primary_key;
 		req->value = mrand->next() % (1<<8);

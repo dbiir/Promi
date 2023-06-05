@@ -1,0 +1,153 @@
+Running client...
+
+CC Alg 17
+g_done_timer 39000000000
+g_thread_cnt 16
+g_abort_penalty 10000000
+g_zipf_theta 0.600000
+g_node_id 2
+g_client_rem_thread_cnt 2
+g_client_send_thread_cnt 2
+g_max_txn_per_part 100000
+g_load_per_server 100
+g_inflight_max 5000000
+g_mpr 1.000000
+g_mpitem 0.010000
+g_part_per_txn 2
+g_req_per_query 10
+g_client_node_cnt 1
+g_rem_thread_cnt 8
+g_send_thread_cnt 8
+g_client_thread_cnt 2
+g_num_wh 4
+g_perc_payment 0.000000
+g_wh_update 1
+g_part_cnt 4
+g_node_cnt 2
+g_thread_cnt 16
+g_query_intvl 1
+g_prt_lat_distr 0
+g_part_alloc 1
+g_mem_pad 1
+g_perc_multi_part 1.000000
+g_tup_read_perc 0.700000
+g_tup_write_perc 0.300000
+g_txn_read_perc 0.300000
+g_txn_write_perc 0.700000
+g_synth_table_size 65536
+g_max_part_key 20000
+g_max_product_key 2000
+g_max_supplier_key 2000
+g_field_per_tuple 10
+g_data_perc 1024.000000
+g_access_perc 0.300000
+g_strict_ppt 0
+g_network_delay 0
+g_total_thread_cnt 35
+g_total_client_thread_cnt 6
+g_total_node_cnt 3
+g_seq_batch_time_limit 5000000
+Node 2: servicing 2 total nodes starting with node 0
+Random seed: 2916800928642230
+Initializing stats... Done
+Initializing transport manager... Tport Init 2: 10
+Reading ifconfig file: //home/dzh/ifconfig.txt
+0: 10.77.110.146
+1: 10.77.110.148
+2: 10.77.110.144
+3 3
+Port ID:  0, 0 -> 2 : 7206
+Sock Binding to tcp://10.77.110.144:7206 2
+Port ID:  1, 0 -> 2 : 7215
+Sock Binding to tcp://10.77.110.144:7215 2
+Port ID:  2, 0 -> 2 : 7224
+Sock Binding to tcp://10.77.110.144:7224 2
+Port ID:  3, 0 -> 2 : 7233
+Sock Binding to tcp://10.77.110.144:7233 2
+Port ID:  4, 0 -> 2 : 7242
+Sock Binding to tcp://10.77.110.144:7242 2
+Port ID:  5, 0 -> 2 : 7251
+Sock Binding to tcp://10.77.110.144:7251 2
+Port ID:  6, 0 -> 2 : 7260
+Sock Binding to tcp://10.77.110.144:7260 2
+Port ID:  7, 0 -> 2 : 7269
+Sock Binding to tcp://10.77.110.144:7269 2
+Port ID:  0, 2 -> 0 : 7202
+Sock Connecting to tcp://10.77.110.144;10.77.110.146:7202 2 -> 0
+Port ID:  1, 2 -> 0 : 7211
+Sock Connecting to tcp://10.77.110.144;10.77.110.146:7211 2 -> 0
+Port ID:  0, 1 -> 2 : 7207
+Sock Binding to tcp://10.77.110.144:7207 2
+Port ID:  1, 1 -> 2 : 7216
+Sock Binding to tcp://10.77.110.144:7216 2
+Port ID:  2, 1 -> 2 : 7225
+Sock Binding to tcp://10.77.110.144:7225 2
+Port ID:  3, 1 -> 2 : 7234
+Sock Binding to tcp://10.77.110.144:7234 2
+Port ID:  4, 1 -> 2 : 7243
+Sock Binding to tcp://10.77.110.144:7243 2
+Port ID:  5, 1 -> 2 : 7252
+Sock Binding to tcp://10.77.110.144:7252 2
+Port ID:  6, 1 -> 2 : 7261
+Sock Binding to tcp://10.77.110.144:7261 2
+Port ID:  7, 1 -> 2 : 7270
+Sock Binding to tcp://10.77.110.144:7270 2
+Port ID:  0, 2 -> 1 : 7205
+Sock Connecting to tcp://10.77.110.144;10.77.110.148:7205 2 -> 1
+Port ID:  1, 2 -> 1 : 7214
+Sock Connecting to tcp://10.77.110.144;10.77.110.148:7214 2 -> 1
+Done
+Initializing client manager... workload initialized!
+Initializing simulation... Done
+Done
+Initializing work queue... Done
+Initializing msg pool... Done
+Initializing message queue... Done
+Initializing client query queue... Done
+Initialization Time = 2607286733
+Setup 2:0
+Setup 2:1
+Setup 2:2
+Setup 2:3
+Setup 2:4
+Setup 2:5
+Running 2:1
+Send INIT_DONE to 0
+Send INIT_DONE to 1
+Running 2:0
+Received INIT_DONE from node 0
+Received INIT_DONE from node 1
+Running 2:4
+Running 2:5
+Running 2:2
+Running 2:3
+Starttime set to 2916803538513422
+Running ClientThread 0
+Running InputThread 3
+Running OutputThread 4
+Running ClientThread 1
+Running OutputThread 5
+Running InputThread 2
+msg size is:134
+begin migration!
+Time is 10
+ptr is 134
+ptr is 134
+set done
+FINISH 2:3
+FINISH 2:2
+Txns sent to node 0: 2749394
+Txns sent to node 1: 2881464
+FINISH 2:1
+FINISH 2:5
+Txns sent to node 0: 2267886
+Txns sent to node 1: 2394265
+FINISH 2:0
+FINISH 2:4
+Query to partition:
+  partition0 2508047
+  partition1 2631139
+  partition2 2505686
+  partition3 2640872
+CLIENT PASS! SimTime = 40002949236
+[summary] total_runtime=39.000000,tput=7475.333294,txn_cnt=291538,txn_sent_cnt=9640317,txn_run_time=9876463.930457,txn_run_avg_time=33.877107,cl_send_intv=77.755804,msg_queue_delay_time=111301269.855654,msg_queue_cnt=9071202,msg_queue_enq_cnt=9640318,msg_queue_delay_time_avg=12.269738,msg_send_time=53.967870,msg_send_time_avg=0.000006,msg_recv_time=4.770497,msg_recv_time_avg=0.000016,msg_recv_idle_time=71.681786,msg_batch_cnt=9071202,msg_batch_size_msgs=9071202,msg_batch_size_msgs_avg=1.000000,msg_batch_size_bytes=3539706162,msg_batch_size_bytes_avg=390.000000,msg_batch_size_bytes_to_server=3539706162,msg_batch_size_bytes_to_client=0,msg_send_cnt=9071202,msg_recv_cnt=291538,msg_unpack_time=0.330898,msg_unpack_time_avg=0.000001,mbuf_send_intv_time=0.451027,mbuf_send_intv_time_avg=0.000000,msg_copy_output_time=4.495022,ccl0=1.011352,ccl1=10.048609,ccl10=28.703287,ccl25=32.126842,ccl50=35.198213,ccl75=37.448839,ccl90=38.294292,ccl95=38.565245,ccl96=38.650674,ccl97=38.708134,ccl98=38.794415,ccl99=38.897476,ccl100=39.757740,virt_mem_usage=5027504,phys_mem_usage=3862268,cpu_ttl=0.000615
