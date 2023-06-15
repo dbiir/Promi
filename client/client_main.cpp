@@ -14,6 +14,7 @@
    limitations under the License.
 */
 
+#include <fstream>
 #include "global.h"
 #include "ycsb.h"
 #include "tpcc.h"
@@ -50,6 +51,11 @@ int main(int argc, char *argv[]) {
 	// 0. initialize global data structure
 	part_map_init();
 	minipart_map_init();
+	#if (MIGRATION_ALG == DETEST_SPLIT)
+		row_map_init();
+		order_map_init();
+		cluster_num_init();
+	#endif
 	parser(argc, argv);
     assert(g_node_id >= g_node_cnt);
     //assert(g_client_node_cnt <= g_node_cnt);
@@ -215,6 +221,20 @@ int main(int argc, char *argv[]) {
 		std::cout<<"  partition"<<i<<" "<<query_to_part[i]<<endl;
 	}
 	/*
+	ofstream fout("query_to_row.txt");
+	for (size_t i=0; i < edge_index.size(); i++){
+		fout<<edge_index[i].first<<' '<<edge_index[i].second<<"\n";
+	}
+	fout.close(); // 显式的关闭流到文件的连接。
+	*/
+
+	/*
+	for (size_t i=0; i < edge_index.size(); i++){
+		std::cout<<edge_index[i].first<<','<<edge_index[i].second<<' ';
+	}
+	*/
+
+	/*
 	std::cout<<"Query to row:"<<endl;
 	for (size_t i=0; i<query_to_row.size(); i++){
 		std::cout<<"  row"<<i<<" "<<query_to_row[i]<<endl;
@@ -222,6 +242,7 @@ int main(int argc, char *argv[]) {
 	*/
 	query_to_part.clear();
 	query_to_row.clear();
+	edge_index.clear();
 
   fflush(stdout);
   printf("CLIENT PASS! SimTime = %ld\n", endtime - starttime);

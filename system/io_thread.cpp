@@ -136,7 +136,7 @@ RC InputThread::client_recv_loop() {
 						std::cout<<((SetDetestMessage*)msg)->status<<endl;
 						detest_status = ((SetRemusMessage*)msg)->status;
 						update_detest_status(detest_status);
-						std::cout<<"remus_stats is "<<remus_status<<endl;
+						std::cout<<"detest_stats is "<<detest_status<<endl;
 						break;
 					}
 					case SET_MINIPARTMAP:{
@@ -144,20 +144,40 @@ RC InputThread::client_recv_loop() {
 						update_minipart_map_status(((SetMiniPartMapMessage*)msg)->minipart_id, ((SetMiniPartMapMessage*)msg)->status);
 						std::cout<<"minipart "<<((SetMiniPartMapMessage*)msg)->minipart_id<<" is on node "<<get_minipart_node_id(((SetMiniPartMapMessage*)msg)->minipart_id)<<endl;
 						if (((SetMiniPartMapMessage*)msg)->minipart_id < PART_SPLIT_CNT-1){//发送其他的minipart的迁移消息
-							Message * msg = Message::create_message(SEND_MIGRATION);
-							((MigrationMessage*)msg)->node_id_src = 0;
-							((MigrationMessage*)msg)->node_id_des = 1;
-							((MigrationMessage*)msg)->part_id = 0;
-							((MigrationMessage*)msg)->minipart_id = ((SetMiniPartMapMessage*)msg)->minipart_id + 1;
-							((MigrationMessage*)msg)->rtype = SEND_MIGRATION;
-							((MigrationMessage*)msg)->data_size = g_synth_table_size / g_part_cnt / PART_SPLIT_CNT;
-							((MigrationMessage*)msg)->return_node_id = 1;
-							((MigrationMessage*)msg)->isdata = false;
-							((MigrationMessage*)msg)->key_start = ((MigrationMessage*)msg)->minipart_id * (g_synth_table_size / PART_SPLIT_CNT) ;
-							std::cout<<"msg size is:"<<msg->get_size()<<endl;
+							Message * msg1 = Message::create_message(SEND_MIGRATION);
+							((MigrationMessage*)msg1)->node_id_src = 0;
+							((MigrationMessage*)msg1)->node_id_des = 1;
+							((MigrationMessage*)msg1)->part_id = 0;
+							((MigrationMessage*)msg1)->minipart_id = ((SetMiniPartMapMessage*)msg)->minipart_id + 1;
+							((MigrationMessage*)msg1)->rtype = SEND_MIGRATION;
+							((MigrationMessage*)msg1)->data_size = g_synth_table_size / g_part_cnt / PART_SPLIT_CNT;
+							((MigrationMessage*)msg1)->return_node_id = 1;
+							((MigrationMessage*)msg1)->isdata = false;
+							((MigrationMessage*)msg1)->key_start = ((MigrationMessage*)msg1)->minipart_id * (g_synth_table_size / PART_SPLIT_CNT) ;
+							std::cout<<"msg size is:"<<msg1->get_size()<<endl;
 							std::cout<<"begin migration!"<<endl;
 							std::cout<<"Time is "<<(get_sys_clock() - run_starttime) / BILLION<<endl;
-							msg_queue.enqueue(get_thd_id(),msg,0);
+							msg_queue.enqueue(get_thd_id(),msg1,0);
+						}
+						break;
+					}
+					case SET_ROWMAP:{
+						update_row_map_order(((SetRowMapMessage*)msg)->order, ((SetRowMapMessage*)msg)->node_id);
+						update_row_map_status_order(((SetRowMapMessage*)msg)->order, ((SetRowMapMessage*)msg)->status);
+						std::cout<<"cluster label "<<Order[((SetRowMapMessage*)msg)->order]<<" is on node "<<((SetRowMapMessage*)msg)->node_id<<endl;
+						if (((SetRowMapMessage*)msg)->order < DETEST_SPLIT-1){//发送其他的label的迁移消息
+							Message * msg1 = Message::create_message(SEND_MIGRATION);
+							((MigrationMessage*)msg1)->node_id_src = 0;
+							((MigrationMessage*)msg1)->node_id_des = 1;
+							((MigrationMessage*)msg1)->order = ((SetRowMapMessage*)msg)->order + 1;
+							((MigrationMessage*)msg1)->rtype = SEND_MIGRATION;
+							((MigrationMessage*)msg1)->data_size = cluster_num[((SetRowMapMessage*)msg)->order + 1];
+							((MigrationMessage*)msg1)->return_node_id = 1;
+							((MigrationMessage*)msg1)->isdata = false;
+							std::cout<<"msg size is:"<<msg1->get_size()<<endl;
+							std::cout<<"begin migration!"<<endl;
+							std::cout<<"Time is "<<(get_sys_clock() - run_starttime) / BILLION<<endl;
+							msg_queue.enqueue(get_thd_id(),msg1,0);
 						}
 						break;
 					}

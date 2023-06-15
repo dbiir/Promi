@@ -153,7 +153,7 @@ void WorkerThread::process(Message * msg) {
   RC rc __attribute__ ((unused));
 
   DEBUG("%ld Processing %ld %d\n",get_thd_id(),msg->get_txn_id(),msg->get_rtype());
-  assert(msg->get_rtype() == CL_QRY || msg->get_rtype() == CL_QRY_O || msg->get_rtype() == SEND_MIGRATION || msg->get_rtype() == SET_PARTMAP || msg->get_rtype() == SET_REMUS || msg->get_rtype() == SET_DETEST || msg->get_rtype() == SET_MINIPARTMAP || msg->get_txn_id() != UINT64_MAX);
+  assert(msg->get_rtype() == CL_QRY || msg->get_rtype() == CL_QRY_O || msg->get_rtype() == SEND_MIGRATION || msg->get_rtype() == SET_PARTMAP || msg->get_rtype() == SET_REMUS || msg->get_rtype() == SET_DETEST || msg->get_rtype() == SET_MINIPARTMAP || msg->get_rtype() == SET_ROWMAP || msg->get_txn_id() != UINT64_MAX);
   uint64_t starttime = get_sys_clock();
 		switch(msg->get_rtype()) {
 			case RPASS:
@@ -226,6 +226,9 @@ void WorkerThread::process(Message * msg) {
       case SET_DETEST:
         rc = process_set_detest(msg);
         break;  
+      case SET_ROWMAP:
+        rc = process_set_rowmap(msg);
+        break;
 			default:
         printf("Msg: %d\n",msg->get_rtype());
         fflush(stdout);
@@ -360,11 +363,13 @@ TxnManager * WorkerThread::get_transaction_manager(Message * msg) {
 #else
   TxnManager * local_txn_man = NULL;
   local_txn_man = txn_table.get_transaction_manager(get_thd_id(),msg->get_txn_id(),0);
+  /*
   if (get_sys_clock() > g_mig_endtime && g_mig_endtime != 0) {
     std::cout<<"thd_id "<<get_thd_id();
     if (local_txn_man == NULL) std::cout<<" NULL ";
     std::cout<<"362txn_id "<<local_txn_man->get_txn_id()<<endl;
   }
+  */
 #endif
   return local_txn_man;
 }
@@ -440,8 +445,9 @@ RC WorkerThread::run() {
 
     if((msg->rtype != CL_QRY && msg->rtype != CL_QRY_O) || CC_ALG == CALVIN) {
       txn_man = get_transaction_manager(msg);
+      /*
       if (get_sys_clock() > g_mig_endtime && g_mig_endtime != 0) std::cout<<"txn_man->txn_id="<<msg->txn_id<<endl;
-      
+      */
       if (CC_ALG != CALVIN && IS_LOCAL(txn_man->get_txn_id())) {
         if (msg->rtype != RTXN_CONT &&
             ((msg->rtype != RACK_PREP) || (txn_man->get_rsp_cnt() == 1))) {
@@ -1140,6 +1146,14 @@ RC WorkerThread::process_set_detest(Message* msg){
   return RCOK;
 }
 
+RC WorkerThread::process_set_rowmap(Message* msg){
+  SetRowMapMessage * msg1 = new(SetRowMapMessage);
+  *msg1 = *(SetRowMapMessage *)msg;\
+  update_row_map_order(msg1->order,msg1->node_id);
+  update_row_map_status_order(msg1->order,msg1->status);
+  delete(msg1);
+  return RCOK;
+}
 /*
 RC WorkerThread::process_send_migration(MigrationMessage* msg){
   DEBUG("SEND_MIGRATION %ld\n",msg->get_txn_id());

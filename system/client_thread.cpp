@@ -14,6 +14,7 @@
 	 limitations under the License.
 */
 
+#include <algorithm>
 #include "global.h"
 #include "thread.h"
 #include "client_thread.h"
@@ -80,7 +81,25 @@ RC ClientThread::run() {
 				std::cout<<"Time is "<<(get_sys_clock() - run_starttime) / BILLION<<endl;
 				msg_queue.enqueue(get_thd_id(),msg,node_id_src);
 				continue;
-			}
+				}
+			#elif (MIGRATION_ALG == DETEST_SPLIT)
+				if (!ismigrate && (get_thd_id() == 0) && ((get_sys_clock() - run_starttime) / BILLION == 5)){
+					ismigrate = true;
+					Message * msg = Message::create_message(SEND_MIGRATION);
+					((MigrationMessage*)msg)->node_id_src = node_id_src;
+					((MigrationMessage*)msg)->node_id_des = node_id_des;
+					((MigrationMessage*)msg)->part_id = part_id;
+					((MigrationMessage*)msg)->order = 0;
+					((MigrationMessage*)msg)->rtype = SEND_MIGRATION;
+					((MigrationMessage*)msg)->data_size = cluster_num[0];
+					((MigrationMessage*)msg)->return_node_id = node_id_des;
+					((MigrationMessage*)msg)->isdata = false;
+					std::cout<<"msg size is:"<<msg->get_size()<<endl;
+					std::cout<<"begin migration!"<<endl;
+					std::cout<<"Time is "<<(get_sys_clock() - run_starttime) / BILLION<<endl;
+					msg_queue.enqueue(get_thd_id(),msg,node_id_src);
+					continue;
+				}
 			#else
 			if (!ismigrate && (get_thd_id() == 0) && ((get_sys_clock() - run_starttime) / BILLION == 15)){
 				ismigrate = true;
@@ -178,6 +197,18 @@ RC ClientThread::run() {
 		num_txns_sent++;
 		txns_sent[next_node]++;
 		query_to_part[partition_id] ++;
+		vector <uint64_t> cokeys;
+		for (uint64_t i = 0; i < g_req_per_query; i++){
+			query_to_row[((YCSBQuery*)m_query)->requests[i]->key]++;
+			if (key_to_part(((YCSBQuery*)m_query)->requests[i]->key) == 0){
+				cokeys.emplace_back(((YCSBQuery*)m_query)->requests[i]->key);
+				for (uint64_t j = 0 ; j < cokeys.size()-1; j++){
+					//std::cout<<cokeys[j]<<' '<<((YCSBQuery*)m_query)->requests[i]->key<<endl;
+					edge_index.emplace_back(cokeys[j], ((YCSBQuery*)m_query)->requests[i]->key);
+				}
+			}
+		}
+		
 		INC_STATS(get_thd_id(),txn_sent_cnt,1);
 		/*
 		#if MIGRATION

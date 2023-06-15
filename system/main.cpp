@@ -87,6 +87,11 @@ int main(int argc, char *argv[]) {
 	if (g_node_id == 1 || g_node_id == 0) {
 		part_map_init();
 		minipart_map_init();
+		#if (MIGRATION_ALG == DETEST_SPLIT)
+			row_map_init();
+			order_map_init();
+			cluster_num_init();
+		#endif
 	}
 	#if (MIGRATION_ALG == REMUS)
 		remus_status = 0;

@@ -75,7 +75,7 @@
 // PART_CNT should be at least NODE_CNT
 #define PART_CNT NODE_CNT * 1
 #define CLIENT_NODE_CNT 1
-#define CLIENT_THREAD_CNT 2
+#define CLIENT_THREAD_CNT 1
 #define CLIENT_REM_THREAD_CNT 2
 #define CLIENT_SEND_THREAD_CNT 2
 #define CLIENT_RUNTIME false
@@ -94,9 +94,12 @@
 #define DETEST 0
 #define REMUS 1
 #define LOCK 2
+#define DETEST_SPLIT 4
+#define SPLIT_NODE_NUM 300 //split场景下，训练图的节点的数量
+#define ROW_PER_NODE (SYNTH_TABLE_SIZE / PART_CNT / SPLIT_NODE_NUM)  //split场景下，每个node包含的row的数量
 
-//migartion_alg DETEST REMUS LOCK
-#define MIGRATION_ALG REMUS
+//migartion_alg DETEST REMUS LOCK DETEST_SPLIT
+#define MIGRATION_ALG DETEST_SPLIT
 
 //DETEST Migration
 #define PART_SPLIT_CNT 4
@@ -264,7 +267,7 @@
 #define SYNTH_TABLE_SIZE 65536
 #define ZIPF_THETA 0.6
 #define TXN_WRITE_PERC 0.7
-#define TUP_WRITE_PERC 0.3
+#define TUP_WRITE_PERC 0.5
 #define SCAN_PERC 0
 #define SCAN_LEN 20
 #define PART_PER_TXN 1

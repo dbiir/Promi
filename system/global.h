@@ -168,6 +168,7 @@ extern UInt32 g_clients_per_server;
 extern UInt32 g_server_start_node;
 extern vector<int> query_to_part;
 extern vector<int> query_to_row;
+extern vector< pair<uint64_t, uint64_t> > edge_index;
 
 /******************************************/
 // Global Parameter
@@ -328,6 +329,8 @@ enum RemReqType {
     SET_PARTMAP,
     SET_DETEST,
     SET_MINIPARTMAP,
+    SET_ROWMAP,
+    SET_DETESTSPLIT,
   NO_MSG
 };
 
@@ -390,6 +393,25 @@ uint64_t get_minipart_node_id(uint64_t part_id);
 uint64_t get_minipart_status(uint64_t part_id);
 void update_minipart_map(uint64_t part_id, uint64_t node_id);//修改part_map的node_id
 void update_minipart_map_status(uint64_t part_id, uint64_t status);//修改part_map的migrate_status
+
+//row_map是记录每一条数据的迁移情况
+//row_map < row_id, <所在的node_id,迁移状态status> >
+//status 0:未迁移 1：正在迁移 2：已迁移
+extern map <uint64_t, vector<uint64_t> > row_map;
+void row_map_init();
+uint64_t get_row_node_id(uint64_t key);
+uint64_t get_row_status(uint64_t key);
+void update_row_map(uint64_t key, uint64_t node_id);//修改row_map的node_id
+void update_row_map_status(uint64_t key, uint64_t status);//修改row_map的migrate_status
+void update_row_map_order(uint64_t order, uint64_t node_id);//根据order修改row_map
+void update_row_map_status_order(uint64_t order, uint64_t node_id);//根据order修改row_map
+//order_map记录每一个label下迁移的row <label, <order下的key>>
+extern map<uint64_t, vector<uint64_t> > order_map;
+void order_map_init();
+extern int cluster[SPLIT_NODE_NUM]; //分类结果
+extern int cluster_num[DETEST_SPLIT]; //每一次order对应的row数量
+extern int Order[SPLIT_NODE_NUM];//迁移的顺序，先迁移哪一类
+void cluster_num_init();
 
 //detest状态，split push pull阶段
 extern int detest_status;

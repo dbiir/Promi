@@ -41,7 +41,7 @@ public:
   static Message * create_message(RemReqType rtype);
   static Message * create_message(RemReqType rtype, uint64_t node_id, int status);
   static Message * create_message0(RemReqType rtype,uint64_t part_id, uint64_t status);
-  static Message * create_message1(RemReqType rtype,uint64_t part_id, uint64_t node_id, int status);
+  static Message * create_message1(RemReqType rtype,uint64_t part_id, uint64_t node_id, uint64_t status);
   static std::vector<Message*> * create_messages(char * buf);
   static void release_message(Message * msg);
   RemReqType rtype;
@@ -504,6 +504,7 @@ public:
   uint64_t part_id;//迁移分区id
   int64_t minipart_id;
   uint64_t key_start,key_end;
+  uint64_t order;//记录detest_split的第几次迁移
   uint64_t data_size;
   bool isdata;//数据是否传入
   bool islast;//子分区是否传输完毕
@@ -534,8 +535,7 @@ public:
 
 class SetPartMapMessage : public Message{
 public:
-  uint64_t part_id, node_id;
-  int status;
+  uint64_t part_id, node_id, status;
   uint64_t get_size();
   void copy_from_buf(char * buf);
   void copy_to_buf(char * buf);
@@ -569,5 +569,19 @@ public:
   void init();
   void release();
 };
+
+class SetRowMapMessage : public Message{
+public:
+  uint64_t node_id, order; //order代表第几次按照label迁移
+  int status;
+  uint64_t get_size();
+  void copy_from_buf(char * buf);
+  void copy_to_buf(char * buf);
+  void copy_from_txn(TxnManager * txn);
+  void copy_to_txn(TxnManager * txn);
+  void init();
+  void release();  
+};
+
 
 #endif

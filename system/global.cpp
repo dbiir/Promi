@@ -203,6 +203,8 @@ UInt32 g_clients_per_server = 0;
 UInt32 g_server_start_node = 0;
 vector<int> query_to_part(g_part_cnt);
 vector<int> query_to_row(g_synth_table_size);
+vector< pair<uint64_t, uint64_t> > edge_index;
+
 
 UInt32 g_this_thread_cnt = ISCLIENT ? g_client_thread_cnt : g_thread_cnt;
 UInt32 g_this_rem_thread_cnt = ISCLIENT ? g_client_rem_thread_cnt : g_rem_thread_cnt;
@@ -279,6 +281,11 @@ uint64_t get_node_id_mini(uint64_t key){
     else {
       return get_minipart_node_id(get_minipart_id(key));
     }
+  #elif MIGRATION_ALG == DETEST_SPLIT
+    if (key_to_part(key) != 0) return GET_NODE_ID(key_to_part(key));
+    else {
+      return row_map[key][0];
+    }
   #else
     return GET_NODE_ID(key_to_part(key));
   #endif
@@ -349,6 +356,75 @@ void update_minipart_map(uint64_t minipart_id, uint64_t node_id){
 
 void update_minipart_map_status(uint64_t minipart_id, uint64_t status){
   minipart_map[minipart_id][1] = status;
+}
+
+map <uint64_t, vector<uint64_t> > row_map;
+
+void row_map_init(){
+  uint64_t key = 0;
+  for (uint64_t i = 0; i < g_synth_table_size / g_part_cnt; i++){
+    vector<uint64_t> vtmp;
+    vtmp.emplace_back(0);
+    vtmp.emplace_back(0);
+    row_map[key] = vtmp;
+    key += g_part_cnt;
+  }
+}
+uint64_t get_row_node_id(uint64_t key){
+  return row_map[key][0];
+}
+
+uint64_t get_row_status(uint64_t key){
+  return row_map[key][1];
+}
+
+void update_row_map(uint64_t key, uint64_t node_id){//修改row_map的node_id
+  row_map[key][0] = node_id;
+}
+
+void update_row_map_status(uint64_t key, uint64_t status){//修改row_map的migrate_status
+  row_map[key][1] = status;
+}
+
+void update_row_map_order(uint64_t order, uint64_t node_id){
+  for (uint64_t i=0;i<order_map[Order[order]].size();i++){
+    update_row_map(order_map[Order[order]][i], node_id);
+  }
+}
+
+void update_row_map_status_order(uint64_t order, uint64_t status){
+  for (uint64_t i=0;i<order_map[Order[order]].size();i++){
+    update_row_map_status(order_map[Order[order]][i], status);
+  }
+}
+
+map<uint64_t, vector<uint64_t> > order_map;
+
+void order_map_init(){ //初始化每一个order下对应了哪些row
+  int a;
+  for (int i=0; i<SPLIT_NODE_NUM;i++)
+  {
+    a = cluster[i];
+    for (int j=i*ROW_PER_NODE; j<(i+1)*ROW_PER_NODE; j++){
+      order_map[a].emplace_back(j*g_part_cnt);//j*g_part_cnt是row的key
+    } 
+  }
+  //安排最后一个节点的row
+  for (uint64_t j = SPLIT_NODE_NUM * ROW_PER_NODE; j < (g_synth_table_size / g_part_cnt); j++){
+    order_map[a].emplace_back(j*g_part_cnt);  
+  }
+}
+
+int Order[SPLIT_NODE_NUM]={2,3,1,0};
+
+int cluster[300]={2,3,0,0,3,1,3,1,0,2,2,1,3,2,0,3,3,3,1,3,3,1,0,0,0,1,2,3,3,0,1,2,0,2,0,0,2,0,2,1,2,2,1,3,1,3,0,2,2,3,3,0,3,1,3,2,0,2,2,2,0,0,2,1,2,3,2,1,1,3,2,0,2,2,3,1,2,2,3,1,3,0,2,1,0,2,3,2,2,0,1,3,1,0,2,3,3,2,2,0,0,2,0,3,3,2,3,3,2,2,2,2,2,1,2,2,1,2,0,2,0,3,2,0,3,0,3,1,2,1,0,2,2,0,2,1,3,2,3,2,2,3,1,3,0,3,0,3,2,0,1,1,3,0,2,0,1,3,2,3,0,1,3,2,1,0,2,2,2,3,1,2,3,2,0,0,2,3,0,3,3,0,2,0,3,2,2,3,2,1,1,0,3,0,3,1,2,0,2,3,2,0,0,2,0,1,3,0,2,2,3,3,3,0,2,3,2,0,1,0,3,2,0,2,1,3,1,1,2,1,3,0,2,0,2,0,2,1,3,3,0,3,2,0,2,1,1,2,2,0,2,2,1,0,3,3,0,2,2,0,2,3,3,2,1,3,3,2,1,0,2,0,2,2,3,2,0,0,3,3,2,1,2,0,0,0,2,0,0,0,0,2,1,2,3,0,0,0,3,1};
+
+int cluster_num[DETEST_SPLIT];
+
+void cluster_num_init(){
+  for (int i=0;i<SPLIT_NODE_NUM;i++){
+    cluster_num[cluster[i]]++;
+  }
 }
 
 int detest_status;
