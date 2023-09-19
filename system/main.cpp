@@ -93,12 +93,14 @@ int main(int argc, char *argv[]) {
 			cluster_num_init();
 		#endif
 	}
+	#if MIGRATION
 	#if (MIGRATION_ALG == REMUS)
 		remus_status = 0;
 		std::cout<<"remus status is "<<remus_status<<" "<<&remus_status<<"Time is: "<<get_sys_clock() / BILLION <<endl;
 	#elif (MIGRATION_ALG == DETEST)
 		detest_status = 0;
 		std::cout<<"detest status is "<<detest_status<<"Time is: "<<(get_sys_clock() - g_starttime) / BILLION <<endl;
+	#endif
 	#endif
 	
 	parser(argc, argv);

@@ -498,11 +498,37 @@ class DAQueryMessage : public QueryMessage {
 	uint64_t last_state;
 };
 
+class SyncMessage : public Message{
+  public:
+  uint64_t part_id;//迁移分区id
+  uint64_t key;
+  uint64_t get_size();
+  void copy_from_buf(char * buf);
+  void copy_to_buf(char * buf);
+  void copy_from_txn(TxnManager * txn);
+  void copy_to_txn(TxnManager * txn);
+  void init();
+  void release();
+};
+
+class AckSyncMessage : public Message{
+  public:
+  uint64_t part_id;//迁移分区id
+  uint64_t key;
+  uint64_t get_size();
+  void copy_from_buf(char * buf);
+  void copy_to_buf(char * buf);
+  void copy_from_txn(TxnManager * txn);
+  void copy_to_txn(TxnManager * txn);
+  void init();
+  void release();
+};
+
 class MigrationMessage : public Message {
 public:
   uint64_t node_id_src,node_id_des;//迁移源节点目标节点的id
   uint64_t part_id;//迁移分区id
-  int64_t minipart_id;
+  uint64_t minipart_id;
   uint64_t key_start,key_end;
   uint64_t order;//记录detest_split的第几次迁移
   uint64_t data_size;

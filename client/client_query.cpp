@@ -169,3 +169,21 @@ Client_query_queue::get_next_query(uint64_t server_id,uint64_t thread_id) {
 	return query;
 #endif
 }
+
+BaseQuery *
+Client_query_queue::get_next_query_partition(uint64_t server_id, uint64_t partition_id,uint64_t thread_id){
+	uint64_t query_id = __sync_fetch_and_add(query_cnt[server_id], 1);
+	if(query_id > g_max_txn_per_part) {
+	__sync_bool_compare_and_swap(query_cnt[server_id],query_id+1,0);//if query_cnt[server_id]==query_id+1, then set query_cnt[server_id] to 0
+	query_id = __sync_fetch_and_add(query_cnt[server_id], 1);
+  }
+	while (key_to_part(((YCSBQuery* )queries[server_id][query_id])->requests[0]->key) != partition_id) {
+		query_id = __sync_fetch_and_add(query_cnt[server_id], 1);
+		if(query_id > g_max_txn_per_part) {
+			__sync_bool_compare_and_swap(query_cnt[server_id],query_id+1,0);//if query_cnt[server_id]==query_id+1, then set query_cnt[server_id] to 0
+			query_id = __sync_fetch_and_add(query_cnt[server_id], 1);
+  	}
+	}
+	BaseQuery * query = queries[server_id][query_id];
+	return query;
+}

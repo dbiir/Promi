@@ -95,6 +95,7 @@ RC YCSBTxnManager::run_txn() {
     DEBUG("Running txn %ld\n",txn->txn_id);
     //query->print();
     query->partitions_touched.add_unique(GET_PART_ID(0,g_node_id));
+    //query->partitions_touched.add_unique(key_to_part(((YCSBQuery*)query)->requests[0]->key));
   }
 
   uint64_t starttime = get_sys_clock();
@@ -109,7 +110,8 @@ RC YCSBTxnManager::run_txn() {
   txn_stats.wait_starttime = get_sys_clock();
 
   //只允许本地节点提交，有病吧注释掉
-  /*
+  //对不起是我有病
+  
   if(IS_LOCAL(get_txn_id())) {
     if(is_done() && rc == RCOK)
       rc = start_commit();
@@ -118,12 +120,12 @@ RC YCSBTxnManager::run_txn() {
   } else if(rc == Abort){
     rc = abort();
   }
-  */
+  /*
   if(is_done() && rc == RCOK)
     rc = start_commit();
   else if(rc == Abort)
     rc = start_abort();
-
+  */
   return rc;
 
 }
@@ -169,6 +171,7 @@ RC YCSBTxnManager::send_remote_request() {
   YCSBQuery* ycsb_query = (YCSBQuery*) query;
   uint64_t dest_node_id = GET_NODE_ID_MINI(ycsb_query->requests[next_record_id]->key);
   ycsb_query->partitions_touched.add_unique(GET_PART_ID(0,dest_node_id));
+  //ycsb_query->partitions_touched.add_unique(key_to_part(((YCSBQuery*)query)->requests[next_record_id]->key));
   DEBUG("ycsb send remote request %ld, %ld\n",txn->txn_id,txn->batch_id);
   msg_queue.enqueue(get_thd_id(),Message::create_message(this,RQRY),dest_node_id);
   txn_stats.trans_process_network_start_time = get_sys_clock();
@@ -193,11 +196,31 @@ RC YCSBTxnManager::run_txn_state() {
   YCSBQuery* ycsb_query = (YCSBQuery*) query;
 	ycsb_request * req = ycsb_query->requests[next_record_id];
 	uint64_t part_id = _wl->key_to_part( req->key );
+  assert(part_id >= 0);
   bool loc = GET_NODE_ID_MINI(req->key) == g_node_id;
-  if (loc == false && get_part_status(part_id) == 2 && get_sys_clock() > g_mig_endtime){ 
-    //要访问的数据被迁移走了，但是事务是在迁移开始前就开始了，继续保持在本地执行
-    loc = true;
-  }
+  
+  #if MIGRATION
+  #if MIGRATION_ALG == REMUS
+  /*
+    if ((this->get_txn_id() % g_node_cnt)==0 &&  loc == false && get_part_status(part_id) != 0 && part_id == 0 && this->txn_stats.starttime < remus_finish_time){ 
+      //要访问的数据被迁移走了，但是事务是在迁移开始前就开始了，继续保持在本地执行
+      loc = true;
+      std::cout<<"keep local remus"<<' ';
+    }
+  */ 
+  #elif MIGRATION_ALG == DETEST
+    if (this->get_txn_id() % g_node_cnt == 0 && loc == false && part_id == 0 && get_minipart_status(get_minipart_id(req->key)) != 0){
+      loc = true;
+      std::cout<<"keep local detest"<<' ';
+    }
+  #elif MIGRATION_ALG == DETEST_SPLIT
+    if (this->get_txn_id() % g_node_cnt == 0 && loc == false && part_id == 0 && get_minipart_status(get_minipart_id(req->key)) != 0 && this->txn_stats.starttime < remus_finish_time){
+      loc = true;
+      std::cout<<"keep local detest"<<' ';
+    }
+  #endif
+  #endif
+  
   //std::cout<<"key is:"<<req->key<<" node is "<<GET_NODE_ID(part_id)<<" part is "<<part_id<<endl;
 
 	RC rc = RCOK;

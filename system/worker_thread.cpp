@@ -153,7 +153,8 @@ void WorkerThread::process(Message * msg) {
   RC rc __attribute__ ((unused));
 
   DEBUG("%ld Processing %ld %d\n",get_thd_id(),msg->get_txn_id(),msg->get_rtype());
-  assert(msg->get_rtype() == CL_QRY || msg->get_rtype() == CL_QRY_O || msg->get_rtype() == SEND_MIGRATION || msg->get_rtype() == SET_PARTMAP || msg->get_rtype() == SET_REMUS || msg->get_rtype() == SET_DETEST || msg->get_rtype() == SET_MINIPARTMAP || msg->get_rtype() == SET_ROWMAP || msg->get_txn_id() != UINT64_MAX);
+  assert(msg->get_rtype() == CL_QRY || msg->get_rtype() == CL_QRY_O || msg->get_rtype() == SEND_MIGRATION || msg->get_rtype() == SET_PARTMAP || msg->get_rtype() == SET_REMUS || msg->get_rtype() == SET_DETEST || msg->get_rtype() == SET_MINIPARTMAP || msg->get_rtype() == SET_ROWMAP || msg->get_rtype() == SYNC || msg->get_rtype() == ACK_SYNC ||
+  msg->get_txn_id() != UINT64_MAX);
   uint64_t starttime = get_sys_clock();
 		switch(msg->get_rtype()) {
 			case RPASS:
@@ -214,6 +215,14 @@ void WorkerThread::process(Message * msg) {
 			case LOG_MSG_RSP:
         rc = process_log_msg_rsp(msg);
 				break;
+      case SYNC:
+        //std::cout<<"SYNC1 ";
+        rc = process_sync_migration(msg);
+        break;
+      case ACK_SYNC:
+        //std::cout<<"ACK_SYNC ";
+        rc = process_ack_sync_migration(msg);
+        break;
       case SET_PARTMAP:
         rc = process_set_partmap(msg);
         break;
@@ -431,6 +440,7 @@ RC WorkerThread::run() {
   #endif
 
     msg = work_queue.dequeue(get_thd_id());
+    
     if(!msg) {
       if (idle_starttime == 0) idle_starttime = get_sys_clock();
       //todo: add sleep 0.01ms
@@ -442,8 +452,9 @@ RC WorkerThread::run() {
       idle_starttime = 0;
     }
     //uint64_t starttime = get_sys_clock();
-
-    if((msg->rtype != CL_QRY && msg->rtype != CL_QRY_O) || CC_ALG == CALVIN) {
+    if (msg->rtype == SEND_MIGRATION) std::cout<<"get SEND1 ";
+    //if (msg->rtype == SYNC) std::cout<<"get SYNC2 ";
+    if((msg->rtype != CL_QRY && msg->rtype != CL_QRY_O && msg->rtype!= SYNC) || CC_ALG == CALVIN){
       txn_man = get_transaction_manager(msg);
       /*
       if (get_sys_clock() > g_mig_endtime && g_mig_endtime != 0) std::cout<<"txn_man->txn_id="<<msg->txn_id<<endl;
@@ -646,7 +657,7 @@ RC WorkerThread::process_rack_prep(Message * msg) {
   } else {
     txn_man->commit();
     uint64_t warmuptime1 = get_sys_clock() - g_starttime;
-    INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1);
+    INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1); //throughput只在本来的节点统计
   }
 
   return rc;
@@ -755,6 +766,7 @@ RC WorkerThread::process_rqry(Message * msg) {
   // Send response
   if(rc != WAIT) {
     msg_queue.enqueue(get_thd_id(),Message::create_message(txn_man,RQRY_RSP),txn_man->return_id);
+    //INC_STATS(get_thd_id(), tps[get_thd_id()], 1); //统计每个线程的提交数量
   }
   return rc;
 }
@@ -1076,6 +1088,24 @@ bool WorkerThread::is_mine(Message* msg) {  //TODO:have some problems!
     return true;
   }
   return false;
+}
+
+RC WorkerThread::process_sync_migration(Message* msg){
+  RC rc = RCOK;
+  //txn_man = txn_table.get_transaction_manager(get_thd_id(),msg->txn_id,0);
+  msg_queue.enqueue(get_thd_id(),Message::create_message(msg->txn_id, ACK_SYNC),0);//默认给源节点
+  //std::cout<<"SYNC ";
+  return rc;
+}
+
+RC WorkerThread::process_ack_sync_migration(Message* msg){
+  RC rc = RCOK;
+  rc = txn_man->commit();
+  uint64_t warmuptime1 = get_sys_clock() - g_starttime;
+  INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1);
+  commit(); 
+  //std::cout<<"ACK ";
+  return rc;
 }
 
 RC WorkerThread::process_send_migration(Message* msg){

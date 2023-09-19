@@ -124,6 +124,7 @@ RC InputThread::client_recv_loop() {
 						break;
 					}
 					case SET_PARTMAP:{
+						sleep(SYNCTIME);
 						update_part_map(((SetPartMapMessage*)msg)->part_id, ((SetPartMapMessage*)msg)->node_id);
 						//std::cout<<"Time is"<<(get_sys_clock()-g_starttime)/BILLION<<endl;
 						std::cout<<"!!!!!!!!!!!partition 0 is on node "<<GET_NODE_ID(0)<<endl;
@@ -143,6 +144,7 @@ RC InputThread::client_recv_loop() {
 						update_minipart_map(((SetMiniPartMapMessage*)msg)->minipart_id, ((SetMiniPartMapMessage*)msg)->node_id);
 						update_minipart_map_status(((SetMiniPartMapMessage*)msg)->minipart_id, ((SetMiniPartMapMessage*)msg)->status);
 						std::cout<<"minipart "<<((SetMiniPartMapMessage*)msg)->minipart_id<<" is on node "<<get_minipart_node_id(((SetMiniPartMapMessage*)msg)->minipart_id)<<endl;
+						/*
 						if (((SetMiniPartMapMessage*)msg)->minipart_id < PART_SPLIT_CNT-1){//发送其他的minipart的迁移消息
 							Message * msg1 = Message::create_message(SEND_MIGRATION);
 							((MigrationMessage*)msg1)->node_id_src = 0;
@@ -159,6 +161,7 @@ RC InputThread::client_recv_loop() {
 							std::cout<<"Time is "<<(get_sys_clock() - run_starttime) / BILLION<<endl;
 							msg_queue.enqueue(get_thd_id(),msg1,0);
 						}
+						*/
 						break;
 					}
 					case SET_ROWMAP:{
@@ -320,6 +323,7 @@ RC InputThread::server_recv_loop() {
 #ifdef FAKE_PROCESS
 			if (fakeprocess(msg))
 #endif
+			if (msg->rtype == SEND_MIGRATION) std::cout<<"get SEND"<<endl;
 			if (msg->rtype == RECV_MIGRATION) std::cout<<"get RECV"<<endl;
 			work_queue.enqueue(get_thd_id(),msg,false);
 			msgs->erase(msgs->begin());

@@ -317,6 +317,8 @@ BaseQuery * YCSBQueryGenerator::gen_requests_zipf(uint64_t home_partition_id, Wo
 	double r_twr = (double)(mrand->next() % 10000) / 10000;
 
 	int rid = 0;
+	uint64_t part;
+	assert(part >= 0);
 	for (UInt32 i = 0; i < g_req_per_query; i ++) {
 		double r = (double)(mrand->next() % 10000) / 10000;
 		uint64_t partition_id;
@@ -336,7 +338,69 @@ BaseQuery * YCSBQueryGenerator::gen_requests_zipf(uint64_t home_partition_id, Wo
 			#elif KEY_TO_PART == CONST_MODE
 				partition_id = g_part_cnt / g_node_cnt * home_partition_id;
 			#endif
-		} else {
+		} 
+		else if (SINGLE_PART){
+			#if SINGLE_PART_0
+				partition_id = 0;
+			#elif SINGLE_PART_012
+				if (rid == 0){
+					if (home_partition_id == 0){
+						int tmp = mrand->next();
+						if (tmp % 2== 0) partition_id = 0;
+						else if (tmp % 2 == 1) partition_id = 2;
+					}
+					else {
+						
+						if (mrand->next() % 2 == 0) partition_id = 1;
+						else if (mrand->next() % 2 == 1) partition_id = 3;
+						
+						//partition_id = 1;
+					}
+					part = partition_id;
+				}
+				else partition_id = part;
+			#elif  SINGLE_PART_0124
+				if (rid == 0){
+					if (home_partition_id == 0){
+						int tmp = mrand->next();
+						if (tmp % 3 == 0) partition_id = 0;
+						else if (tmp % 3 == 1) partition_id = 2;
+						else if (tmp % 3 == 2) partition_id = 4;
+					}
+					else {
+						/*
+						if (mrand->next() % 2 == 0) partition_id = 1;
+						else if (mrand->next() % 2 == 1) partition_id = 3;
+						*/
+						partition_id = 1;
+					}
+					part = partition_id;
+				}
+				else partition_id = part;
+			#elif SINGLE_PART_CONSOLIDATION
+				if (rid == 0){
+					partition_id = home_partition_id;
+					part = partition_id;
+				}
+				else partition_id = part;
+			#else
+				if (rid == 0){
+					if (home_partition_id == 0){
+						int tmp = mrand->next();
+						if (tmp % 2 == 0) partition_id = 0;
+						else if (tmp % 2 == 1) partition_id = 2;
+					}
+					else {
+						int tmp = mrand->next();
+						if (tmp % 2 == 0) partition_id = 1;
+						else if (tmp % 2 == 1) partition_id = 3;
+					}
+					part = partition_id;
+				}
+				else partition_id = part;
+			#endif
+		}
+			else {
 			partition_id = mrand->next() % g_part_cnt;
 			if(g_strict_ppt && g_part_per_txn <= g_part_cnt) {
 				while ((partitions_accessed.size() < g_part_per_txn &&
@@ -359,7 +423,7 @@ BaseQuery * YCSBQueryGenerator::gen_requests_zipf(uint64_t home_partition_id, Wo
 		assert(row_id < table_size);
 		uint64_t primary_key = row_id * g_part_cnt + partition_id;
 		assert(primary_key < g_synth_table_size);
-		query_to_row[primary_key] ++;
+		
 
 		req->key = primary_key;
 		req->value = mrand->next() % (1<<8);
@@ -374,6 +438,7 @@ BaseQuery * YCSBQueryGenerator::gen_requests_zipf(uint64_t home_partition_id, Wo
 		}
 		partitions_accessed.insert(partition_id);
 		rid ++;
+		//query_to_row[primary_key] ++;
 
 		query->requests.add(req);
 	}

@@ -620,9 +620,10 @@ RC TxnManager::start_commit() {
 			txn_stats.trans_commit_network_start_time = get_sys_clock();
 			send_finish_messages();
 			rsp_cnt = 0;
+			/*
 			#if (MIGRATION_ALG == REMUS)
 				if (remus_status == 0 || remus_status == 1){
-					if (check_update()){
+					if (g_node_id == 0){
 						send_update_messages();
 					}
 				}
@@ -630,13 +631,17 @@ RC TxnManager::start_commit() {
 					sleep(SYNCTIME);
 				}
 				else if (remus_status == 3){
+					if (g_node_id == 0)
 					send_update_messages();
 				}
 			#endif
+			*/
 			rc = WAIT_REM;
 		}
 	} else { // is not multi-part
 		rc = validate();
+		//if (rc == RCOK) std::cout<<"RCOK ";
+		//else std::cout<<"ABORT ";
 		uint64_t finish_start_time = get_sys_clock();
 		txn_stats.finish_start_time = finish_start_time;
 		// uint64_t prepare_timespan  = finish_start_time - txn_stats.prepare_start_time;
@@ -649,17 +654,68 @@ RC TxnManager::start_commit() {
 			wsi_man.gene_finish_ts(this);
 		}
 		if(rc == RCOK){
+			#if MIGRATION
 			#if (MIGRATION_ALG == REMUS)
-				if (remus_status == 0 || remus_status == 1){
-					if (check_update()){
+				if (remus_status == 1 || remus_status == 2 || remus_status == 3){
+					if (g_node_id == 0) {
 						send_update_messages();
+						rc = WAIT_REM;
+					}
+					else {
+						std::cout<<"return ";
+						rc = commit();
+    				uint64_t warmuptime1 = get_sys_clock() - g_starttime;
+    				INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1); //throughput只在本来的节点统计
 					}
 				}
-				else if (remus_status == 2){
-					send_update_messages();
+				else{
+					rc = commit();
+					uint64_t warmuptime1 = get_sys_clock() - g_starttime;
+    			INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1); 
+				}
+			#elif (MIGRATION_ALG == DETEST)
+				if (detest_status == 1 || detest_status == 2){
+					if (g_node_id == 0) {
+						send_update_messages();
+						rc = WAIT_REM;
+					}
+					else {
+						//std::cout<<"return ";
+						rc = commit();
+						uint64_t warmuptime1 = get_sys_clock() - g_starttime;
+    				INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1); 
+					}
+				}
+				else{
+					rc = commit();
+					uint64_t warmuptime1 = get_sys_clock() - g_starttime;
+    			INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1); 
+				}
+			#elif (MIGRATION_ALG == DETEST_SPLIT)
+				if (detest_status == 1 || detest_status == 2){
+					if (g_node_id == 0) {
+						send_update_messages();
+						rc = WAIT_REM;
+					}
+					else {
+						std::cout<<"return ";
+						rc = commit();
+						uint64_t warmuptime1 = get_sys_clock() - g_starttime;
+    				INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1); 
+					}
+				}
+				else{
+					rc = commit();
+					uint64_t warmuptime1 = get_sys_clock() - g_starttime;
+    			INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1); 
 				}
 			#endif
-			rc = WAIT_REM;
+			#else
+				rc = commit();
+				uint64_t warmuptime1 = get_sys_clock() - g_starttime;
+    		INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1); 
+				INC_STATS(get_thd_id(), tps[get_thd_id()], 1); 
+			#endif
 		}
 		else {
 			txn->rc = Abort;
@@ -711,15 +767,32 @@ void TxnManager::send_finish_messages() {
 	}
 }
 
-void TxnManager::send_update_messages(){
-	for(uint64_t i = 0; i < query->partitions_touched.size(); i++) {
-		if(GET_NODE_ID(query->partitions_touched[i]) == g_node_id) {
-			continue;
-    	}
-		else{
-			msg_queue.enqueue(get_thd_id(), Message::create_message(this, RFIN), GET_NODE_ID(query->partitions_touched[i]));
+void TxnManager::send_update_messages(){ 
+	#if MIGRATION_ALG == REMUS
+		msg_queue.enqueue(get_thd_id(), Message::create_message(this, SYNC), 1);
+		std::cout<<"send_update ";
+		return;
+	#elif MIGRATION_ALG == DETEST
+		for(uint64_t i = 0; i < ((YCSBQuery*)query)->requests.size(); i++) {
+			if(get_minipart_status(get_minipart_id(((YCSBQuery*)query)->requests[i]->key)) == 0) {
+				continue;
+    	} else{
+				msg_queue.enqueue(get_thd_id(), Message::create_message(this, SYNC), 1);
+				//std::cout<<"send_update ";
+				return;
+			}
 		}
-	}
+	#elif MIGRATION_ALG == DETEST_SPLIT
+		for(uint64_t i = 0; i < ((YCSBQuery*)query)->requests.size(); i++) {
+			if(get_row_status(((YCSBQuery*)query)->requests[i]->key) == 0) {
+				continue;
+    	} else{
+				msg_queue.enqueue(get_thd_id(), Message::create_message(this, SYNC), 1);
+				std::cout<<"send_update ";
+				return;
+			}
+		}
+	#endif
 }
 
 int TxnManager::received_response(RC rc) {
@@ -736,7 +809,8 @@ int TxnManager::received_response(RC rc) {
 
 bool TxnManager::waiting_for_response() { return rsp_cnt > 0; }
 
-bool TxnManager::is_multi_part() {
+bool TxnManager::is_multi_part() {//partition_touch是事务执行过程中访问的节点
+	//std::cout<<query->partitions_touched.size()<<' ';
 	return query->partitions_touched.size() > 1;
 	//return query->partitions.size() > 1;
 }
@@ -762,16 +836,17 @@ void TxnManager::commit_stats() {
 	}
 	*/
 
-
-	INC_STATS(get_thd_id(),txn_cnt,1);
-	INC_STATS(get_thd_id(),local_txn_commit_cnt,1);
-	INC_STATS(get_thd_id(), txn_run_time, timespan_long);
-	if(query->partitions_touched.size() > 1) {
-		INC_STATS(get_thd_id(),multi_part_txn_cnt,1);
-		INC_STATS(get_thd_id(),multi_part_txn_run_time,timespan_long);
-	} else {
-		INC_STATS(get_thd_id(),single_part_txn_cnt,1);
-		INC_STATS(get_thd_id(),single_part_txn_run_time,timespan_long);
+	if (IS_LOCAL(get_txn_id())){
+		INC_STATS(get_thd_id(),txn_cnt,1);
+		INC_STATS(get_thd_id(),local_txn_commit_cnt,1);
+		INC_STATS(get_thd_id(), txn_run_time, timespan_long);
+		if(query->partitions_touched.size() > 1) {
+			INC_STATS(get_thd_id(),multi_part_txn_cnt,1);
+			INC_STATS(get_thd_id(),multi_part_txn_run_time,timespan_long);
+		} else {
+			INC_STATS(get_thd_id(),single_part_txn_cnt,1);
+			INC_STATS(get_thd_id(),single_part_txn_run_time,timespan_long);
+		}
 	}
 	/*if(cflt) {
 		INC_STATS(get_thd_id(),cflt_cnt_txn,1);

@@ -182,6 +182,7 @@ int main(int argc, char *argv[]) {
 #endif
 	// spawn and run txns again.
 	starttime = get_server_clock();
+	g_starttime = starttime;
 	simulation->run_starttime = starttime;
 	simulation->last_da_query_time = starttime;
 	uint64_t id = 0;

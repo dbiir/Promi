@@ -67,13 +67,13 @@
 // Simulation + Hardware
 /***********************************************/
 #define NODE_CNT 2
-#define THREAD_CNT 16
+#define THREAD_CNT 32
 #define REM_THREAD_CNT 8
 #define SEND_THREAD_CNT 8
 #define MIG_THREAD_CNT 1
 #define CORE_CNT 2
 // PART_CNT should be at least NODE_CNT
-#define PART_CNT NODE_CNT * 1
+#define PART_CNT NODE_CNT * 2
 #define CLIENT_NODE_CNT 1
 #define CLIENT_THREAD_CNT 1
 #define CLIENT_REM_THREAD_CNT 2
@@ -99,13 +99,13 @@
 #define ROW_PER_NODE (SYNTH_TABLE_SIZE / PART_CNT / SPLIT_NODE_NUM)  //split场景下，每个node包含的row的数量
 
 //migartion_alg DETEST REMUS LOCK DETEST_SPLIT
-#define MIGRATION_ALG DETEST_SPLIT
+#define MIGRATION_ALG DETEST
 
 //DETEST Migration
 #define PART_SPLIT_CNT 4
 #define PART_HOT_CNT 2
 //Remus Migration
-#define SYNCTIME 1
+#define SYNCTIME 3
 
 //MIGRATION
 #define MIGRATION true
@@ -134,7 +134,7 @@
 #define TIME_ENABLE true
 
 #define FIN_BY_TIME true
-#define MAX_TXN_IN_FLIGHT 100000
+#define MAX_TXN_IN_FLIGHT 25000
 
 #define SERVER_GENERATE_QUERIES false
 
@@ -254,6 +254,11 @@
 #define QUERY_INTVL 1UL
 #define MAX_TXN_PER_PART 100000
 #define FIRST_PART_LOCAL false
+#define SINGLE_PART true
+#define SINGLE_PART_0 false //只发送分区0的事务 part_cnt = 2
+#define SINGLE_PART_012 true //只发送分区012的事务 part_cnt = 4
+#define SINGLE_PART_0124 false //只发送分区0124的事务，用于测试负载均衡，分区0开始在节点0,迁移后在节点1 part_cnt = 8
+#define SINGLE_PART_CONSOLIDATION false//合并分区，原来两个节点0和1，各有分区0和1，现在把分区0迁到节点1上 part_cnt = 2 
 #define MAX_TUPLE_SIZE        512 // in bytes
 #define GEN_BY_MPR false
 // ==== [YCSB] ====
@@ -272,7 +277,7 @@
 #define SCAN_LEN 20
 #define PART_PER_TXN 1
 #define PERC_MULTI_PART MPR
-#define REQ_PER_QUERY 10
+#define REQ_PER_QUERY 5
 #define FIELD_PER_TUPLE 10
 #define CREATE_TXN_FILE false
 #define STRICT_PPT 0
@@ -481,8 +486,8 @@ enum PPSTxnType {
 #define PROG_TIMER 10 * BILLION // in s
 #define BATCH_TIMER 0
 #define SEQ_BATCH_TIMER 5 * 1 * MILLION // ~5ms -- same as CALVIN paper
-#define DONE_TIMER 1 * 45 * BILLION // ~1 minutes  60 BILLION = 1 min
-#define WARMUP_TIMER 1 * 15 * BILLION // ~1 minutes
+#define DONE_TIMER 1 * 100 * BILLION // ~1 minutes  60 BILLION = 1 min
+#define WARMUP_TIMER 1 * 100 * BILLION // ~1 minutes
 
 #define SEED 0
 #define SHMEM_ENV false

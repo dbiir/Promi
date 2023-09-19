@@ -322,6 +322,8 @@ enum RemReqType {
     LOG_MSG_RSP,
     LOG_FLUSHED,
     CALVIN_ACK,
+    SYNC,
+    ACK_SYNC,
     SEND_MIGRATION,
     RECV_MIGRATION,
     FINISH_MIGRATION,
@@ -413,13 +415,19 @@ extern int cluster_num[DETEST_SPLIT]; //每一次order对应的row数量
 extern int Order[SPLIT_NODE_NUM];//迁移的顺序，先迁移哪一类
 void cluster_num_init();
 
-//detest状态，split push pull阶段
+//detest状态，0 1 2, 未开始 迁移中 迁移完毕
 extern int detest_status;
 void update_detest_status(int status);
 
 //remus状态,记录每个阶段路由事务导哪个节点
 extern int remus_status;
+//remus迁移成功的时间,源节点记录
+extern uint64_t remus_finish_time;
 void update_remus_status(int status);
+
+//detest_split状态0，1，2，3，4 0表示还没开始，1234表示了迁移了几类row了
+extern uint64_t migrate_label;
+void update_migrate_label(uint64_t status);
 
 //remus同步时间
 extern int synctime;
@@ -428,7 +436,7 @@ extern int synctime;
 
 #define GET_NODE_ID(id) (get_part_node_id(id))
 
-#define GET_NODE_ID_MINI(key) (get_node_id_mini(key)) //确定key所在的part或者minipart
+#define GET_NODE_ID_MINI(key) (get_node_id_mini(key)) //确定key所在的node
 /*
 #if (PART_TO_NODE == HASH_MODE) 
   #define GET_NODE_ID(id)	(id % g_node_cnt)

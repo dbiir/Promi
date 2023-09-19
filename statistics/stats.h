@@ -70,7 +70,8 @@ public:
   double single_part_txn_run_time;
   uint64_t txn_write_cnt;
   uint64_t record_write_cnt;
-  int throughput[100];
+  uint64_t throughput[250];
+  uint64_t tps[THREAD_CNT];
 
   // Transaction stats
   double txn_total_process_time;
@@ -83,6 +84,7 @@ public:
   double txn_twopc_time;
 
   // Client
+  uint64_t txn_sent[100];
   uint64_t txn_sent_cnt;
   double cl_send_intv;
 

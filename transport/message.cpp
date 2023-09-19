@@ -168,6 +168,12 @@ Message * Message::create_message(RemReqType rtype) {
     case RACK_FIN:
       msg = new AckMessage;
       break;
+    case SYNC:
+      msg = new SyncMessage;
+      break;
+    case ACK_SYNC:
+      msg = new AckSyncMessage;
+      break;
     case SEND_MIGRATION:
       msg = new MigrationMessage;
       break;
@@ -514,6 +520,18 @@ void Message::release_message(Message * msg) {
     }
     case SET_ROWMAP:{
       SetRowMapMessage * m_msg = (SetRowMapMessage*) msg;
+      m_msg->release();
+      delete m_msg;
+      break;
+    }
+    case SYNC:{
+      SyncMessage * m_msg = (SyncMessage*) msg;
+      m_msg->release();
+      delete m_msg;
+      break;
+    }
+    case ACK_SYNC:{
+      AckSyncMessage * m_msg = (AckSyncMessage*) msg;
       m_msg->release();
       delete m_msg;
       break;
@@ -1617,6 +1635,10 @@ void YCSBQueryMessage::copy_from_buf(char * buf) {
     DEBUG_M("YCSBQueryMessage::copy ycsb_request alloc\n");
     ycsb_request * req = (ycsb_request*)mem_allocator.alloc(sizeof(ycsb_request));
     COPY_VAL(*req,buf,ptr);
+    if (req->key > g_synth_table_size){
+      std::cout<<"req->key is "<<req->key<<' '<<i<<endl;
+      std::cout<<"rtype is "<<this->get_rtype()<<endl;
+    }
     ASSERT(req->key < g_synth_table_size);
     requests.add(req);
   }
@@ -2103,11 +2125,68 @@ uint64_t DAQueryMessage::get_size() {
 }
 void DAQueryMessage::release() { QueryMessage::release(); }
 
+uint64_t SyncMessage::get_size(){
+  uint64_t size;
+  size = Message::mget_size();
+  size += 2 * sizeof(uint64_t);
+  return size;
+}
+
+void SyncMessage::copy_from_buf(char* buf){
+  Message::mcopy_from_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_VAL(part_id,buf,ptr);
+  COPY_VAL(key,buf,ptr);
+}
+
+void SyncMessage::copy_to_buf(char* buf){
+  Message::mcopy_to_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_BUF(buf,part_id,ptr);
+  COPY_BUF(buf,key,ptr);
+}
+
+void SyncMessage::copy_from_txn(TxnManager* txn){}
+
+void SyncMessage::copy_to_txn(TxnManager* txn){}
+
+void SyncMessage::init(){}
+
+void SyncMessage::release(){}
+
+uint64_t AckSyncMessage::get_size(){
+  uint64_t size;
+  size = Message::mget_size();
+  size += 2 * sizeof(uint64_t);
+  return size;
+}
+
+void AckSyncMessage::copy_from_buf(char* buf){
+  Message::mcopy_from_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_VAL(part_id,buf,ptr);
+  COPY_VAL(key,buf,ptr);
+}
+
+void AckSyncMessage::copy_to_buf(char* buf){
+  Message::mcopy_to_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_BUF(buf,part_id,ptr);
+  COPY_BUF(buf,key,ptr);
+}
+
+void AckSyncMessage::copy_from_txn(TxnManager* txn){}
+
+void AckSyncMessage::copy_to_txn(TxnManager* txn){}
+
+void AckSyncMessage::init(){}
+
+void AckSyncMessage::release(){}
+
 
 uint64_t MigrationMessage::get_size(){
   uint64_t size = Message::mget_size();
-  size += sizeof(uint64_t)*7;
-  size += sizeof(int64_t);
+  size += sizeof(uint64_t)*8;
   size += sizeof(bool)*2;
   if (isdata){
     //size += sizeof(row_t) * data.size();
