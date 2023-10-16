@@ -153,6 +153,7 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
         update_row_map_status_order(msg->order,1);
     #elif (MIGRATION_ALG == REMUS)
         update_remus_status(1);
+        update_part_map_status(msg->part_id, 1);
     #endif
     
     
@@ -646,15 +647,23 @@ RC MigrateThread::process_finish_migration(MigrationMessage* msg){
         //sleep(SYNCTIME);  
         remus_finish_time = get_sys_clock();
         //update_part_map(msg->part_id, msg->node_id_des);
-        update_part_map_status(msg->part_id, 2);//migrated
+        update_part_map_status(msg->part_id, 2);//copied
         update_remus_status(2);
         msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 2),g_node_cnt); //g_node_cnt对应着client节点,发消息通知client修改remus状态
         msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 2),msg->node_id_des);
-        update_remus_status(2);
         msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_REMUS, msg->part_id, 2),g_node_cnt);
         msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_REMUS, msg->part_id, 2),msg->node_id_des);
         std::cout<<"remus status is "<<remus_status<<"Time is: "<<(get_sys_clock() - g_starttime) / BILLION <<endl;
-        
+
+        sleep(SYNCTIME); //for remus stage2
+
+        update_remus_status(3);
+        update_part_map_status(msg->part_id, 3);
+        msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 3),g_node_cnt); //g_node_cnt对应着client节点,发消息通知client修改remus状态
+        msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 3),msg->node_id_des);
+        msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_REMUS, msg->part_id, 3),g_node_cnt);
+        msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_REMUS, msg->part_id, 3),msg->node_id_des);
+        std::cout<<"remus status is "<<remus_status<<"Time is: "<<(get_sys_clock() - g_starttime) / BILLION <<endl;
         std::cout<<"part is "<<msg->part_id<<endl<<"node_id_src is "<<msg->node_id_src<<endl<<"node_id_des is "<<msg->node_id_des<<endl;
     #elif (MIGRATION_ALG == DETEST_SPLIT)
         update_row_map_order(msg->order, msg->node_id_des);
@@ -676,13 +685,6 @@ RC MigrateThread::process_finish_migration(MigrationMessage* msg){
         update_part_map_status(msg->part_id, 2);
         msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 2),g_node_cnt);
         msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 2),msg->node_id_des);
-    #endif
-    #if (MIGRATION_ALG == REMUS)
-        //sleep(SYNCTIME);
-        update_remus_status(3);
-        std::cout<<"Finish Sync"<<endl;
-        msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_REMUS, g_node_cnt, 3),g_node_cnt); //g_node_cnt对应着client节点,发消息通知client修改remus状态
-        msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_REMUS, msg->node_id_des, 3),g_node_cnt);
     #endif
     double migration_time = get_sys_clock() - start_time;
     std::cout<<"M Time:"<<migration_time / BILLION <<endl;

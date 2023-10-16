@@ -198,13 +198,12 @@ RC YCSBTxnManager::run_txn_state() {
   
   #if MIGRATION
   #if MIGRATION_ALG == REMUS
-  /*
-    if ((this->get_txn_id() % g_node_cnt)==0 &&  loc == false && get_part_status(part_id) != 0 && part_id == 0 && this->txn_stats.starttime < remus_finish_time){ 
-      //要访问的数据被迁移走了，但是事务是在迁移开始前就开始了，继续保持在本地执行
+    //part_map修改了，只有那些本地生成的事务，访问的mini分区刚好迁移完了，继续保持本地执行
+    if (g_node_id == MIGRATION_SRC_NODE && IS_LOCAL(txn->txn_id) && loc == false && part_id == MIGRATION_PART && get_part_status(key_to_part(req->key)) == 2){
       loc = true;
-      std::cout<<"keep local remus"<<' ';
+      //std::cout<<"keep local remus"<<' ';
     }
-  */ 
+  
   #elif MIGRATION_ALG == DETEST
     //part_map修改了，只有那些本地生成的事务，访问的mini分区刚好迁移完了，继续保持本地执行
     if (g_node_id == MIGRATION_SRC_NODE && IS_LOCAL(txn->txn_id) && loc == false && part_id == MIGRATION_PART && get_minipart_status(get_minipart_id(req->key)) == 2){

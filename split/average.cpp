@@ -2,7 +2,7 @@
 
 using namespace std;
 
-#define N 149
+#define N 99
 
 int main(){
   int a[N],b[N];

@@ -658,20 +658,42 @@ RC TxnManager::start_commit() {
 			#if (MIGRATION_ALG == REMUS)
 				if (remus_status == 1 || remus_status == 2){
 					if (g_node_id == MIGRATION_SRC_NODE) {
-						//只要访问了迁移分区，就要看看要不要sycndata
+						//只要访问了迁移分区，就要sycndata
 						for(uint64_t i = 0; i < ((YCSBQuery*)query)->requests.size(); i++) {
 							if(key_to_part(((YCSBQuery*)query)->requests[i]->key) == MIGRATION_PART) {
 								send_update_messages(); 
 								rc = WAIT_REM;
-								break;
+								return rc;
 							}
 						}
+						rc = commit();
+    				uint64_t warmuptime1 = get_sys_clock() - g_starttime;
+    				INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1); 
 					}
 					else {
 						//std::cout<<"return ";
 						rc = commit();
     				uint64_t warmuptime1 = get_sys_clock() - g_starttime;
     				INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1); //throughput只在本来的节点统计
+					}
+				}
+				else if (remus_status == 3){
+					if (g_node_id == MIGRATION_SRC_NODE){ //remus stage3切主回滚源节点
+						for(uint64_t i = 0; i < ((YCSBQuery*)query)->requests.size(); i++) {
+							if(key_to_part(((YCSBQuery*)query)->requests[i]->key) == MIGRATION_PART) {
+								abort();
+								rc = Abort;
+								return rc;
+							}
+						}
+						rc = commit();
+    				uint64_t warmuptime1 = get_sys_clock() - g_starttime;
+    				INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1); 
+					}
+					else{
+						rc = commit();
+    				uint64_t warmuptime1 = get_sys_clock() - g_starttime;
+    				INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1); 
 					}
 				}
 				else{
