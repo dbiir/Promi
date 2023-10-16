@@ -723,7 +723,11 @@ RC WorkerThread::process_rqry(Message * msg) {
   //闲着没事干写这个，注释掉
 #if ONE_NODE_RECIEVE == 1 && defined(NO_REMOTE) && LESS_DIS_NUM == 10
 #else
-  if (IS_LOCAL(msg->get_txn_id())) return Abort;//RQRY消息发之后GET_NODE变了
+  if (IS_LOCAL(msg->get_txn_id())) { //RQRY消息发之后GET_NODE变了
+    std::cout<<"abort "; 
+    this->txn_man->abort();
+    return Abort;
+  }
   M_ASSERT_V(!IS_LOCAL(msg->get_txn_id()), "RQRY local: %ld %ld/%d\n", msg->get_txn_id(),
              msg->get_txn_id() % g_node_cnt, g_node_id);
   assert(!IS_LOCAL(msg->get_txn_id()));
@@ -1093,7 +1097,7 @@ bool WorkerThread::is_mine(Message* msg) {  //TODO:have some problems!
 RC WorkerThread::process_sync_migration(Message* msg){
   RC rc = RCOK;
   //txn_man = txn_table.get_transaction_manager(get_thd_id(),msg->txn_id,0);
-  msg_queue.enqueue(get_thd_id(),Message::create_message(msg->txn_id, ACK_SYNC),0);//默认给源节点
+  msg_queue.enqueue(get_thd_id(),Message::create_message(msg->get_txn_id(), ACK_SYNC),MIGRATION_SRC_NODE);//默认给源节点
   //std::cout<<"SYNC ";
   return rc;
 }
@@ -1104,7 +1108,7 @@ RC WorkerThread::process_ack_sync_migration(Message* msg){
   uint64_t warmuptime1 = get_sys_clock() - g_starttime;
   INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1);
   commit(); 
-  //std::cout<<"ACK ";
+  //std::cout<<"ACK sync";
   return rc;
 }
 

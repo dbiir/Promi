@@ -656,13 +656,19 @@ RC TxnManager::start_commit() {
 		if(rc == RCOK){
 			#if MIGRATION
 			#if (MIGRATION_ALG == REMUS)
-				if (remus_status == 1 || remus_status == 2 || remus_status == 3){
-					if (g_node_id == 0) {
-						send_update_messages();
-						rc = WAIT_REM;
+				if (remus_status == 1 || remus_status == 2){
+					if (g_node_id == MIGRATION_SRC_NODE) {
+						//只要访问了迁移分区，就要看看要不要sycndata
+						for(uint64_t i = 0; i < ((YCSBQuery*)query)->requests.size(); i++) {
+							if(key_to_part(((YCSBQuery*)query)->requests[i]->key) == MIGRATION_PART) {
+								send_update_messages(); 
+								rc = WAIT_REM;
+								break;
+							}
+						}
 					}
 					else {
-						std::cout<<"return ";
+						//std::cout<<"return ";
 						rc = commit();
     				uint64_t warmuptime1 = get_sys_clock() - g_starttime;
     				INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1); //throughput只在本来的节点统计
@@ -674,10 +680,21 @@ RC TxnManager::start_commit() {
     			INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1); 
 				}
 			#elif (MIGRATION_ALG == DETEST)
-				if (detest_status == 1 || detest_status == 2){
-					if (g_node_id == 0) {
-						send_update_messages();
-						rc = WAIT_REM;
+				if (detest_status == 1){
+					if (g_node_id == MIGRATION_SRC_NODE) {
+						//如果访问了迁移分区，就要进一步判断访问的mini分区
+						for(uint64_t i = 0; i < ((YCSBQuery*)query)->requests.size(); i++) {
+							if(key_to_part(((YCSBQuery*)query)->requests[i]->key) == MIGRATION_PART) { //如果访问的mini分区status=1正在迁移中，就需要syncdata
+								if (get_minipart_status(get_minipart_id(((YCSBQuery*)query)->requests[i]->key)) == 1){
+									send_update_messages(); 
+									rc = WAIT_REM;
+									return rc;
+								}
+							}
+						}
+						rc = commit();
+						uint64_t warmuptime1 = get_sys_clock() - g_starttime;
+    				INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1); 
 					}
 					else {
 						//std::cout<<"return ";
@@ -767,6 +784,7 @@ void TxnManager::send_finish_messages() {
 	}
 }
 
+/*fix 改成值负责发送消息
 void TxnManager::send_update_messages(){ 
 	#if MIGRATION_ALG == REMUS
 		msg_queue.enqueue(get_thd_id(), Message::create_message(this, SYNC), 1);
@@ -793,6 +811,12 @@ void TxnManager::send_update_messages(){
 			}
 		}
 	#endif
+}
+*/
+
+void TxnManager::send_update_messages(){
+	msg_queue.enqueue(get_thd_id(), Message::create_message(this, SYNC), MIGRATION_DES_NODE); //
+	return;
 }
 
 int TxnManager::received_response(RC rc) {

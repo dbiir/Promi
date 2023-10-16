@@ -531,9 +531,9 @@ public:
   uint64_t minipart_id;
   uint64_t key_start,key_end;
   uint64_t order;//记录detest_split的第几次迁移
-  uint64_t data_size;
+  uint64_t data_size;//row data的数量
   bool isdata;//数据是否传入
-  bool islast;//子分区是否传输完毕
+  bool islast;//是否是分片的最后一个迁移消息
   vector<row_t> data;
   vector<string> row_data;//row_t的真正信息保存在char[]中
 

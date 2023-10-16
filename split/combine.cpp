@@ -2,7 +2,7 @@
 
 using namespace std;
 
-#define M 98
+#define M 99
 
 int main(){
   int a[M],b[M];

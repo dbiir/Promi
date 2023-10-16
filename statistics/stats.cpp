@@ -176,7 +176,7 @@ void Stats_thd::clear() {
   txn_twopc_time=0;
 
   // Client
-  for (uint64_t i=0;i<100;i++) txn_sent[i] = 0;
+  for (uint64_t i=0;i<TPS_LENGTH+30;i++) txn_sent[i] = 0;
   txn_sent_cnt=0;
   cl_send_intv=0;
 
@@ -532,10 +532,30 @@ void Stats_thd::print_client(FILE * outf, bool prog) {
             (double)client_client_latency.get_percentile(99) / BILLION,
             (double)client_client_latency.get_idx(client_client_latency.cnt - 1) / BILLION);
   }
-  for (uint64_t i=0;i<100;i++) {
-    fprintf(outf,"%ld\n",txn_sent[i]);
+
+  // 文件路径
+  string filePath = "tpsclient.txt";
+
+  // 打开文件以进行写入，如果文件不存在则创建，如果存在则截断文件
+  std::ofstream outFile(filePath, std::ios::out | std::ios::trunc);
+
+  // 检查文件是否成功打开
+  if (!outFile.is_open()) {
+    std::cerr << "Error opening file: " << filePath << std::endl;
   }
 
+  for (size_t i=0;i<TPS_LENGTH+30;i++){
+    //fprintf(outf,"%ld\n",throughput[i]);
+    //if (i == (g_warmup_timer/BILLION)) std::cout<<"*****"<<endl;
+    if (i > (g_warmup_timer/BILLION)) outFile<<txn_sent[i]<<endl;
+  }
+  // 关闭文件
+  outFile.close();
+  /*
+  for (uint64_t i=0;i<TPS_LENGTH+30;i++) {
+    fprintf(outf,"%ld\n",txn_sent[i]);
+  }
+  */
 
   //client_client_latency.print(outf);
 }
@@ -595,10 +615,26 @@ void Stats_thd::print(FILE * outf, bool prog) {
   fprintf(outf, "G_starttime: %ld\n", g_starttime/ BILLION);
   fprintf(outf, "Migration start:%ld\n", (g_mig_starttime - g_starttime) / BILLION);
   fprintf(outf, "Migration end:%ld\n", (g_mig_endtime - g_starttime) / BILLION);
-  for (size_t i=0;i<250;i++){
-    fprintf(outf,"%ld\n",throughput[i]);
-    if (i == (g_warmup_timer/BILLION)) std::cout<<"*****"<<endl;
+  
+  // 文件路径
+  string filePath = "tps" + to_string(g_node_id) + ".txt";
+
+  // 打开文件以进行写入，如果文件不存在则创建，如果存在则截断文件
+  std::ofstream outFile(filePath, std::ios::out | std::ios::trunc);
+
+  // 检查文件是否成功打开
+  if (!outFile.is_open()) {
+    std::cerr << "Error opening file: " << filePath << std::endl;
   }
+
+  for (size_t i=0;i<TPS_LENGTH;i++){
+    //fprintf(outf,"%ld\n",throughput[i]);
+    //if (i == (g_warmup_timer/BILLION)) std::cout<<"*****"<<endl;
+    if (i > (g_warmup_timer/BILLION)) outFile<<throughput[i]<<endl;
+  }
+  // 关闭文件
+  outFile.close();
+
   std::cout<<endl;
   for (size_t i=0;i<g_thread_cnt;i++){
     fprintf(outf,"%ld\n",tps[i]);
@@ -1377,7 +1413,7 @@ void Stats_thd::combine(Stats_thd * stats) {
   txn_write_cnt+=stats->txn_write_cnt;
   record_write_cnt+=stats->record_write_cnt;
   parts_touched+=stats->parts_touched;
-  for (int i=0;i<250;i++) throughput[i]+=stats->throughput[i];
+  for (uint i=0;i<TPS_LENGTH;i++) throughput[i]+=stats->throughput[i];
   for (uint32_t i=0;i<g_thread_cnt;i++) tps[i]+=stats->tps[i];
 
   // Breakdown
@@ -1464,7 +1500,7 @@ void Stats_thd::combine(Stats_thd * stats) {
   // Client
   txn_sent_cnt+=stats->txn_sent_cnt;
   cl_send_intv+=stats->cl_send_intv;
-  for (uint64_t i=0;i<100;i++) txn_sent[i] += stats->txn_sent[i];
+  for (uint64_t i=0;i<TPS_LENGTH+30;i++) txn_sent[i] += stats->txn_sent[i];
 
   // Abort queue
   abort_queue_enqueue_cnt+=stats->abort_queue_enqueue_cnt;

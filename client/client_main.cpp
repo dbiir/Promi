@@ -49,6 +49,10 @@ void parser(int argc, char * argv[]);
 int main(int argc, char *argv[]) {
     printf("Running client...\n\n");
 	// 0. initialize global data structure
+	//inflight设置
+	node_inflight_max[0] = 3 * MAX_TXN_IN_PART;
+	node_inflight_max[1] = 1 * MAX_TXN_IN_PART;
+
 	part_map_init();
 	minipart_map_init();
 	#if (MIGRATION_ALG == DETEST_SPLIT)
@@ -176,8 +180,9 @@ int main(int argc, char *argv[]) {
 	warmup_done = true;
 	pthread_barrier_init( &warmup_bar, NULL, all_thd_cnt);
 
-	uint64_t cpu_cnt = 0;
+	
 #if SET_AFFINITY
+	uint64_t cpu_cnt = 0;
 	cpu_set_t cpus;
 #endif
 	// spawn and run txns again.

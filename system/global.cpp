@@ -132,6 +132,8 @@ int32_t g_load_per_server = LOAD_PER_SERVER;
 
 bool g_hw_migrate = HW_MIGRATE;
 
+int node_inflight_max[NODE_CNT]; 
+
 bool g_migrate_flag = MIGRATION;
 uint64_t g_mig_starttime;
 uint64_t g_mig_endtime;
@@ -277,7 +279,7 @@ map<string, string> g_params;
 
 uint64_t get_node_id_mini(uint64_t key){
   #if MIGRATION_ALG == DETEST
-    if (key_to_part(key) != 0) return GET_NODE_ID(key_to_part(key));
+    if (key_to_part(key) != MIGRATION_PART) return GET_NODE_ID(key_to_part(key));
     else {
       return get_minipart_node_id(get_minipart_id(key));
     }
@@ -433,12 +435,12 @@ void cluster_num_init(){
   }
 }
 
-int detest_status;
-void update_detest_status(int status){//0:init 1:push 2:pull
+int detest_status;  //0未开始 1开始 2结束
+void update_detest_status(int status){
   detest_status = status;
 }
 
-int remus_status; //0:发送快照 1:同步副本 2:模式切换 3:双边执行
+int remus_status; //0:未开始 1:发送副本 2:模式切换 3:双边执行
 void update_remus_status(int status){
   remus_status = status;
 }

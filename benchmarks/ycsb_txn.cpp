@@ -109,9 +109,6 @@ RC YCSBTxnManager::run_txn() {
   txn_stats.process_time_short += curr_time - starttime;
   txn_stats.wait_starttime = get_sys_clock();
 
-  //只允许本地节点提交，有病吧注释掉
-  //对不起是我有病
-  
   if(IS_LOCAL(get_txn_id())) {
     if(is_done() && rc == RCOK)
       rc = start_commit();
@@ -209,9 +206,10 @@ RC YCSBTxnManager::run_txn_state() {
     }
   */ 
   #elif MIGRATION_ALG == DETEST
-    if (this->get_txn_id() % g_node_cnt == 0 && loc == false && part_id == 0 && get_minipart_status(get_minipart_id(req->key)) != 0){
+    //part_map修改了，只有那些本地生成的事务，访问的mini分区刚好迁移完了，继续保持本地执行
+    if (g_node_id == MIGRATION_SRC_NODE && IS_LOCAL(txn->txn_id) && loc == false && part_id == MIGRATION_PART && get_minipart_status(get_minipart_id(req->key)) == 2){
       loc = true;
-      std::cout<<"keep local detest"<<' ';
+      //std::cout<<"keep local detest"<<' ';
     }
   #elif MIGRATION_ALG == DETEST_SPLIT
     if (this->get_txn_id() % g_node_cnt == 0 && loc == false && part_id == 0 && get_minipart_status(get_minipart_id(req->key)) != 0 && this->txn_stats.starttime < remus_finish_time){

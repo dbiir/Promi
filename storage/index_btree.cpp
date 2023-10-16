@@ -133,7 +133,6 @@ RC index_btree::index_read(idx_key_t key, itemid_t *&item, int part_id, int thd_
 		std::cout<<"part "<<i<<" node is "<<GET_NODE_ID(i)<<endl;
 	}
 	*/
-	return RCOK;
 	M_ASSERT(false, "the key does not exist!");
 	return rc;
 }

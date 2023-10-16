@@ -124,11 +124,14 @@ RC InputThread::client_recv_loop() {
 						break;
 					}
 					case SET_PARTMAP:{
-						sleep(SYNCTIME);
+						//sleep(SYNCTIME);
 						update_part_map(((SetPartMapMessage*)msg)->part_id, ((SetPartMapMessage*)msg)->node_id);
+						//node_inflight_max[0] = 2 * MAX_TXN_IN_PART; //part迁移完成，修改inflght
+						//node_inflight_max[1] = 2 * MAX_TXN_IN_PART;
 						//std::cout<<"Time is"<<(get_sys_clock()-g_starttime)/BILLION<<endl;
 						std::cout<<"!!!!!!!!!!!partition 0 is on node "<<GET_NODE_ID(0)<<endl;
 						std::cout<<"!!!!!!!!!!!partition 1 is on node "<<GET_NODE_ID(1)<<endl;
+						std::cout<<"Time is "<<(get_sys_clock() - run_starttime) / BILLION<<endl;
 						//std::cout<<"!!!!!!!!!!!partition 2 is on node "<<GET_NODE_ID(2)<<endl;
 						//std::cout<<"!!!!!!!!!!!partition 3 is on node "<<GET_NODE_ID(3)<<endl;
 						break;
@@ -143,7 +146,12 @@ RC InputThread::client_recv_loop() {
 					case SET_MINIPARTMAP:{
 						update_minipart_map(((SetMiniPartMapMessage*)msg)->minipart_id, ((SetMiniPartMapMessage*)msg)->node_id);
 						update_minipart_map_status(((SetMiniPartMapMessage*)msg)->minipart_id, ((SetMiniPartMapMessage*)msg)->status);
+
+						//minipart迁移完成，修改inflght
+						//node_inflight_max[0] = 2 * MAX_TXN_IN_PART + MAX_TXN_IN_PART * (((SetMiniPartMapMessage*)msg)->minipart_id+1) / DETEST_SPLIT; 
+						//node_inflight_max[1] = 2 * MAX_TXN_IN_PART - MAX_TXN_IN_PART * (((SetMiniPartMapMessage*)msg)->minipart_id+1) / DETEST_SPLIT;
 						std::cout<<"minipart "<<((SetMiniPartMapMessage*)msg)->minipart_id<<" is on node "<<get_minipart_node_id(((SetMiniPartMapMessage*)msg)->minipart_id)<<endl;
+						std::cout<<"Time is "<<(get_sys_clock() - run_starttime) / BILLION<<endl;
 						/*
 						if (((SetMiniPartMapMessage*)msg)->minipart_id < PART_SPLIT_CNT-1){//发送其他的minipart的迁移消息
 							Message * msg1 = Message::create_message(SEND_MIGRATION);

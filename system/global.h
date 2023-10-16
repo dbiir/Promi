@@ -376,6 +376,8 @@ enum TsType {R_REQ = 0, W_REQ, P_REQ, XP_REQ};
 //queue<DAQuery> query_build_queue;
 uint64_t get_node_id_mini(uint64_t key);
 
+extern int node_inflight_max[NODE_CNT]; //每个节点的inflight数量，根据节点part数量确定
+
 extern bool g_migrate_flag;
 extern uint64_t g_mig_starttime;
 extern uint64_t g_mig_endtime;

@@ -342,6 +342,7 @@ BaseQuery * YCSBQueryGenerator::gen_requests_zipf(uint64_t home_partition_id, Wo
 		else if (SINGLE_PART){
 			#if SINGLE_PART_0
 				partition_id = 0;
+				part = partition_id;
 			#elif SINGLE_PART_012
 				if (rid == 0){
 					if (home_partition_id == 0){

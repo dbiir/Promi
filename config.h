@@ -73,7 +73,7 @@
 #define MIG_THREAD_CNT 1
 #define CORE_CNT 2
 // PART_CNT should be at least NODE_CNT
-#define PART_CNT NODE_CNT * 2
+#define PART_CNT NODE_CNT * 1
 #define CLIENT_NODE_CNT 1
 #define CLIENT_THREAD_CNT 1
 #define CLIENT_REM_THREAD_CNT 2
@@ -98,8 +98,14 @@
 #define SPLIT_NODE_NUM 300 //split场景下，训练图的节点的数量
 #define ROW_PER_NODE (SYNTH_TABLE_SIZE / PART_CNT / SPLIT_NODE_NUM)  //split场景下，每个node包含的row的数量
 
+//which partition to be migrated
+#define MIGRATION_PART 0
+//migration source && des node
+#define MIGRATION_SRC_NODE (MIGRATION_PART % NODE_CNT)
+#define MIGRATION_DES_NODE 1 
+
 //migartion_alg DETEST REMUS LOCK DETEST_SPLIT
-#define MIGRATION_ALG DETEST
+#define MIGRATION_ALG  DETEST
 
 //DETEST Migration
 #define PART_SPLIT_CNT 4
@@ -134,7 +140,8 @@
 #define TIME_ENABLE true
 
 #define FIN_BY_TIME true
-#define MAX_TXN_IN_FLIGHT 25000
+#define MAX_TXN_IN_FLIGHT 50000
+#define MAX_TXN_IN_PART 10000
 
 #define SERVER_GENERATE_QUERIES false
 
@@ -173,12 +180,15 @@
 #define NETWORK_TEST false
 #define NETWORK_DELAY_TEST false
 #define NETWORK_DELAY 0UL
+#define TCP_DELAY_TEST true
+#define TCP_DELAY 500000000UL // in ns = 100ms
 
 #define MAX_QUEUE_LEN NODE_CNT
 
 #define PRIORITY_WORK_QUEUE false
 #define PRIORITY PRIORITY_ACTIVE
-#define MSG_SIZE_MAX 134217728
+#define MSG_SIZE_MAX 1048576
+#define MSG_CHUNK_SIZE 524288 //if msg > MSG_CHUNK_SIZE, SPLIT and SEND
 #define MSG_TIME_LIMIT 0
 
 #define SIM_FULL_ROW true
@@ -250,16 +260,16 @@
 // Benchmark
 /***********************************************/
 // max number of rows touched per transaction
-#define MAX_ROW_PER_TXN 65536
+#define MAX_ROW_PER_TXN SYNTH_TABLE_SIZE
 #define QUERY_INTVL 1UL
-#define MAX_TXN_PER_PART 100000
+#define MAX_TXN_PER_PART 200000
 #define FIRST_PART_LOCAL false
 #define SINGLE_PART true
-#define SINGLE_PART_0 false //只发送分区0的事务 part_cnt = 2
-#define SINGLE_PART_012 true //只发送分区012的事务 part_cnt = 4
+#define SINGLE_PART_0 true //只发送分区0的事务 part_cnt = 2
+#define SINGLE_PART_012 false //只发送分区012的事务 part_cnt = 4
 #define SINGLE_PART_0124 false //只发送分区0124的事务，用于测试负载均衡，分区0开始在节点0,迁移后在节点1 part_cnt = 8
 #define SINGLE_PART_CONSOLIDATION false//合并分区，原来两个节点0和1，各有分区0和1，现在把分区0迁到节点1上 part_cnt = 2 
-#define MAX_TUPLE_SIZE        512 // in bytes
+#define MAX_TUPLE_SIZE        256 // in bytes
 #define GEN_BY_MPR false
 // ==== [YCSB] ====
 // SKEW_METHOD:
@@ -269,10 +279,10 @@
 #define DATA_PERC (SYNTH_TABLE_SIZE / 64)
 #define ACCESS_PERC 0.3
 #define INIT_PARALLELISM (PART_CNT / NODE_CNT)
-#define SYNTH_TABLE_SIZE 65536
+#define SYNTH_TABLE_SIZE 16777216 / 16
 #define ZIPF_THETA 0.6
-#define TXN_WRITE_PERC 0.7
-#define TUP_WRITE_PERC 0.5
+#define TXN_WRITE_PERC 0.1
+#define TUP_WRITE_PERC 0.1
 #define SCAN_PERC 0
 #define SCAN_LEN 20
 #define PART_PER_TXN 1
@@ -485,6 +495,8 @@ enum PPSTxnType {
 #define STAT_ARR_SIZE 1024
 #define PROG_TIMER 10 * BILLION // in s
 #define BATCH_TIMER 0
+#define START_MIG 120 // migration start time(second)
+#define TPS_LENGTH (DONE_TIMER+WARMUP_TIMER) / BILLION //length of throughut array
 #define SEQ_BATCH_TIMER 5 * 1 * MILLION // ~5ms -- same as CALVIN paper
 #define DONE_TIMER 1 * 100 * BILLION // ~1 minutes  60 BILLION = 1 min
 #define WARMUP_TIMER 1 * 100 * BILLION // ~1 minutes

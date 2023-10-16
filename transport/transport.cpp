@@ -256,6 +256,18 @@ void Transport::send_msg(uint64_t send_thread_id, uint64_t dest_node_id, void * 
   uint64_t starttime = get_sys_clock();
 
   Socket * socket = send_sockets.find(std::make_pair(dest_node_id,send_thread_id))->second;
+
+  #if TCP_DELAY_TEST
+    //sleep(0.5);
+    
+    /*
+    while ((timenow - timestart) / MILLION < TCP_DELAY / MILLION){ //ms
+      timenow = get_sys_clock();
+    }
+    */
+    
+  #endif
+
   // Copy messages to nanomsg buffer
 	void * buf = nn_allocmsg(size,0);
 	memcpy(buf,sbuf,size);
@@ -326,8 +338,7 @@ std::vector<Message*> * Transport::recv_msg(uint64_t thd_id) {
   msgs = Message::create_messages((char*)buf);
   DEBUG("Batch of %d bytes recv from node %ld; Time: %f\n", bytes, msgs->front()->return_node_id,
         simulation->seconds_from_start(get_sys_clock()));
-  if (msgs->front()->rtype == RECV_MIGRATION) printf("Batch of %d bytes recv from node %ld; Time: %f\n", bytes, msgs->front()->return_node_id,
-        simulation->seconds_from_start(get_sys_clock()));
+  //if (msgs->front()->rtype == RECV_MIGRATION) printf("Batch of %d bytes recv from node %ld; Time: %f\n", bytes, msgs->front()->return_node_id, simulation->seconds_from_start(get_sys_clock()));
 
 	nn::freemsg(buf);
 

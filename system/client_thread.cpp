@@ -57,14 +57,14 @@ RC ClientThread::run() {
 	run_starttime = get_sys_clock();
 	#if MIGRATION
 		bool ismigrate=false;
-		uint64_t node_id_src=0, node_id_des=1;
-		uint64_t part_id = 0;
+		uint64_t node_id_src = MIGRATION_SRC_NODE, node_id_des = MIGRATION_DES_NODE;
+		uint64_t part_id = MIGRATION_PART;
 	#endif
 	while(!simulation->is_done()) {
 		heartbeat();
 		#if MIGRATION
 			#if MIGRATION_ALG == DETEST
-				if (!ismigrate && (get_thd_id() == 0) && ((get_sys_clock() - run_starttime) / BILLION == 150)){
+				if (!ismigrate && (get_thd_id() == 0) && ((get_sys_clock() - run_starttime) / BILLION  == START_MIG)){
 				ismigrate = true;
 				Message * msg = Message::create_message(SEND_MIGRATION);
 				((MigrationMessage*)msg)->node_id_src = node_id_src;
@@ -75,7 +75,7 @@ RC ClientThread::run() {
 				((MigrationMessage*)msg)->data_size = g_synth_table_size / g_part_cnt / PART_SPLIT_CNT;
 				((MigrationMessage*)msg)->return_node_id = node_id_des;
 				((MigrationMessage*)msg)->isdata = false;
-				((MigrationMessage*)msg)->key_start = 0;
+				((MigrationMessage*)msg)->key_start = MIGRATION_PART;
 				std::cout<<"msg size is:"<<msg->get_size()<<endl;
 				std::cout<<"begin migration!"<<endl;
 				std::cout<<"Time is "<<(get_sys_clock() - run_starttime) / BILLION<<endl;
@@ -83,7 +83,7 @@ RC ClientThread::run() {
 				continue;
 				}
 			#elif (MIGRATION_ALG == DETEST_SPLIT)
-				if (!ismigrate && (get_thd_id() == 0) && ((get_sys_clock() - run_starttime) / BILLION == 30)){
+				if (!ismigrate && (get_thd_id() == 0) && ((get_sys_clock() - run_starttime) / BILLION == START_MIG)){
 					ismigrate = true;
 					Message * msg = Message::create_message(SEND_MIGRATION);
 					((MigrationMessage*)msg)->node_id_src = node_id_src;
@@ -101,8 +101,9 @@ RC ClientThread::run() {
 					continue;
 				}
 			#elif MIGRATION_ALG == REMUS
-			if (!ismigrate && (get_thd_id() == 0) && ((get_sys_clock() - run_starttime) / BILLION == 150)){
+			if (!ismigrate && (get_thd_id() == 0) && ((get_sys_clock() - run_starttime) / BILLION == START_MIG)){
 				ismigrate = true;
+				
 				Message * msg = Message::create_message(SEND_MIGRATION);
 				((MigrationMessage*)msg)->node_id_src = node_id_src;
 				((MigrationMessage*)msg)->node_id_des = node_id_des;
@@ -111,7 +112,22 @@ RC ClientThread::run() {
 				((MigrationMessage*)msg)->rtype = SEND_MIGRATION;
 				((MigrationMessage*)msg)->data_size = g_synth_table_size / g_part_cnt;
 				((MigrationMessage*)msg)->return_node_id = node_id_des;
+				((MigrationMessage*)msg)->key_start = MIGRATION_PART;
 				((MigrationMessage*)msg)->isdata = false;
+				
+				/*
+				Message * msg1 = Message::create_message(SEND_MIGRATION);
+				MigrationMessage* msg = msg1;
+				msg->node_id_src = node_id_src;
+				msg->node_id_des = node_id_des;
+				msg->part_id = part_id;
+				msg->minipart_id = -1;
+				msg->rtype = SEND_MIGRATION;
+				msg->data_size = g_synth_table_size / g_part_cnt;
+				msg->return_node_id = node_id_des;
+				msg->key_start = MIGRATION_PART;
+				msg->isdata = false;
+				*/
 				std::cout<<"msg size is:"<<msg->get_size()<<endl;
 				std::cout<<"begin migration!"<<endl;
 				std::cout<<"Time is "<<(get_sys_clock() - run_starttime) / BILLION<<endl;
@@ -182,9 +198,57 @@ RC ClientThread::run() {
 			#else
 
 			#endif
-				next_node = GET_NODE_ID(partition_id);
-				next_node_id = next_node;
+
+			next_node = GET_NODE_ID(partition_id);
+			next_node_id = next_node;
+		
 		#endif
+
+
+		#if MIGRATION
+			if (partition_id == MIGRATION_PART){
+				m_query = client_query_queue.get_next_query_partition(MIGRATION_SRC_NODE, partition_id,_thd_id);
+			} else {
+				m_query = client_query_queue.get_next_query_partition(next_node, partition_id,_thd_id);
+			}
+		#else
+			m_query = client_query_queue.get_next_query(next_node,_thd_id);
+		#endif
+
+		//根据分区迁移状态决定发到哪个节点
+		#if MIGRATION  //根据分区迁移状态决定发到哪个节点
+			#if MIGRATION_ALG == REMUS
+				next_node = GET_NODE_ID(partition_id);
+				//if (next_node == 1 && next_node != next_node_id) std::cout<<"to ";
+			#elif MIGRATION_ALG == DETEST
+				if (partition_id == MIGRATION_PART){ //由于detest迷你分区迁移，需要根据事务分布式的比例，决定路由到src还是des
+					int node_src,node_des;
+					node_src = 0;
+					node_des = 0;
+					for (uint64_t i=0; i < ((YCSBQuery*)m_query)->requests.size(); i++){
+						if (get_minipart_node_id(get_minipart_id(((YCSBQuery*)m_query)->requests[i]->key)) == MIGRATION_SRC_NODE) node_src++;
+						else node_des++;
+					}
+					if (node_des < 1) next_node = node_id_src; //<1；只要访问了完成迁移的，就发送到目标节点 <5:访问的全部完成迁移，再发送到目标节点
+					else next_node = node_id_des;
+					//next_node = get_minipart_node_id(mrand->next() % g_part_split_cnt);
+					//if (next_node == 1 && next_node != next_node_id) std::cout<<"to ";
+					//else {
+						//if (node0!=0 && node0!=5) std::cout<<"node0 "<<node0<<' '<<node1<<' ';
+					//}
+				}
+				else {
+					next_node = GET_NODE_ID(partition_id);
+					//if (next_node == 1 && next_node != next_node_id) std::cout<<"to ";	
+				}
+			#elif MIGRATION_ALG == DETEST_SPLIT
+				next_node = get_row_node_id(mrand->next() % g_synth_table_size / g_part_cnt);
+				if (next_node == 1 && next_node != next_node_id) std::cout<<"to ";
+			#endif
+			next_node_id = next_node;
+		#endif	
+
+
 		// uint32_t next_node_id = next_node + g_server_start_node;
 		// Just in case...
 		if (iters == UINT64_MAX)
@@ -195,52 +259,13 @@ RC ClientThread::run() {
 			continue;
 	#endif
 
-		#if MIGRATION
-			if (partition_id == 0){
-				m_query = client_query_queue.get_next_query_partition(0, partition_id,_thd_id);
-			} else {
-				m_query = client_query_queue.get_next_query_partition(next_node, partition_id,_thd_id);
-			}
-		#else
-			m_query = client_query_queue.get_next_query(next_node,_thd_id);
-		#endif
+		
 
 		#if MIGRATION
 			if (partition_id != key_to_part(((YCSBQuery*)m_query)->requests[0]->key))
 				std::cout<<"wrong query ";
 		#endif
-		//根据分区迁移状态决定发到哪个节点
-		#if MIGRATION  //根据分区迁移状态决定发到哪个节点
-			#if MIGRATION_ALG == REMUS
-				next_node = GET_NODE_ID(partition_id);
-				if (next_node == 1 && next_node != next_node_id) std::cout<<"to ";
-			#elif MIGRATION_ALG == DETEST
-			if (partition_id == 0){
-				int node0,node1;
-				node0 = 0;
-				node1 = 0;
-				for (uint64_t i=0; i < ((YCSBQuery*)m_query)->requests.size(); i++){
-					if (get_minipart_node_id(get_minipart_id(((YCSBQuery*)m_query)->requests[i]->key)) == 0) node0++;
-					else node1++;
-				}
-				if (node1 < 1) next_node = 0;
-				else next_node = 1;
-				//next_node = get_minipart_node_id(mrand->next() % g_part_split_cnt);
-				if (next_node == 1 && next_node != next_node_id) std::cout<<"to ";
-				//else {
-					//if (node0!=0 && node0!=5) std::cout<<"node0 "<<node0<<' '<<node1<<' ';
-				//}
-			}
-			else {
-				next_node = GET_NODE_ID(partition_id);
-				if (next_node == 1 && next_node != next_node_id) std::cout<<"to ";	
-			}
-			#elif MIGRATION_ALG == DETEST_SPLIT
-				next_node = get_row_node_id(mrand->next() % g_synth_table_size / g_part_cnt);
-				if (next_node == 1 && next_node != next_node_id) std::cout<<"to ";
-			#endif
-			next_node_id = next_node;
-		#endif
+		
 		if(last_send_time > 0) {
 			INC_STATS(get_thd_id(),cl_send_intv,get_sys_clock() - last_send_time);
 		}
