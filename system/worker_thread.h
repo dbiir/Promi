@@ -63,6 +63,8 @@ public:
     RC process_set_minipartmap(Message* msg);
     RC process_set_remus(Message* msg);
     RC process_set_detest(Message* msg);
+    RC process_set_squall(Message* msg);
+    RC process_set_squallpartmap(Message* msg);
     RC process_set_rowmap(Message* msg);
     RC init_phase();
     uint64_t get_next_txn_id();

@@ -222,6 +222,12 @@ Message * Message::create_message(RemReqType rtype) {
     case SET_DETEST:
       msg = new SetDetestMessage;
       break;
+    case SET_SQUALL:
+      msg = new SetSquallMessage;
+      break;
+    case SET_SQUALLPARTMAP:
+      msg = new SetSquallPartMapMessage;
+      break;
     case SET_ROWMAP:
       msg = new SetRowMapMessage;
       break;
@@ -250,7 +256,7 @@ Message * Message::create_message(RemReqType rtype) {
 }
 
 Message * Message::create_message0(RemReqType rtype,uint64_t part_id, uint64_t status){
-  assert(rtype == SET_REMUS || rtype == SET_DETEST);
+  assert(rtype == SET_REMUS || rtype == SET_DETEST || rtype == SET_SQUALL);
   Message * msg = create_message(rtype);
   if (rtype == SET_REMUS) {
     //SetRemusMessage* msg = (SetRemusMessage*)msg;
@@ -264,6 +270,11 @@ Message * Message::create_message0(RemReqType rtype,uint64_t part_id, uint64_t s
     ((SetDetestMessage*) msg)->minipart_id = part_id;
     ((SetDetestMessage*) msg)->status = status;
   }
+  else if (rtype == SET_SQUALL) {
+    ((SetSquallMessage*) msg)->rtype = rtype;
+    ((SetSquallMessage*) msg)->squallpart_id = part_id;
+    ((SetSquallMessage*) msg)->status = status;
+  }
   else if (rtype == SET_DETESTSPLIT) {
     //SetDetestMessage* msg = (SetDetestMessage*)msg;
     ((SetDetestMessage*) msg)->rtype = rtype;
@@ -274,7 +285,7 @@ Message * Message::create_message0(RemReqType rtype,uint64_t part_id, uint64_t s
 }
 
 Message * Message::create_message1(RemReqType rtype,uint64_t part_id, uint64_t node_id, uint64_t status){
-  assert(rtype == SET_PARTMAP || rtype == SET_MINIPARTMAP || rtype == SET_ROWMAP);
+  assert(rtype == SET_PARTMAP || rtype == SET_MINIPARTMAP || rtype == SET_ROWMAP || rtype == SET_SQUALLPARTMAP);
   Message * msg = create_message(rtype);
   if (rtype == SET_PARTMAP) {
     //msg = (SetPartMapMessage*)msg;
@@ -289,6 +300,12 @@ Message * Message::create_message1(RemReqType rtype,uint64_t part_id, uint64_t n
     ((SetMiniPartMapMessage*) msg)->minipart_id = part_id;
     ((SetMiniPartMapMessage*) msg)->node_id = node_id;
     ((SetMiniPartMapMessage*) msg)->status = status;
+  }
+  else if (rtype == SET_SQUALLPARTMAP){
+    ((SetSquallPartMapMessage*) msg)->rtype = rtype;
+    ((SetSquallPartMapMessage*) msg)->squallpart_id = part_id;
+    ((SetSquallPartMapMessage*) msg)->node_id = node_id;
+    ((SetSquallPartMapMessage*) msg)->status = status;    
   }
   else if (rtype == SET_ROWMAP){
     ((SetRowMapMessage*) msg)->rtype = rtype;
@@ -507,13 +524,25 @@ void Message::release_message(Message * msg) {
       break;
     }
     case SET_DETEST: {
-      SetPartMapMessage * m_msg = (SetPartMapMessage*) msg;
+      SetDetestMessage * m_msg = (SetDetestMessage*) msg;
       m_msg->release();
       delete m_msg;
       break;
     }
     case SET_MINIPARTMAP: {
-      SetPartMapMessage * m_msg = (SetPartMapMessage*) msg;
+      SetMiniPartMapMessage * m_msg = (SetMiniPartMapMessage*) msg;
+      m_msg->release();
+      delete m_msg;
+      break;
+    }
+    case SET_SQUALL: {
+      SetSquallMessage * m_msg = (SetSquallMessage*) msg;
+      m_msg->release();
+      delete m_msg;
+      break;
+    }
+    case SET_SQUALLPARTMAP: {
+      SetSquallPartMapMessage * m_msg = (SetSquallPartMapMessage*) msg;
       m_msg->release();
       delete m_msg;
       break;
@@ -2404,6 +2433,67 @@ void SetMiniPartMapMessage::copy_to_txn(TxnManager* txn){}
 void SetMiniPartMapMessage::init(){}
 
 void SetMiniPartMapMessage::release(){}
+
+uint64_t SetSquallMessage::get_size(){
+  uint64_t size;
+  size = Message::mget_size();
+  size += 2 * sizeof(uint64_t);
+  return size;
+}
+
+void SetSquallMessage::copy_from_buf(char* buf){
+  Message::mcopy_from_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_VAL(squallpart_id,buf,ptr);
+  COPY_VAL(status,buf,ptr);
+}
+
+void SetSquallMessage::copy_to_buf(char* buf){
+  Message::mcopy_to_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_BUF(buf,squallpart_id,ptr);
+  COPY_BUF(buf,status,ptr);
+}
+
+void SetSquallMessage::copy_from_txn(TxnManager* txn){}
+
+void SetSquallMessage::copy_to_txn(TxnManager* txn){}
+
+void SetSquallMessage::init(){}
+
+void SetSquallMessage::release(){}
+
+uint64_t SetSquallPartMapMessage::get_size(){
+  uint64_t size;
+  size = Message::mget_size();
+  size += 2 * sizeof(uint64_t);
+  size += sizeof(int);
+  return size;
+}
+
+void SetSquallPartMapMessage::copy_from_buf(char* buf){
+  Message::mcopy_from_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_VAL(squallpart_id,buf,ptr);
+  COPY_VAL(node_id,buf,ptr);
+  COPY_VAL(status,buf,ptr);
+}
+
+void SetSquallPartMapMessage::copy_to_buf(char* buf){
+  Message::mcopy_to_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_BUF(buf,squallpart_id,ptr);
+  COPY_BUF(buf,node_id,ptr);
+  COPY_BUF(buf,status,ptr);
+}
+
+void SetSquallPartMapMessage::copy_from_txn(TxnManager* txn){}
+
+void SetSquallPartMapMessage::copy_to_txn(TxnManager* txn){}
+
+void SetSquallPartMapMessage::init(){}
+
+void SetSquallPartMapMessage::release(){}
 
 uint64_t SetRowMapMessage::get_size(){
   uint64_t size;

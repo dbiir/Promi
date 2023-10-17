@@ -730,6 +730,30 @@ RC TxnManager::start_commit() {
 					uint64_t warmuptime1 = get_sys_clock() - g_starttime;
     			INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1); 
 				}
+			#elif (MIGRATION_ALG == SQUALL)
+				if (squall_status == 0){
+					rc = commit();
+					uint64_t warmuptime1 = get_sys_clock() - g_starttime;
+    			INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1); 
+				}
+				else if (squall_status == 1 && g_node_id == MIGRATION_SRC_NODE){
+					//squall刚开始，回滚迁移分区上正在执行的事务
+					for(uint64_t i = 0; i < ((YCSBQuery*)query)->requests.size(); i++) {
+						if(key_to_part(((YCSBQuery*)query)->requests[i]->key) == MIGRATION_PART){
+							abort();
+							rc = Abort;
+							return rc;
+						}
+					}
+					rc = commit();
+					uint64_t warmuptime1 = get_sys_clock() - g_starttime;
+    			INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1); 
+				}
+				else {
+					rc = commit();
+					uint64_t warmuptime1 = get_sys_clock() - g_starttime;
+    			INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1); 					
+				}
 			#elif (MIGRATION_ALG == DETEST_SPLIT)
 				if (detest_status == 1 || detest_status == 2){
 					if (g_node_id == 0) {

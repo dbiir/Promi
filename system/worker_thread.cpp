@@ -153,7 +153,7 @@ void WorkerThread::process(Message * msg) {
   RC rc __attribute__ ((unused));
 
   DEBUG("%ld Processing %ld %d\n",get_thd_id(),msg->get_txn_id(),msg->get_rtype());
-  assert(msg->get_rtype() == CL_QRY || msg->get_rtype() == CL_QRY_O || msg->get_rtype() == SEND_MIGRATION || msg->get_rtype() == SET_PARTMAP || msg->get_rtype() == SET_REMUS || msg->get_rtype() == SET_DETEST || msg->get_rtype() == SET_MINIPARTMAP || msg->get_rtype() == SET_ROWMAP || msg->get_rtype() == SYNC || msg->get_rtype() == ACK_SYNC ||
+  assert(msg->get_rtype() == CL_QRY || msg->get_rtype() == CL_QRY_O || msg->get_rtype() == SEND_MIGRATION || msg->get_rtype() == SET_PARTMAP || msg->get_rtype() == SET_REMUS || msg->get_rtype() == SET_DETEST || msg->get_rtype() == SET_MINIPARTMAP || msg->get_rtype() == SET_ROWMAP || msg->get_rtype() == SET_SQUALL || msg->get_rtype() == SET_SQUALLPARTMAP || msg->get_rtype() == SYNC || msg->get_rtype() == ACK_SYNC || 
   msg->get_txn_id() != UINT64_MAX);
   uint64_t starttime = get_sys_clock();
 		switch(msg->get_rtype()) {
@@ -234,6 +234,12 @@ void WorkerThread::process(Message * msg) {
         break;
       case SET_DETEST:
         rc = process_set_detest(msg);
+        break;  
+      case SET_SQUALL:
+        rc = process_set_squall(msg);
+        break;        
+      case SET_SQUALLPARTMAP:
+        rc = process_set_squallpartmap(msg);
         break;  
       case SET_ROWMAP:
         rc = process_set_rowmap(msg);
@@ -454,7 +460,7 @@ RC WorkerThread::run() {
     //uint64_t starttime = get_sys_clock();
     if (msg->rtype == SEND_MIGRATION) std::cout<<"get SEND1 ";
     //if (msg->rtype == SYNC) std::cout<<"get SYNC2 ";
-    if((msg->rtype != CL_QRY && msg->rtype != CL_QRY_O && msg->rtype!= SYNC) || CC_ALG == CALVIN){
+    if((msg->rtype != CL_QRY && msg->rtype != CL_QRY_O && msg->rtype!= SYNC && msg->rtype != SET_REMUS && msg->rtype != SET_DETEST && msg->rtype != SET_PARTMAP && msg->rtype != SET_MINIPARTMAP && msg->rtype != SET_SQUALL && msg->rtype != SET_SQUALLPARTMAP) || CC_ALG == CALVIN){
       txn_man = get_transaction_manager(msg);
       /*
       if (get_sys_clock() > g_mig_endtime && g_mig_endtime != 0) std::cout<<"txn_man->txn_id="<<msg->txn_id<<endl;
@@ -1180,6 +1186,23 @@ RC WorkerThread::process_set_detest(Message* msg){
   return RCOK;
 }
 
+RC WorkerThread::process_set_squall(Message* msg){
+  SetSquallMessage * msg1 = new(SetSquallMessage);
+  *msg1 = *(SetSquallMessage *)msg;
+  update_squall_status(msg1->status);
+  delete(msg1);
+  return RCOK;
+}
+
+RC WorkerThread::process_set_squallpartmap(Message* msg){
+  SetSquallPartMapMessage * msg1 = new(SetSquallPartMapMessage);
+  *msg1 = *(SetSquallPartMapMessage *)msg;
+  update_squallpart_map(msg1->squallpart_id, msg1->node_id);
+  update_squallpart_map_status(msg1->squallpart_id, msg1->status);
+  delete(msg1);
+  return RCOK;
+}
+
 RC WorkerThread::process_set_rowmap(Message* msg){
   SetRowMapMessage * msg1 = new(SetRowMapMessage);
   *msg1 = *(SetRowMapMessage *)msg;\
@@ -1188,6 +1211,7 @@ RC WorkerThread::process_set_rowmap(Message* msg){
   delete(msg1);
   return RCOK;
 }
+
 /*
 RC WorkerThread::process_send_migration(MigrationMessage* msg){
   DEBUG("SEND_MIGRATION %ld\n",msg->get_txn_id());

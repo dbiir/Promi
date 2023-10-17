@@ -331,6 +331,8 @@ enum RemReqType {
     SET_PARTMAP,
     SET_DETEST,
     SET_MINIPARTMAP,
+    SET_SQUALL,
+    SET_SQUALLPARTMAP,
     SET_ROWMAP,
     SET_DETESTSPLIT,
   NO_MSG
@@ -398,6 +400,15 @@ uint64_t get_minipart_status(uint64_t part_id);
 void update_minipart_map(uint64_t part_id, uint64_t node_id);//修改part_map的node_id
 void update_minipart_map_status(uint64_t part_id, uint64_t status);//修改part_map的migrate_status
 
+//squallpart_table:记录迁移中的squallpart的状态信息 < <squallpart_id, <node_id,status> >, status{0:not migrated, 1:migrating, 2:migrated}
+extern map <uint64_t, vector<uint64_t> > squallpart_map;
+void squallpart_map_init();
+uint64_t get_squallpart_id(uint64_t key);
+uint64_t get_squallpart_node_id(uint64_t part_id);
+uint64_t get_squallpart_status(uint64_t part_id);
+void update_squallpart_map(uint64_t part_id, uint64_t node_id);//修改part_map的node_id
+void update_squallpart_map_status(uint64_t part_id, uint64_t status);//修改part_map的migrate_status
+
 //row_map是记录每一条数据的迁移情况
 //row_map < row_id, <所在的node_id,迁移状态status> >
 //status 0:未迁移 1：正在迁移 2：已迁移
@@ -426,6 +437,10 @@ extern int remus_status;
 //remus迁移成功的时间,源节点记录
 extern uint64_t remus_finish_time;
 void update_remus_status(int status);
+
+//detest状态，0 1 2, 未开始 拉取中 迁移完毕
+extern int squall_status;
+void update_squall_status(int status);
 
 //detest_split状态0，1，2，3，4 0表示还没开始，1234表示了迁移了几类row了
 extern uint64_t migrate_label;

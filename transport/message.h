@@ -596,6 +596,31 @@ public:
   void release();
 };
 
+class SetSquallMessage : public Message{
+public:
+  uint64_t squallpart_id, status;
+  uint64_t get_size();
+  void copy_from_buf(char * buf);
+  void copy_to_buf(char * buf);
+  void copy_from_txn(TxnManager * txn);
+  void copy_to_txn(TxnManager * txn);
+  void init();
+  void release();
+};
+
+class SetSquallPartMapMessage : public Message{
+public:
+  uint64_t squallpart_id, node_id;
+  int status;
+  uint64_t get_size();
+  void copy_from_buf(char * buf);
+  void copy_to_buf(char * buf);
+  void copy_from_txn(TxnManager * txn);
+  void copy_to_txn(TxnManager * txn);
+  void init();
+  void release();
+};
+
 class SetRowMapMessage : public Message{
 public:
   uint64_t node_id, order; //order代表第几次按照label迁移

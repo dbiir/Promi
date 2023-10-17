@@ -210,6 +210,9 @@ RC YCSBTxnManager::run_txn_state() {
       loc = true;
       //std::cout<<"keep local detest"<<' ';
     }
+  #elif MIGRATION_ALG == SQUALL
+    if (g_node_id == MIGRATION_DES_NODE && part_id == MIGRATION_PART && squall_status == 1 && get_squallpart_status(get_squallpart_id(req->key)) == 0){
+    }
   #elif MIGRATION_ALG == DETEST_SPLIT
     if (this->get_txn_id() % g_node_cnt == 0 && loc == false && part_id == 0 && get_minipart_status(get_minipart_id(req->key)) != 0 && this->txn_stats.starttime < remus_finish_time){
       loc = true;

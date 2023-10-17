@@ -55,7 +55,9 @@ int main(int argc, char *argv[]) {
 
 	part_map_init();
 	minipart_map_init();
-	#if (MIGRATION_ALG == DETEST_SPLIT)
+	#if (MIGRATION_ALG == SQUALL)
+		squallpart_map_init();
+	#elif (MIGRATION_ALG == DETEST_SPLIT)
 		row_map_init();
 		order_map_init();
 		cluster_num_init();

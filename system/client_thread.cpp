@@ -82,6 +82,17 @@ RC ClientThread::run() {
 				msg_queue.enqueue(get_thd_id(),msg,node_id_src);
 				continue;
 				}
+			#elif (MIGRATION_ALG == SQUALL)
+				if (!ismigrate && (get_thd_id() == 0) && ((get_sys_clock() - run_starttime) / BILLION == START_MIG)){
+					ismigrate = true;
+					//发送信息给其他节点，源节点收到后回滚事务
+					update_squall_status(1);
+					update_part_map_status(MIGRATION_PART, 1);
+          msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_SQUALL, part_id, 1), node_id_src);
+          msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_SQUALL, part_id, 1), node_id_des);
+					std::cout<<"begin migration!"<<endl;
+					std::cout<<"Time is "<<(get_sys_clock() - run_starttime) / BILLION<<endl;
+				}
 			#elif (MIGRATION_ALG == DETEST_SPLIT)
 				if (!ismigrate && (get_thd_id() == 0) && ((get_sys_clock() - run_starttime) / BILLION == START_MIG)){
 					ismigrate = true;
@@ -192,7 +203,7 @@ RC ClientThread::run() {
 						break;	
 				}
 			#elif SINGLE_PART_CONSOLIDATION
-				partition_id = mrand->next() % 2; //只生成01分区的事务
+				partition_id = mrand->next() % 4; //只生成0123分区的事务
 				next_node = GET_NODE_ID(partition_id);
 				next_node_id = next_node;
 			#else
@@ -240,6 +251,46 @@ RC ClientThread::run() {
 				else {
 					next_node = GET_NODE_ID(partition_id);
 					//if (next_node == 1 && next_node != next_node_id) std::cout<<"to ";	
+				}
+			#elif MIGRATION_ALG == SQUALL
+				//新事务根据squall_status路由到目标节点。如果squall_part_status=0，就修改为1，set_squall_part_status(1)，同时发送send消息到源节点。如果squall_part_status=1，就回滚。如果squall_part_status=1，目标节点正常执行。
+				if (partition_id == MIGRATION_PART){
+					if (squall_status == 0){
+						next_node = GET_NODE_ID(partition_id);
+					}
+					else if (squall_status == 1){ //如果已经开始拉取，发到目标节点
+						next_node = MIGRATION_DES_NODE;
+						bool iscontinue = true;
+						for (uint64_t i=0; i < ((YCSBQuery*)m_query)->requests.size(); i++){
+							if (get_squallpart_status(get_squallpart_id(((YCSBQuery*)m_query)->requests[i]->key)) == 1) {
+								//如果有数据正在被其他事务拉取，下一个query
+								iscontinue = false;
+								break;
+							}
+							else if (get_squallpart_status(get_squallpart_id(((YCSBQuery*)m_query)->requests[i]->key)) == 0){
+								//如果没事务拉取就拉取
+								update_squallpart_map_status(get_squallpart_id(((YCSBQuery*)m_query)->requests[i]->key), 1);
+								Message * msg = Message::create_message(SEND_MIGRATION);
+								((MigrationMessage*)msg)->node_id_src = MIGRATION_SRC_NODE;
+								((MigrationMessage*)msg)->node_id_des = MIGRATION_DES_NODE;
+								((MigrationMessage*)msg)->part_id = key_to_part(((YCSBQuery*)m_query)->requests[i]->key);
+      					((MigrationMessage*)msg)->minipart_id = get_squallpart_id(((YCSBQuery*)m_query)->requests[i]->key);
+								((MigrationMessage*)msg)->rtype = SEND_MIGRATION;
+      					((MigrationMessage*)msg)->data_size = g_synth_table_size / g_part_cnt / Squall_Part_Cnt;
+								((MigrationMessage*)msg)->return_node_id = MIGRATION_DES_NODE;
+      					((MigrationMessage*)msg)->key_start = MIGRATION_PART + get_squallpart_id(((YCSBQuery*)m_query)->requests[i]->key) * (g_synth_table_size / Squall_Part_Cnt / g_part_cnt) * g_part_cnt;
+								((MigrationMessage*)msg)->isdata = false;
+								msg_queue.enqueue(get_thd_id(),msg,MIGRATION_SRC_NODE);
+							}
+						}
+						if (!iscontinue) continue;
+					}
+					else if (squall_status == 2){
+						next_node = MIGRATION_DES_NODE;
+					}
+				}
+				else{
+					next_node = GET_NODE_ID(partition_id);
 				}
 			#elif MIGRATION_ALG == DETEST_SPLIT
 				next_node = get_row_node_id(mrand->next() % g_synth_table_size / g_part_cnt);

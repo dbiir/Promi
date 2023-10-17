@@ -283,11 +283,17 @@ uint64_t get_node_id_mini(uint64_t key){
     else {
       return get_minipart_node_id(get_minipart_id(key));
     }
+  #elif MIGRATION_ALG == SQUALL
+    if (key_to_part(key) != MIGRATION_PART) return GET_NODE_ID(key_to_part(key));
+    else {
+      return get_squallpart_node_id(get_squallpart_id(key));
+    }
   #elif MIGRATION_ALG == DETEST_SPLIT
     if (key_to_part(key) != 0) return GET_NODE_ID(key_to_part(key));
     else {
       return row_map[key][0];
     }
+
   #else
     return GET_NODE_ID(key_to_part(key));
   #endif
@@ -360,6 +366,38 @@ void update_minipart_map(uint64_t minipart_id, uint64_t node_id){
 
 void update_minipart_map_status(uint64_t minipart_id, uint64_t status){
   minipart_map[minipart_id][1] = status;
+}
+
+//squallpart_table:记录迁移中的minipart的状态信息
+map <uint64_t, vector<uint64_t> > squallpart_map;
+
+void squallpart_map_init(){
+  for (uint64_t i=0; i < Squall_Part_Cnt; i++){
+    vector<uint64_t> vtmp;
+    vtmp.emplace_back(0);
+    vtmp.emplace_back(0);
+    squallpart_map[i] = vtmp;
+  }
+}
+
+uint64_t get_squallpart_id(uint64_t key){//只针对0分区
+  return key / g_part_cnt / (g_synth_table_size / g_part_cnt / Squall_Part_Cnt);
+}
+
+uint64_t get_squallpart_node_id(uint64_t squallpart_id){
+  return squallpart_map[squallpart_id][0];
+}
+
+uint64_t get_squallpart_status(uint64_t squallpart_id){
+  return squallpart_map[squallpart_id][1];
+}
+
+void update_squallpart_map(uint64_t squallpart_id, uint64_t node_id){
+  squallpart_map[squallpart_id][0] = node_id;
+}
+
+void update_squallpart_map_status(uint64_t squallpart_id, uint64_t status){
+  squallpart_map[squallpart_id][1] = status;
 }
 
 map <uint64_t, vector<uint64_t> > row_map;
@@ -443,6 +481,11 @@ void update_detest_status(int status){
 int remus_status; //0:未开始 1:发送副本 2:模式切换 3:双边执行
 void update_remus_status(int status){
   remus_status = status;
+}
+
+int squall_status; //0未开始 1拉取 2结束
+void update_squall_status(int status){
+  squall_status = status;
 }
 
 uint64_t migrate_label;

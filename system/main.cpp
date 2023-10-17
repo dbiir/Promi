@@ -87,7 +87,9 @@ int main(int argc, char *argv[]) {
 	if (g_node_id == 1 || g_node_id == 0) {
 		part_map_init();
 		minipart_map_init();
-		#if (MIGRATION_ALG == DETEST_SPLIT)
+		#if (MIGRATION_ALG == SQUALL)
+			squallpart_map_init();
+		#elif (MIGRATION_ALG == DETEST_SPLIT)
 			row_map_init();
 			order_map_init();
 			cluster_num_init();
@@ -100,6 +102,9 @@ int main(int argc, char *argv[]) {
 	#elif (MIGRATION_ALG == DETEST)
 		detest_status = 0;
 		std::cout<<"detest status is "<<detest_status<<"Time is: "<<(get_sys_clock() - g_starttime) / BILLION <<endl;
+	#elif (MIGRATION_ALG == SQUALL)
+		squall_status = 0;
+		std::cout<<"squall status is "<<squall_status<<"Time is: "<<(get_sys_clock() - g_starttime) / BILLION <<endl;		
 	#endif
 	#endif
 	

@@ -66,14 +66,14 @@
 /***********************************************/
 // Simulation + Hardware
 /***********************************************/
-#define NODE_CNT 2
+#define NODE_CNT 4
 #define THREAD_CNT 32
 #define REM_THREAD_CNT 8
 #define SEND_THREAD_CNT 8
 #define MIG_THREAD_CNT 1
 #define CORE_CNT 2
 // PART_CNT should be at least NODE_CNT
-#define PART_CNT NODE_CNT * 4
+#define PART_CNT NODE_CNT * 1
 #define CLIENT_NODE_CNT 1
 #define CLIENT_THREAD_CNT 1
 #define CLIENT_REM_THREAD_CNT 2
@@ -94,6 +94,7 @@
 #define DETEST 0
 #define REMUS 1
 #define LOCK 2
+#define SQUALL 3
 #define DETEST_SPLIT 4
 #define SPLIT_NODE_NUM 300 //split场景下，训练图的节点的数量
 #define ROW_PER_NODE (SYNTH_TABLE_SIZE / PART_CNT / SPLIT_NODE_NUM)  //split场景下，每个node包含的row的数量
@@ -105,13 +106,15 @@
 #define MIGRATION_DES_NODE 1 
 
 //migartion_alg DETEST REMUS LOCK DETEST_SPLIT
-#define MIGRATION_ALG REMUS
+#define MIGRATION_ALG DETEST
 
 //DETEST Migration
 #define PART_SPLIT_CNT 4
 #define PART_HOT_CNT 2
 //Remus Migration
 #define SYNCTIME 10
+//Squall Migration
+#define Squall_Part_Cnt 16
 
 //MIGRATION
 #define MIGRATION true
@@ -267,8 +270,8 @@
 #define SINGLE_PART true
 #define SINGLE_PART_0 false //只发送分区0的事务 part_cnt = 2
 #define SINGLE_PART_012 false //只发送分区012的事务 part_cnt = 4
-#define SINGLE_PART_0124 true //只发送分区0124的事务，用于测试负载均衡，分区0开始在节点0,迁移后在节点1 part_cnt = 8
-#define SINGLE_PART_CONSOLIDATION false//合并分区，原来两个节点0和1，各有分区0和1，现在把分区0迁到节点1上 part_cnt = 2 
+#define SINGLE_PART_0124 false //只发送分区0124的事务，用于测试负载均衡，分区0开始在节点0,迁移后在节点1 part_cnt = 8
+#define SINGLE_PART_CONSOLIDATION false//合并分区，原来有节点0123，各有分区0123，现移出节点0，把分区0迁到节点1上 part_cnt = 4, node_cnt = 4 
 #define MAX_TUPLE_SIZE        256 // in bytes
 #define GEN_BY_MPR false
 // ==== [YCSB] ====
@@ -279,7 +282,7 @@
 #define DATA_PERC (SYNTH_TABLE_SIZE / 64)
 #define ACCESS_PERC 0.3
 #define INIT_PARALLELISM (PART_CNT / NODE_CNT)
-#define SYNTH_TABLE_SIZE 16777216 
+#define SYNTH_TABLE_SIZE 16777216 / 2     //8分区正好每个分区512MB
 #define ZIPF_THETA 0.6
 #define TXN_WRITE_PERC 0.1
 #define TUP_WRITE_PERC 0.1
@@ -498,7 +501,7 @@ enum PPSTxnType {
 #define START_MIG 120 // migration start time(second)
 #define TPS_LENGTH (DONE_TIMER+WARMUP_TIMER) / BILLION //length of throughut array
 #define SEQ_BATCH_TIMER 5 * 1 * MILLION // ~5ms -- same as CALVIN paper
-#define DONE_TIMER 1 * 200 * BILLION // ~1 minutes  60 BILLION = 1 min
+#define DONE_TIMER 1 * 100 * BILLION // ~1 minutes  60 BILLION = 1 min
 #define WARMUP_TIMER 1 * 100 * BILLION // ~1 minutes
 
 #define SEED 0

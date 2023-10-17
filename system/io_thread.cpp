@@ -172,6 +172,24 @@ RC InputThread::client_recv_loop() {
 						*/
 						break;
 					}
+					case SET_SQUALL:{
+						std::cout<<((SetSquallMessage*)msg)->status<<endl;
+						squall_status = ((SetSquallMessage*)msg)->status;
+						update_squall_status(squall_status);
+						std::cout<<"squall_stats is "<<detest_status<<endl;
+						break;
+					}
+					case SET_SQUALLPARTMAP:{
+						update_squallpart_map(((SetSquallPartMapMessage*)msg)->squallpart_id, ((SetSquallPartMapMessage*)msg)->node_id);
+						update_squallpart_map_status(((SetSquallPartMapMessage*)msg)->squallpart_id, ((SetSquallPartMapMessage*)msg)->status);
+
+						//minipart迁移完成，修改inflght
+						//node_inflight_max[0] = 2 * MAX_TXN_IN_PART + MAX_TXN_IN_PART * (((SetMiniPartMapMessage*)msg)->minipart_id+1) / DETEST_SPLIT; 
+						//node_inflight_max[1] = 2 * MAX_TXN_IN_PART - MAX_TXN_IN_PART * (((SetMiniPartMapMessage*)msg)->minipart_id+1) / DETEST_SPLIT;
+						std::cout<<"squallpart "<<((SetSquallPartMapMessage*)msg)->squallpart_id<<" is on node "<<get_squallpart_node_id(((SetSquallPartMapMessage*)msg)->squallpart_id)<<endl;
+						std::cout<<"Time is "<<(get_sys_clock() - run_starttime) / BILLION<<endl;
+						break;
+					}
 					case SET_ROWMAP:{
 						update_row_map_order(((SetRowMapMessage*)msg)->order, ((SetRowMapMessage*)msg)->node_id);
 						update_row_map_status_order(((SetRowMapMessage*)msg)->order, ((SetRowMapMessage*)msg)->status);

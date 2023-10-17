@@ -154,6 +154,10 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
     #elif (MIGRATION_ALG == REMUS)
         update_remus_status(1);
         update_part_map_status(msg->part_id, 1);
+    #elif (MIGRATION_ALG == SQUALL)
+        update_squall_status(1);
+        update_squallpart_map_status(msg->minipart_id, 1);
+        update_part_map_status(msg->part_id, 1);
     #endif
     
     
@@ -444,6 +448,12 @@ RC MigrateThread::process_recv_migration(MigrationMessage* msg){
                 update_remus_status(1);
             }
             update_part_map_status(msg->part_id, 1);
+        #elif (MIGRATION_ALG == SQUALL)
+            if (remus_status == 0){
+                update_squall_status(1);
+            }
+            update_squallpart_map_status(msg->minipart_id, 1);
+            update_part_map_status(msg->part_id, 1);
         #endif
 
         
@@ -535,6 +545,35 @@ RC MigrateThread::process_recv_migration(MigrationMessage* msg){
                 assert(rc == RCOK);
                 key += g_part_cnt;
             }
+        #elif MIGRATION_ALG == SQUALL
+            uint64_t key,slice_size;
+            key = msg->part_id + msg->minipart_id * (g_synth_table_size / g_part_cnt / Squall_Part_Cnt) * g_part_cnt;
+            slice_size = g_synth_table_size / g_part_cnt / Squall_Part_Cnt;
+            for (uint64_t i = 0; i < slice_size; i++){
+                row_t * new_row = NULL;
+                uint64_t row_id;
+                rc = this->_wl->tables["MAIN_TABLE"]->get_new_row(new_row, msg -> part_id, row_id);
+                assert(rc == RCOK);
+                uint64_t primary_key = key;
+                new_row->set_primary_key(primary_key);
+                #if SIM_FULL_ROW
+                    new_row->set_value(0, &primary_key,sizeof(uint64_t));
+                    Catalog * schema = this->_wl->tables["MAIN_TABLE"]->get_schema();
+                    for (UInt32 fid = 0; fid < schema->get_field_cnt(); fid ++) {
+                        char value[6] = "hello";
+                        new_row->set_value(fid, value,sizeof(value));				
+                    }
+                #endif
+                itemid_t * m_item = (itemid_t *) mem_allocator.alloc( sizeof(itemid_t));
+                assert(m_item != NULL);
+                m_item->type = DT_row;
+                m_item->location = new_row;
+                m_item->valid = true;
+                uint64_t idx_key = primary_key;
+                rc = this->_wl->indexes["MAIN_INDEX"]->index_insert(idx_key, m_item, msg->part_id);
+                assert(rc == RCOK);
+                key += g_part_cnt;
+            }        
         #endif
         
         //生成FINISH_MIGRATION消息给源节点
@@ -643,6 +682,46 @@ RC MigrateThread::process_finish_migration(MigrationMessage* msg){
             std::cout<<"miss is:"<<miss_cnt<<endl;       
             */
         }
+    #elif (MIGRATION_ALG == SQUALL)
+        update_squallpart_map(msg->minipart_id, msg->node_id_des);
+        update_squallpart_map_status(msg->minipart_id, 2);
+        std::cout<<"squallpart "<<msg->minipart_id<<" status is 2"<<endl;
+        msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_SQUALLPARTMAP, msg->minipart_id, msg->node_id_des, 2),g_node_cnt);
+        //msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_SQUALL, msg->minipart_id, 2),g_node_cnt);
+        msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_SQUALLPARTMAP, msg->minipart_id, msg->node_id_des, 2),msg->node_id_des);
+        //msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_SQUALL, msg->minipart_id, 2),msg->node_id_des);
+        /* Squall的迁移消息完全由client端发出
+        if (msg->minipart_id == Squall_Part_Cnt - 1){//子分区迁移完毕
+            //update_part_map(msg->part_id, msg->node_id_des);
+            update_squall_status(2);
+            update_part_map_status(msg->part_id, 2);//migrated
+            msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 2),g_node_cnt); //g_node_cnt对应着client节点,发消息通知client修改detest状态
+            msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 2),msg->node_id_des);
+            msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_SQUALL, msg->part_id, 2),msg->node_id_des);
+            msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_SQUALL, msg->part_id, 2),g_node_cnt);
+        } else if (((SetMiniPartMapMessage*)msg)->minipart_id < Squall_Part_Cnt-1) {//发送其他的minipart的迁移消息
+            //先生成send消息
+            Message * msg1 = Message::create_message(SEND_MIGRATION);
+			((MigrationMessage*)msg1)->node_id_src = msg->node_id_src;
+			((MigrationMessage*)msg1)->node_id_des = msg->node_id_des;
+			((MigrationMessage*)msg1)->part_id = msg->part_id;
+			((MigrationMessage*)msg1)->minipart_id = msg->minipart_id + 1;
+			((MigrationMessage*)msg1)->rtype = SEND_MIGRATION;
+			((MigrationMessage*)msg1)->data_size = g_synth_table_size / g_part_cnt / Squall_Part_Cnt;
+			((MigrationMessage*)msg1)->return_node_id = msg->node_id_des;
+			((MigrationMessage*)msg1)->isdata = false;
+			((MigrationMessage*)msg1)->key_start = ((MigrationMessage*)msg1)->part_id + ((MigrationMessage*)msg1)->minipart_id * (g_synth_table_size / Squall_Part_Cnt / g_part_cnt) * g_part_cnt;
+            ((MigrationMessage*)msg1)->txn_id = msg->get_txn_id();
+            
+            std::cout<<"Squallpart_id: "<<((MigrationMessage*)msg1)->minipart_id<<' ';
+            start_time = get_sys_clock();
+            txn_man->return_id = msg1->return_node_id;
+            txn_man->h_wl = _wl;
+            std::cout<<"the size of msg is "<<msg1->get_size()<<endl;
+
+            process_send_migration((MigrationMessage*)msg1);
+        }
+        */
     #elif (MIGRATION_ALG == REMUS)
         //sleep(SYNCTIME);  
         remus_finish_time = get_sys_clock();
