@@ -66,7 +66,7 @@
 /***********************************************/
 // Simulation + Hardware
 /***********************************************/
-#define NODE_CNT 4
+#define NODE_CNT 2
 #define THREAD_CNT 32
 #define REM_THREAD_CNT 8
 #define SEND_THREAD_CNT 8
@@ -106,7 +106,7 @@
 #define MIGRATION_DES_NODE 1 
 
 //migartion_alg DETEST REMUS LOCK DETEST_SPLIT
-#define MIGRATION_ALG DETEST
+#define MIGRATION_ALG SQUALL
 
 //DETEST Migration
 #define PART_SPLIT_CNT 4
@@ -143,7 +143,7 @@
 #define TIME_ENABLE true
 
 #define FIN_BY_TIME true
-#define MAX_TXN_IN_FLIGHT 50000
+#define MAX_TXN_IN_FLIGHT 100000
 #define MAX_TXN_IN_PART 10000
 
 #define SERVER_GENERATE_QUERIES false
@@ -268,7 +268,7 @@
 #define MAX_TXN_PER_PART 200000
 #define FIRST_PART_LOCAL false
 #define SINGLE_PART true
-#define SINGLE_PART_0 false //只发送分区0的事务 part_cnt = 2
+#define SINGLE_PART_0 true //只发送分区0的事务 part_cnt = 2
 #define SINGLE_PART_012 false //只发送分区012的事务 part_cnt = 4
 #define SINGLE_PART_0124 false //只发送分区0124的事务，用于测试负载均衡，分区0开始在节点0,迁移后在节点1 part_cnt = 8
 #define SINGLE_PART_CONSOLIDATION false//合并分区，原来有节点0123，各有分区0123，现移出节点0，把分区0迁到节点1上 part_cnt = 4, node_cnt = 4 
@@ -282,7 +282,7 @@
 #define DATA_PERC (SYNTH_TABLE_SIZE / 64)
 #define ACCESS_PERC 0.3
 #define INIT_PARALLELISM (PART_CNT / NODE_CNT)
-#define SYNTH_TABLE_SIZE 16777216 / 2     //8分区正好每个分区512MB
+#define SYNTH_TABLE_SIZE 16777216 / 16     //8分区正好每个分区512MB
 #define ZIPF_THETA 0.6
 #define TXN_WRITE_PERC 0.1
 #define TUP_WRITE_PERC 0.1

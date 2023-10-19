@@ -606,18 +606,35 @@ RC MigrateThread::process_finish_migration(MigrationMessage* msg){
         update_minipart_map(msg->minipart_id, msg->node_id_des);
         update_minipart_map_status(msg->minipart_id, 2);
         std::cout<<"minipart "<<msg->minipart_id<<" status is 2"<<endl;
+        //sync message to other nodes
+        for (uint64_t i=0; i< g_node_cnt + g_client_node_cnt; i++){
+            if (i == g_node_id) continue;
+            msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_MINIPARTMAP, msg->minipart_id, msg->node_id_des, 2), i);
+            msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_DETEST, msg->minipart_id, 2),i);            
+        }
+        /*
         msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_MINIPARTMAP, msg->minipart_id, msg->node_id_des, 2),g_node_cnt);
         msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_DETEST, msg->minipart_id, 2),g_node_cnt);
         msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_MINIPARTMAP, msg->minipart_id, msg->node_id_des, 2),msg->node_id_des);
         msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_DETEST, msg->minipart_id, 2),msg->node_id_des);
+        */
         if (msg->minipart_id == PART_SPLIT_CNT-1){//子分区迁移完毕
             //update_part_map(msg->part_id, msg->node_id_des);
             update_detest_status(2);
             update_part_map_status(msg->part_id, 2);//migrated
+            //sync message to other nodes
+            for (uint64_t i=0; i<g_node_cnt + g_client_node_cnt; i++){
+                if (i == g_node_id) continue;
+                msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 2), i);
+                msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_DETEST, msg->part_id, 2),i);
+
+            }            
+            /*
             msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 2),g_node_cnt); //g_node_cnt对应着client节点,发消息通知client修改detest状态
             msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 2),msg->node_id_des);
             msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_DETEST, msg->part_id, 2),msg->node_id_des);
             msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_DETEST, msg->part_id, 2),g_node_cnt);
+            */
         } else if (((SetMiniPartMapMessage*)msg)->minipart_id < PART_SPLIT_CNT-1) {//发送其他的minipart的迁移消息
             //先生成send消息
             Message * msg1 = Message::create_message(SEND_MIGRATION);
@@ -686,10 +703,17 @@ RC MigrateThread::process_finish_migration(MigrationMessage* msg){
         update_squallpart_map(msg->minipart_id, msg->node_id_des);
         update_squallpart_map_status(msg->minipart_id, 2);
         std::cout<<"squallpart "<<msg->minipart_id<<" status is 2"<<endl;
+        //sync msg to other nodes
+        for (uint64_t i=0; i<g_node_cnt + g_client_node_cnt; i++){
+            if (i == g_node_id) continue;
+            msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_SQUALLPARTMAP, msg->minipart_id, msg->node_id_des, 2), i);
+        }
+        /*
         msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_SQUALLPARTMAP, msg->minipart_id, msg->node_id_des, 2),g_node_cnt);
         //msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_SQUALL, msg->minipart_id, 2),g_node_cnt);
         msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_SQUALLPARTMAP, msg->minipart_id, msg->node_id_des, 2),msg->node_id_des);
         //msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_SQUALL, msg->minipart_id, 2),msg->node_id_des);
+        */
         /* Squall的迁移消息完全由client端发出
         if (msg->minipart_id == Squall_Part_Cnt - 1){//子分区迁移完毕
             //update_part_map(msg->part_id, msg->node_id_des);
@@ -728,20 +752,36 @@ RC MigrateThread::process_finish_migration(MigrationMessage* msg){
         //update_part_map(msg->part_id, msg->node_id_des);
         update_part_map_status(msg->part_id, 2);//copied
         update_remus_status(2);
+        //sync msg to other nodes
+        for (uint64_t i=0; i<g_node_cnt + g_client_node_cnt; i++){
+            if (i == g_node_id) continue;
+            msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_src, 2), i);//stage2还没切主
+            msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_REMUS, msg->part_id, 2),i);            
+        }       
+        /* 
         msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 2),g_node_cnt); //g_node_cnt对应着client节点,发消息通知client修改remus状态
         msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 2),msg->node_id_des);
         msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_REMUS, msg->part_id, 2),g_node_cnt);
         msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_REMUS, msg->part_id, 2),msg->node_id_des);
+        */
         std::cout<<"remus status is "<<remus_status<<"Time is: "<<(get_sys_clock() - g_starttime) / BILLION <<endl;
 
         sleep(SYNCTIME); //for remus stage2
 
         update_remus_status(3);
         update_part_map_status(msg->part_id, 3);
+        //sync msg to other nodes
+        for (uint64_t i=0; i<g_node_cnt + g_client_node_cnt; i++){
+            if (i == g_node_id) continue;
+            msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 3), i);
+            msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_REMUS, msg->part_id, 3),i);            
+        }
+        /*
         msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 3),g_node_cnt); //g_node_cnt对应着client节点,发消息通知client修改remus状态
         msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 3),msg->node_id_des);
         msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_REMUS, msg->part_id, 3),g_node_cnt);
         msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_REMUS, msg->part_id, 3),msg->node_id_des);
+        */
         std::cout<<"remus status is "<<remus_status<<"Time is: "<<(get_sys_clock() - g_starttime) / BILLION <<endl;
         std::cout<<"part is "<<msg->part_id<<endl<<"node_id_src is "<<msg->node_id_src<<endl<<"node_id_des is "<<msg->node_id_des<<endl;
     #elif (MIGRATION_ALG == DETEST_SPLIT)

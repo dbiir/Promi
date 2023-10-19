@@ -200,7 +200,7 @@ UInt32 g_client_node_cnt = CLIENT_NODE_CNT;
 UInt32 g_client_thread_cnt = CLIENT_THREAD_CNT;
 UInt32 g_client_rem_thread_cnt = CLIENT_REM_THREAD_CNT;
 UInt32 g_client_send_thread_cnt = CLIENT_SEND_THREAD_CNT;
-UInt32 g_servers_per_client = 2;
+UInt32 g_servers_per_client = g_node_cnt;
 UInt32 g_clients_per_server = 0;
 UInt32 g_server_start_node = 0;
 vector<int> query_to_part(g_part_cnt);

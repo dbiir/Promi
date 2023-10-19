@@ -64,7 +64,7 @@ RC ClientThread::run() {
 		heartbeat();
 		#if MIGRATION
 			#if MIGRATION_ALG == DETEST
-				if (!ismigrate && (get_thd_id() == 0) && ((get_sys_clock() - run_starttime) / BILLION  == START_MIG)){
+				if (!ismigrate && (get_thd_id() == 0) && ((get_sys_clock() - run_starttime) / BILLION  >= START_MIG)){
 				ismigrate = true;
 				Message * msg = Message::create_message(SEND_MIGRATION);
 				((MigrationMessage*)msg)->node_id_src = node_id_src;
@@ -84,12 +84,21 @@ RC ClientThread::run() {
 				}
 			#elif (MIGRATION_ALG == SQUALL)
 				if (!ismigrate && (get_thd_id() == 0) && ((get_sys_clock() - run_starttime) / BILLION == START_MIG)){
+					assert(node_id_src >= 0);
+					assert(node_id_des >= 0);
 					ismigrate = true;
 					//发送信息给其他节点，源节点收到后回滚事务
 					update_squall_status(1);
-					update_part_map_status(MIGRATION_PART, 1);
+					update_part_map_status(part_id, 1);
+					//sync msg to other nodes
+        	for (uint64_t i=0; i<g_node_cnt + g_client_node_cnt; i++){
+            if (i == g_node_id) continue;
+            msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_SQUALL, part_id, 1),i);            
+        	}
+					/*
           msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_SQUALL, part_id, 1), node_id_src);
           msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_SQUALL, part_id, 1), node_id_des);
+					*/
 					std::cout<<"begin migration!"<<endl;
 					std::cout<<"Time is "<<(get_sys_clock() - run_starttime) / BILLION<<endl;
 				}
@@ -203,8 +212,14 @@ RC ClientThread::run() {
 						break;	
 				}
 			#elif SINGLE_PART_CONSOLIDATION
-				partition_id = mrand->next() % 4; //只生成0123分区的事务
-				next_node = GET_NODE_ID(partition_id);
+				//只生成0123分区的事务,但是分区0的事务要最多
+				partition_id = mrand->next() % 8;
+				if (partition_id >= 4) {
+					partition_id = 0;
+					next_node = GET_NODE_ID(partition_id);
+				} else{
+					next_node = GET_NODE_ID(partition_id);
+				}
 				next_node_id = next_node;
 			#else
 
