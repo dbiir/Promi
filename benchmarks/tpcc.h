@@ -87,7 +87,7 @@ public:
 	bool ** delivering;
 //	bool volatile ** delivering;
 
-private:
+public:
 	uint64_t num_wh;
 	void init_tab_item(int id);
 	void init_tab_wh();

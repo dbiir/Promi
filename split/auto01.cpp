@@ -44,7 +44,7 @@ int main() {
     int aver_sum[N];
     
 
-    int iter =3;  //平均值循环次数
+    int iter = 1;  //平均值循环次数
     while (iter>0){
         aver_sum[0] = sum[0];
         for (int i=1; i<n-1; i++){

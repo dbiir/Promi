@@ -41,6 +41,7 @@
 #include "message.h"
 #include "ycsb_query.h"
 #include "tpcc_query.h"
+#include "tpcc_helper.h"
 #include "pps_query.h"
 #include "array.h"
 #include "maat.h"
@@ -589,6 +590,7 @@ RC TxnManager::start_commit() {
 	RC rc = RCOK;
 	DEBUG("%ld start_commit RO?%d\n",get_txn_id(),query->readonly());
 	if(is_multi_part()) {
+		std::cout<<"multi part ";
 		if(CC_ALG == TICTOC) {
 			rc = validate();
 			if (rc != Abort) {
@@ -658,14 +660,22 @@ RC TxnManager::start_commit() {
 			#if (MIGRATION_ALG == REMUS)
 				if (remus_status == 1 || remus_status == 2){
 					if (g_node_id == MIGRATION_SRC_NODE) {
-						//只要访问了迁移分区，就要sycndata
-						for(uint64_t i = 0; i < ((YCSBQuery*)query)->requests.size(); i++) {
-							if(key_to_part(((YCSBQuery*)query)->requests[i]->key) == MIGRATION_PART) {
+						#if WORKLOAD == YCSB
+							//只要访问了迁移分区，就要sycndata
+							for(uint64_t i = 0; i < ((YCSBQuery*)query)->requests.size(); i++) {
+								if(key_to_part(((YCSBQuery*)query)->requests[i]->key) == MIGRATION_PART) {
+									send_update_messages(); 
+									rc = WAIT_REM;
+									return rc;
+								}
+							}
+						#elif WORKLOAD == TPCC
+							if (wh_to_part(((TPCCQuery*)query)->w_id) == MIGRATION_PART){
 								send_update_messages(); 
 								rc = WAIT_REM;
-								return rc;
-							}
-						}
+								return rc;		
+							}									
+						#endif
 						rc = commit();
     				uint64_t warmuptime1 = get_sys_clock() - g_starttime;
     				INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1); 
@@ -679,13 +689,21 @@ RC TxnManager::start_commit() {
 				}
 				else if (remus_status == 3){
 					if (g_node_id == MIGRATION_SRC_NODE){ //remus stage3切主回滚源节点
-						for(uint64_t i = 0; i < ((YCSBQuery*)query)->requests.size(); i++) {
-							if(key_to_part(((YCSBQuery*)query)->requests[i]->key) == MIGRATION_PART) {
+						#if WORKLOAD == YCSB
+							for(uint64_t i = 0; i < ((YCSBQuery*)query)->requests.size(); i++) {
+								if(key_to_part(((YCSBQuery*)query)->requests[i]->key) == MIGRATION_PART) {
+									abort();
+									rc = Abort;
+									return rc;
+								}
+							}
+						#elif WORKLOAD == TPCC
+							if (wh_to_part(((TPCCQuery*)query)->w_id) == MIGRATION_PART){
 								abort();
 								rc = Abort;
-								return rc;
-							}
-						}
+								return rc;			
+							}						
+						#endif
 						rc = commit();
     				uint64_t warmuptime1 = get_sys_clock() - g_starttime;
     				INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1); 
@@ -704,16 +722,26 @@ RC TxnManager::start_commit() {
 			#elif (MIGRATION_ALG == DETEST)
 				if (detest_status == 1){
 					if (g_node_id == MIGRATION_SRC_NODE) {
+						#if WORKLOAD == YCSB
 						//如果访问了迁移分区，就要进一步判断访问的mini分区
-						for(uint64_t i = 0; i < ((YCSBQuery*)query)->requests.size(); i++) {
-							if(key_to_part(((YCSBQuery*)query)->requests[i]->key) == MIGRATION_PART) { //如果访问的mini分区status=1正在迁移中，就需要syncdata
-								if (get_minipart_status(get_minipart_id(((YCSBQuery*)query)->requests[i]->key)) == 1){
+							for(uint64_t i = 0; i < ((YCSBQuery*)query)->requests.size(); i++) {
+								if(key_to_part(((YCSBQuery*)query)->requests[i]->key) == MIGRATION_PART) { //如果访问的mini分区status=1正在迁移中，就需要syncdata
+									if (get_minipart_status(get_minipart_id(((YCSBQuery*)query)->requests[i]->key)) == 1){
+										send_update_messages(); 
+										rc = WAIT_REM;
+										return rc;
+									}
+								}
+							}
+						#elif WORKLOAD == TPCC
+							if (wh_to_part(((TPCCQuery*)query)->w_id) == MIGRATION_PART){
+								if (get_minipart_status(get_minipart_id(custKey(((TPCCQuery*)query)->c_id, ((TPCCQuery*)query)->d_id, ((TPCCQuery*)query)->w_id))) == 1){
 									send_update_messages(); 
 									rc = WAIT_REM;
 									return rc;
-								}
+								}								
 							}
-						}
+						#endif
 						rc = commit();
 						uint64_t warmuptime1 = get_sys_clock() - g_starttime;
     				INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1); 
@@ -738,13 +766,21 @@ RC TxnManager::start_commit() {
 				}
 				else if (squall_status == 1 && g_node_id == MIGRATION_SRC_NODE){
 					//squall刚开始，回滚迁移分区上正在执行的事务
-					for(uint64_t i = 0; i < ((YCSBQuery*)query)->requests.size(); i++) {
-						if(key_to_part(((YCSBQuery*)query)->requests[i]->key) == MIGRATION_PART){
+					#if WORKLOAD == YCSB
+						for(uint64_t i = 0; i < ((YCSBQuery*)query)->requests.size(); i++) {
+							if(key_to_part(((YCSBQuery*)query)->requests[i]->key) == MIGRATION_PART){
+								abort();
+								rc = Abort;
+								return rc;
+							}
+						}
+					#elif WORKLOAD == TPCC
+						if (wh_to_part(((TPCCQuery*)query)->w_id) == MIGRATION_PART){
 							abort();
 							rc = Abort;
-							return rc;
-						}
-					}
+							return rc;			
+						}							
+					#endif
 					rc = commit();
 					uint64_t warmuptime1 = get_sys_clock() - g_starttime;
     			INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1); 

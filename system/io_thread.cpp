@@ -129,11 +129,35 @@ RC InputThread::client_recv_loop() {
 						//node_inflight_max[0] = 2 * MAX_TXN_IN_PART; //part迁移完成，修改inflght
 						//node_inflight_max[1] = 2 * MAX_TXN_IN_PART;
 						//std::cout<<"Time is"<<(get_sys_clock()-g_starttime)/BILLION<<endl;
-						std::cout<<"!!!!!!!!!!!partition 0 is on node "<<GET_NODE_ID(0)<<endl;
-						std::cout<<"!!!!!!!!!!!partition 1 is on node "<<GET_NODE_ID(1)<<endl;
+						std::cout<<"!!!!!!!!!!!partition "<<((SetPartMapMessage*)msg)->part_id<<" is on node "<<GET_NODE_ID(((SetPartMapMessage*)msg)->part_id)<<endl;
+						//std::cout<<"!!!!!!!!!!!partition 1 is on node "<<GET_NODE_ID(1)<<endl;
 						std::cout<<"Time is "<<(get_sys_clock() - run_starttime) / BILLION<<endl;
 						//std::cout<<"!!!!!!!!!!!partition 2 is on node "<<GET_NODE_ID(2)<<endl;
 						//std::cout<<"!!!!!!!!!!!partition 3 is on node "<<GET_NODE_ID(3)<<endl;
+						/*
+						//for tpcc we migrate more partitions
+						#if MIGRATION
+						#if WORKLOAD == TPCC
+							uint64_t node_id_src = 0;
+							uint64_t node_id_des = 1;
+							uint64_t part_id = 
+							Message * msg = Message::create_message(SEND_MIGRATION);
+							((MigrationMessage*)msg)->node_id_src = node_id_src;
+							((MigrationMessage*)msg)->node_id_des = node_id_des;
+							((MigrationMessage*)msg)->part_id = part_id;
+							((MigrationMessage*)msg)->minipart_id = 0;
+							((MigrationMessage*)msg)->rtype = SEND_MIGRATION;
+							((MigrationMessage*)msg)->data_size = g_dist_per_wh * g_cust_per_dist / PART_SPLIT_CNT;
+							((MigrationMessage*)msg)->return_node_id = node_id_des;
+							((MigrationMessage*)msg)->isdata = false;
+							((MigrationMessage*)msg)->key_start =custKey(MIGRATION_PART+1, MIGRATION_PART+1, MIGRATION_PART+1);
+							std::cout<<"msg size is:"<<msg->get_size()<<endl;
+							std::cout<<"begin migration!"<<endl;
+							std::cout<<"Time is "<<(get_sys_clock() - run_starttime) / BILLION<<endl;
+							msg_queue.enqueue(get_thd_id(),msg,node_id_src);
+						#endif
+						#endif
+						*/
 						break;
 					}
 					case SET_DETEST:{

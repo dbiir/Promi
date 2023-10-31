@@ -24,6 +24,7 @@
 #include "helper.h"
 #include "logger.h"
 #include "array.h"
+#include "row.h"
 
 class ycsb_request;
 class LogRecord;
@@ -546,6 +547,25 @@ public:
   void release();
 };
 
+class TMigrationMessage : public MigrationMessage{
+public:
+  //uint64_t node_id_src,node_id_des;//迁移源节点目标节点的id
+  //uint64_t part_id;//迁移分区id
+  //uint64_t minipart_id;
+  uint64_t keyrange[7][2]; //7张表，0存key_start，1存key_end
+  uint64_t row_size[7];//7张表，存每张表row data的数量
+  //bool isdata;//数据是否传入
+  //bool islast;//是否是分片的最后一个迁移消息
+  uint64_t datasize; //表数据的大小
+  //vector<row_t> data; //7张表的row
+  uint64_t get_size();
+  void copy_from_buf(char * buf);
+  void copy_to_buf(char * buf);
+  void copy_from_txn(TxnManager * txn);
+  void copy_to_txn(TxnManager * txn);
+  void init();
+  void release();  
+};
 
 class SetRemusMessage : public Message{
 public:

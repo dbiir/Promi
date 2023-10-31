@@ -2217,10 +2217,16 @@ uint64_t MigrationMessage::get_size(){
   uint64_t size = Message::mget_size();
   size += sizeof(uint64_t)*8;
   size += sizeof(bool)*2;
+  #if WORKLOAD == YCSB
   if (isdata){
     size += sizeof(row_t) * data.size();
     size += MAX_TUPLE_SIZE * data.size();
   }
+  #elif WORKLOAD == TPCC
+  if (isdata){
+    size += g_tuplesize[2] * data.size();
+  }  
+  #endif
   return size;
 }
 
@@ -2245,7 +2251,7 @@ void MigrationMessage::copy_from_buf(char* buf){
       data.emplace_back(tmp);
     }
     
-    
+    #if WORKLOAD == YCSB
     for (size_t i=0;i<data_size;i++){
       //char* tmp = (char*)malloc(sizeof(char)*data[0].get_tuple_size());
       char tmp_char[MAX_TUPLE_SIZE];
@@ -2253,6 +2259,7 @@ void MigrationMessage::copy_from_buf(char* buf){
       string tmp_str = tmp_char;
       row_data.emplace_back(tmp_str);
     }
+    #endif
     
   }
 }
@@ -2310,6 +2317,89 @@ void MigrationMessage::copy_from_txn(TxnManager* txn){
 }
 
 void MigrationMessage::copy_to_txn(TxnManager* txn){
+  Message::mcopy_to_txn(txn);
+}
+
+uint64_t TMigrationMessage::get_size(){
+  uint64_t size = MigrationMessage::get_size();
+  //size += sizeof(uint64_t)*4;
+  size += sizeof(uint64_t)*14;
+  size += sizeof(uint64_t)*7;
+  //size += sizeof(bool)*2;  
+  size += sizeof(uint64_t);
+  //统计表数据大小
+  size += datasize;
+  return size;
+}
+
+void TMigrationMessage::copy_from_buf(char* buf){
+  MigrationMessage::mcopy_from_buf(buf);
+  uint64_t ptr = MigrationMessage::get_size();
+  //COPY_VAL(node_id_src,buf,ptr);
+  //COPY_VAL(node_id_des,buf,ptr);
+  //COPY_VAL(part_id,buf,ptr);
+  //COPY_VAL(minipart_id,buf,ptr);
+  for (int i=0; i<7; i++){
+    COPY_VAL(keyrange[i][0], buf, ptr);
+    COPY_VAL(keyrange[i][1], buf, ptr);
+  }
+  for (int i=0; i<7; i++){
+    COPY_VAL(row_size[i], buf, ptr);
+  }  
+  //COPY_VAL(isdata,buf,ptr);
+  //COPY_VAL(islast,buf,ptr);
+  COPY_VAL(datasize,buf,ptr);
+  /*
+  if (isdata){
+    for (size_t i=0;i<data.size();i++){
+      row_t tmp;
+      COPY_VAL(tmp,buf,ptr);
+      data.emplace_back(tmp);
+    }
+  }
+  */
+}
+
+void TMigrationMessage::copy_to_buf(char* buf){
+  MigrationMessage::mcopy_to_buf(buf);
+  uint64_t ptr = MigrationMessage::get_size();
+  //COPY_BUF(buf,node_id_src,ptr);
+  //COPY_BUF(buf,node_id_des,ptr);
+  //COPY_BUF(buf,part_id,ptr);
+  //COPY_BUF(buf,minipart_id,ptr);
+  for (int i=0; i<7; i++){
+    COPY_BUF(buf, keyrange[i][0], ptr);
+    COPY_BUF(buf, keyrange[i][1], ptr);
+  }
+  for (int i=0; i<7; i++){
+    COPY_BUF(buf, row_size[i], ptr);
+  }  
+  //COPY_BUF(buf, isdata, ptr);
+  //COPY_BUF(buf, islast, ptr);
+  COPY_BUF(buf, datasize, ptr);  
+  /*
+  if (isdata){
+    for (size_t i=0;i<this->data.size();i++){
+      COPY_BUF(buf,data[i],ptr);
+    }
+  } 
+  */ 
+}
+
+void TMigrationMessage::init(){
+
+}
+
+void TMigrationMessage::release(){
+  
+}
+
+void TMigrationMessage::copy_from_txn(TxnManager* txn){
+  Message::mcopy_from_txn(txn);
+  
+}
+
+void TMigrationMessage::copy_to_txn(TxnManager* txn){
   Message::mcopy_to_txn(txn);
 }
 

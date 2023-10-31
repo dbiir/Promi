@@ -153,7 +153,7 @@ void WorkerThread::process(Message * msg) {
   RC rc __attribute__ ((unused));
 
   DEBUG("%ld Processing %ld %d\n",get_thd_id(),msg->get_txn_id(),msg->get_rtype());
-  assert(msg->get_rtype() == CL_QRY || msg->get_rtype() == CL_QRY_O || msg->get_rtype() == SEND_MIGRATION || msg->get_rtype() == SET_PARTMAP || msg->get_rtype() == SET_REMUS || msg->get_rtype() == SET_DETEST || msg->get_rtype() == SET_MINIPARTMAP || msg->get_rtype() == SET_ROWMAP || msg->get_rtype() == SET_SQUALL || msg->get_rtype() == SET_SQUALLPARTMAP || msg->get_rtype() == SYNC || msg->get_rtype() == ACK_SYNC || 
+  assert(msg->get_rtype() == CL_QRY || msg->get_rtype() == CL_QRY_O || msg->get_rtype() == SEND_MIGRATION || msg->get_rtype() == RECV_MIGRATION || msg->get_rtype() == FINISH_MIGRATION || msg->get_rtype() == SET_PARTMAP || msg->get_rtype() == SET_REMUS || msg->get_rtype() == SET_DETEST || msg->get_rtype() == SET_MINIPARTMAP || msg->get_rtype() == SET_ROWMAP || msg->get_rtype() == SET_SQUALL || msg->get_rtype() == SET_SQUALLPARTMAP || msg->get_rtype() == SYNC || msg->get_rtype() == ACK_SYNC || 
   msg->get_txn_id() != UINT64_MAX);
   uint64_t starttime = get_sys_clock();
 		switch(msg->get_rtype()) {

@@ -20,6 +20,7 @@
 #include "table.h"
 #include "ycsb_query.h"
 #include "tpcc_query.h"
+#include "tpcc_helper.h"
 #include "pps_query.h"
 #include "da_query.h"
 
@@ -113,6 +114,7 @@ Client_query_queue::initQueriesParallel(uint64_t thd_id) {
 	gen->init();
 #elif WORKLOAD == TPCC
 	TPCCQueryGenerator * gen = new TPCCQueryGenerator;
+	gen->init();
 #elif WORKLOAD == PPS
 	PPSQueryGenerator * gen = new PPSQueryGenerator;
 #elif WORKLOAD == DA
@@ -172,6 +174,7 @@ Client_query_queue::get_next_query(uint64_t server_id,uint64_t thread_id) {
 
 BaseQuery *
 Client_query_queue::get_next_query_partition(uint64_t server_id, uint64_t partition_id,uint64_t thread_id){
+#if WORKLOAD == YCSB
 	uint64_t query_id = __sync_fetch_and_add(query_cnt[server_id], 1);
 	if(query_id > g_max_txn_per_part) {
 	__sync_bool_compare_and_swap(query_cnt[server_id],query_id+1,0);//if query_cnt[server_id]==query_id+1, then set query_cnt[server_id] to 0
@@ -186,4 +189,20 @@ Client_query_queue::get_next_query_partition(uint64_t server_id, uint64_t partit
 	}
 	BaseQuery * query = queries[server_id][query_id];
 	return query;
+#elif WORKLOAD == TPCC
+	uint64_t query_id = __sync_fetch_and_add(query_cnt[server_id], 1);
+	if(query_id > g_max_txn_per_part) {
+		__sync_bool_compare_and_swap(query_cnt[server_id],query_id+1,0);//if query_cnt[server_id]==query_id+1, then set query_cnt[server_id] to 0
+		query_id = __sync_fetch_and_add(query_cnt[server_id], 1);
+  }
+	while (wh_to_part(((TPCCQuery*)queries[server_id][query_id])->w_id) != partition_id){
+		query_id = __sync_fetch_and_add(query_cnt[server_id], 1);
+		if(query_id > g_max_txn_per_part) {
+			__sync_bool_compare_and_swap(query_cnt[server_id],query_id+1,0);//if query_cnt[server_id]==query_id+1, then set query_cnt[server_id] to 0
+			query_id = __sync_fetch_and_add(query_cnt[server_id], 1);
+  	}		
+	}
+	BaseQuery * query = queries[server_id][query_id];
+	return query;
+#endif
 }

@@ -258,6 +258,7 @@ extern UInt32 g_max_items;
 extern UInt32 g_dist_per_wh;
 extern UInt32 g_cust_per_dist;
 extern UInt32 g_max_items_per_txn;
+extern uint64_t g_tuplesize[7]; //记录每张表的每条记录的大小
 
 // PPS (Product-Part-Supplier)
 extern UInt32 g_max_parts_per;

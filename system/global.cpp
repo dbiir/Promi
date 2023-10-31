@@ -265,9 +265,13 @@ char * txn_file = NULL;
 #if TPCC_SMALL
 UInt32 g_max_items = MAX_ITEMS_SMALL;
 UInt32 g_cust_per_dist = CUST_PER_DIST_SMALL;
+//uint64_t g_tuplesize[9] = {105, 121, 78, 56, 24, 64, 40, 98, 32}; 
+uint64_t g_tuplesize[7] = {105, 121, 1024 * 5, 56, 64, 98, 32}; //只统计迁移表
+//warehouse, distinct, customer, history, order, item, stock
 #else
 UInt32 g_max_items = MAX_ITEMS_NORM;
 UInt32 g_cust_per_dist = CUST_PER_DIST_NORM;
+uint64_t g_tuplesize[9] = {105, 121, 703, 80, 24, 64, 80, 98, 338};
 #endif
 UInt32 g_max_items_per_txn = MAX_ITEMS_PER_TXN;
 UInt32 g_dist_per_wh = DIST_PER_WH;
@@ -303,6 +307,7 @@ uint64_t get_node_id_mini(uint64_t key){
 map <uint64_t,vector<uint64_t> > part_map;
 //remus迁移成功的时间,源节点记录
 uint64_t remus_finish_time;
+
 
 void part_map_init(){
   for (uint64_t i=0;i<g_part_cnt;i++){
@@ -349,7 +354,11 @@ void minipart_map_init(){
 }
 
 uint64_t get_minipart_id(uint64_t key){//只针对0分区
+#if WORKLOAD == YCSB
   return key / g_part_cnt / (g_synth_table_size / g_part_cnt / g_part_split_cnt);
+#elif WORKLOAD == TPCC
+  return (key -1 - ((MIGRATION_PART+1) * g_dist_per_wh + (MIGRATION_PART+1)) * g_cust_per_dist) / (g_dist_per_wh * g_cust_per_dist / PART_SPLIT_CNT);//以customer表作为分区，customer表大小为g_num_wh / g_node_cnt * g_dist_per_wh * g_cust_per_dist, 
+#endif
 }
 
 uint64_t get_minipart_node_id(uint64_t minipart_id){
@@ -381,7 +390,12 @@ void squallpart_map_init(){
 }
 
 uint64_t get_squallpart_id(uint64_t key){//只针对0分区
+#if WORKLOAD == YCSB
   return key / g_part_cnt / (g_synth_table_size / g_part_cnt / Squall_Part_Cnt);
+#elif WORKLOAD == TPCC
+  return (key -1 - ((MIGRATION_PART+1) * g_dist_per_wh + (MIGRATION_PART+1)) * g_cust_per_dist) / (g_dist_per_wh * g_cust_per_dist / Squall_Part_Cnt);
+  //return (key) / (g_dist_per_wh * g_cust_per_dist / Squall_Part_Cnt);
+#endif
 }
 
 uint64_t get_squallpart_node_id(uint64_t squallpart_id){

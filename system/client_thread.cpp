@@ -21,6 +21,7 @@
 #include "query.h"
 #include "ycsb_query.h"
 #include "tpcc_query.h"
+#include "tpcc_helper.h"
 #include "client_query.h"
 #include "transport.h"
 #include "client_txn.h"
@@ -65,22 +66,41 @@ RC ClientThread::run() {
 		#if MIGRATION
 			#if MIGRATION_ALG == DETEST
 				if (!ismigrate && (get_thd_id() == 0) && ((get_sys_clock() - run_starttime) / BILLION  >= START_MIG)){
-				ismigrate = true;
-				Message * msg = Message::create_message(SEND_MIGRATION);
-				((MigrationMessage*)msg)->node_id_src = node_id_src;
-				((MigrationMessage*)msg)->node_id_des = node_id_des;
-				((MigrationMessage*)msg)->part_id = part_id;
-				((MigrationMessage*)msg)->minipart_id = 0;
-				((MigrationMessage*)msg)->rtype = SEND_MIGRATION;
-				((MigrationMessage*)msg)->data_size = g_synth_table_size / g_part_cnt / PART_SPLIT_CNT;
-				((MigrationMessage*)msg)->return_node_id = node_id_des;
-				((MigrationMessage*)msg)->isdata = false;
-				((MigrationMessage*)msg)->key_start = MIGRATION_PART;
-				std::cout<<"msg size is:"<<msg->get_size()<<endl;
-				std::cout<<"begin migration!"<<endl;
-				std::cout<<"Time is "<<(get_sys_clock() - run_starttime) / BILLION<<endl;
-				msg_queue.enqueue(get_thd_id(),msg,node_id_src);
-				continue;
+					#if WORKLOAD == YCSB
+						ismigrate = true;
+						Message * msg = Message::create_message(SEND_MIGRATION);
+						((MigrationMessage*)msg)->node_id_src = node_id_src;
+						((MigrationMessage*)msg)->node_id_des = node_id_des;
+						((MigrationMessage*)msg)->part_id = part_id;
+						((MigrationMessage*)msg)->minipart_id = 0;
+						((MigrationMessage*)msg)->rtype = SEND_MIGRATION;
+						((MigrationMessage*)msg)->data_size = g_synth_table_size / g_part_cnt / PART_SPLIT_CNT;
+						((MigrationMessage*)msg)->return_node_id = node_id_des;
+						((MigrationMessage*)msg)->isdata = false;
+						((MigrationMessage*)msg)->key_start = MIGRATION_PART;
+						std::cout<<"msg size is:"<<msg->get_size()<<endl;
+						std::cout<<"begin migration!"<<endl;
+						std::cout<<"Time is "<<(get_sys_clock() - run_starttime) / BILLION<<endl;
+						msg_queue.enqueue(get_thd_id(),msg,node_id_src);
+						continue;
+					#elif WORKLOAD == TPCC
+						ismigrate = true;
+						Message * msg = Message::create_message(SEND_MIGRATION);
+						((MigrationMessage*)msg)->node_id_src = node_id_src;
+						((MigrationMessage*)msg)->node_id_des = node_id_des;
+						((MigrationMessage*)msg)->part_id = part_id;
+						((MigrationMessage*)msg)->minipart_id = 0;
+						((MigrationMessage*)msg)->rtype = SEND_MIGRATION;
+						((MigrationMessage*)msg)->data_size = g_dist_per_wh * g_cust_per_dist / PART_SPLIT_CNT;
+						((MigrationMessage*)msg)->return_node_id = node_id_des;
+						((MigrationMessage*)msg)->isdata = false;
+						((MigrationMessage*)msg)->key_start =custKey(MIGRATION_PART+1, MIGRATION_PART+1, MIGRATION_PART+1);
+						std::cout<<"msg size is:"<<msg->get_size()<<endl;
+						std::cout<<"begin migration!"<<endl;
+						std::cout<<"Time is "<<(get_sys_clock() - run_starttime) / BILLION<<endl;
+						msg_queue.enqueue(get_thd_id(),msg,node_id_src);
+						continue;				
+					#endif
 				}
 			#elif (MIGRATION_ALG == SQUALL)
 				if (!ismigrate && (get_thd_id() == 0) && ((get_sys_clock() - run_starttime) / BILLION == START_MIG)){
@@ -122,19 +142,31 @@ RC ClientThread::run() {
 				}
 			#elif MIGRATION_ALG == REMUS
 			if (!ismigrate && (get_thd_id() == 0) && ((get_sys_clock() - run_starttime) / BILLION == START_MIG)){
-				ismigrate = true;
-				
-				Message * msg = Message::create_message(SEND_MIGRATION);
-				((MigrationMessage*)msg)->node_id_src = node_id_src;
-				((MigrationMessage*)msg)->node_id_des = node_id_des;
-				((MigrationMessage*)msg)->part_id = part_id;
-				((MigrationMessage*)msg)->minipart_id = -1;
-				((MigrationMessage*)msg)->rtype = SEND_MIGRATION;
-				((MigrationMessage*)msg)->data_size = g_synth_table_size / g_part_cnt;
-				((MigrationMessage*)msg)->return_node_id = node_id_des;
-				((MigrationMessage*)msg)->key_start = MIGRATION_PART;
-				((MigrationMessage*)msg)->isdata = false;
-				
+				#if WORKLOAD == YCSB
+					ismigrate = true;
+					Message * msg = Message::create_message(SEND_MIGRATION);
+					((MigrationMessage*)msg)->node_id_src = node_id_src;
+					((MigrationMessage*)msg)->node_id_des = node_id_des;
+					((MigrationMessage*)msg)->part_id = part_id;
+					((MigrationMessage*)msg)->minipart_id = -1;
+					((MigrationMessage*)msg)->rtype = SEND_MIGRATION;
+					((MigrationMessage*)msg)->data_size = g_synth_table_size / g_part_cnt;
+					((MigrationMessage*)msg)->return_node_id = node_id_des;
+					((MigrationMessage*)msg)->key_start = MIGRATION_PART;
+					((MigrationMessage*)msg)->isdata = false;
+				#elif WORKLOAD == TPCC
+					ismigrate = true;
+					Message * msg = Message::create_message(SEND_MIGRATION);
+					((MigrationMessage*)msg)->node_id_src = node_id_src;
+					((MigrationMessage*)msg)->node_id_des = node_id_des;
+					((MigrationMessage*)msg)->part_id = part_id;
+					((MigrationMessage*)msg)->minipart_id = -1;
+					((MigrationMessage*)msg)->rtype = SEND_MIGRATION;
+					((MigrationMessage*)msg)->data_size = g_dist_per_wh * g_cust_per_dist;
+					((MigrationMessage*)msg)->return_node_id = node_id_des;
+					((MigrationMessage*)msg)->key_start = custKey(MIGRATION_PART+1, MIGRATION_PART+1, MIGRATION_PART+1);
+					((MigrationMessage*)msg)->isdata = false;
+				#endif
 				/*
 				Message * msg1 = Message::create_message(SEND_MIGRATION);
 				MigrationMessage* msg = msg1;
@@ -186,6 +218,39 @@ RC ClientThread::run() {
 		uint64_t partition_id = mrand->next() % g_part_cnt;
 		uint32_t next_node = GET_NODE_ID(partition_id);
 		uint32_t next_node_id = next_node;
+		/*
+			#if SINGLE_PART_0
+				partition_id = 0;//只跑分区0的事务
+				next_node = GET_NODE_ID(partition_id);
+				next_node_id = next_node;
+			#elif SINGLE_PART_0124
+				partition_id = mrand->next() % 4;
+				switch (partition_id){
+					case 0:
+						partition_id = 0;
+						break;
+					case 1:
+						partition_id = 1;
+						break;
+					case 2:
+						partition_id = 2;
+						break;
+					case 3:
+						partition_id = 4;
+						break;	
+				}
+			#elif SINGLE_PART_CONSOLIDATION
+				//只生成0123分区的事务,但是分区0的事务要最多
+				partition_id = mrand->next() % 8;
+				if (partition_id >= 4) {
+					partition_id = 0;
+					next_node = GET_NODE_ID(partition_id);
+				} else{
+					next_node = GET_NODE_ID(partition_id);
+				}
+				next_node_id = next_node;
+			#endif	
+		*/	
 		#if MIGRATION
 			#if SINGLE_PART_0
 				partition_id = 0;//只跑分区0的事务
@@ -234,7 +299,7 @@ RC ClientThread::run() {
 		#if MIGRATION
 			if (partition_id == MIGRATION_PART){
 				m_query = client_query_queue.get_next_query_partition(MIGRATION_SRC_NODE, partition_id,_thd_id);
-			} else {
+			} else { 
 				m_query = client_query_queue.get_next_query_partition(next_node, partition_id,_thd_id);
 			}
 		#else
@@ -248,15 +313,20 @@ RC ClientThread::run() {
 				//if (next_node == 1 && next_node != next_node_id) std::cout<<"to ";
 			#elif MIGRATION_ALG == DETEST
 				if (partition_id == MIGRATION_PART){ //由于detest迷你分区迁移，需要根据事务分布式的比例，决定路由到src还是des
-					int node_src,node_des;
-					node_src = 0;
-					node_des = 0;
-					for (uint64_t i=0; i < ((YCSBQuery*)m_query)->requests.size(); i++){
-						if (get_minipart_node_id(get_minipart_id(((YCSBQuery*)m_query)->requests[i]->key)) == MIGRATION_SRC_NODE) node_src++;
-						else node_des++;
-					}
-					if (node_des < 1) next_node = node_id_src; //<1；只要访问了完成迁移的，就发送到目标节点 <5:访问的全部完成迁移，再发送到目标节点
-					else next_node = node_id_des;
+					#if WORKLOAD == YCSB
+						int node_src,node_des;
+						node_src = 0;
+						node_des = 0;
+						for (uint64_t i=0; i < ((YCSBQuery*)m_query)->requests.size(); i++){
+							if (get_minipart_node_id(get_minipart_id(((YCSBQuery*)m_query)->requests[i]->key)) == MIGRATION_SRC_NODE) node_src++;
+							else node_des++;
+						}
+						if (node_des < 1) next_node = node_id_src; //<1；只要访问了完成迁移的，就发送到目标节点 <5:访问的全部完成迁移，再发送到目标节点
+						else next_node = node_id_des;
+					#elif WORKLOAD == TPCC
+						if (get_minipart_node_id(get_minipart_id(custKey(((TPCCQuery*)m_query)->c_id, ((TPCCQuery*)m_query)->d_id, ((TPCCQuery*)m_query)->w_id))) == MIGRATION_SRC_NODE) next_node = node_id_src;
+						else next_node = node_id_des;
+					#endif
 					//next_node = get_minipart_node_id(mrand->next() % g_part_split_cnt);
 					//if (next_node == 1 && next_node != next_node_id) std::cout<<"to ";
 					//else {
@@ -276,28 +346,56 @@ RC ClientThread::run() {
 					else if (squall_status == 1){ //如果已经开始拉取，发到目标节点
 						next_node = MIGRATION_DES_NODE;
 						bool iscontinue = true;
+					#if WORKLOAD == YCSB
 						for (uint64_t i=0; i < ((YCSBQuery*)m_query)->requests.size(); i++){
 							if (get_squallpart_status(get_squallpart_id(((YCSBQuery*)m_query)->requests[i]->key)) == 1) {
 								//如果有数据正在被其他事务拉取，下一个query
 								iscontinue = false;
 								break;
 							}
-							else if (get_squallpart_status(get_squallpart_id(((YCSBQuery*)m_query)->requests[i]->key)) == 0){
+							else if (get_squallpart_status(get_squallpart_id(((YCSBQuery*)m_query)->requests[i]->key)) == 0){		
 								//如果没事务拉取就拉取
 								update_squallpart_map_status(get_squallpart_id(((YCSBQuery*)m_query)->requests[i]->key), 1);
 								Message * msg = Message::create_message(SEND_MIGRATION);
 								((MigrationMessage*)msg)->node_id_src = MIGRATION_SRC_NODE;
 								((MigrationMessage*)msg)->node_id_des = MIGRATION_DES_NODE;
 								((MigrationMessage*)msg)->part_id = key_to_part(((YCSBQuery*)m_query)->requests[i]->key);
-      					((MigrationMessage*)msg)->minipart_id = get_squallpart_id(((YCSBQuery*)m_query)->requests[i]->key);
+								((MigrationMessage*)msg)->minipart_id = get_squallpart_id(((YCSBQuery*)m_query)->requests[i]->key);
 								((MigrationMessage*)msg)->rtype = SEND_MIGRATION;
-      					((MigrationMessage*)msg)->data_size = g_synth_table_size / g_part_cnt / Squall_Part_Cnt;
+								((MigrationMessage*)msg)->data_size = g_synth_table_size / g_part_cnt / Squall_Part_Cnt;
 								((MigrationMessage*)msg)->return_node_id = MIGRATION_DES_NODE;
-      					((MigrationMessage*)msg)->key_start = MIGRATION_PART + get_squallpart_id(((YCSBQuery*)m_query)->requests[i]->key) * (g_synth_table_size / Squall_Part_Cnt / g_part_cnt) * g_part_cnt;
+								((MigrationMessage*)msg)->key_start = MIGRATION_PART + get_squallpart_id(((YCSBQuery*)m_query)->requests[i]->key) * (g_synth_table_size / Squall_Part_Cnt / g_part_cnt) * g_part_cnt;
 								((MigrationMessage*)msg)->isdata = false;
 								msg_queue.enqueue(get_thd_id(),msg,MIGRATION_SRC_NODE);
 							}
-						}
+						}													
+					#elif WORKLOAD == TPCC
+						for (uint64_t i=0; i < 1; i++){
+							//std::cout<<"c_id is "<<((TPCCQuery*)m_query)->c_id<<endl;
+							//std::cout<<"c_d_id is "<<((TPCCQuery*)m_query)->d_id<<endl;
+							//std::cout<<"c_w_id is "<<((TPCCQuery*)m_query)->w_id<<endl;
+							if (get_squallpart_status(get_squallpart_id(custKey(((TPCCQuery*)m_query)->c_id, ((TPCCQuery*)m_query)->d_id, ((TPCCQuery*)m_query)->w_id))) == 1) {
+								//如果有数据正在被其他事务拉取，下一个query
+								iscontinue = false;
+								break;
+							}		
+							else if (get_squallpart_status(get_squallpart_id(custKey(((TPCCQuery*)m_query)->c_id, ((TPCCQuery*)m_query)->d_id, ((TPCCQuery*)m_query)->w_id))) == 0){		
+								//如果没事务拉取就拉取
+								update_squallpart_map_status(get_squallpart_id(custKey(((TPCCQuery*)m_query)->c_id, ((TPCCQuery*)m_query)->d_id, ((TPCCQuery*)m_query)->w_id)), 1);
+								Message * msg = Message::create_message(SEND_MIGRATION);
+								((MigrationMessage*)msg)->node_id_src = MIGRATION_SRC_NODE;
+								((MigrationMessage*)msg)->node_id_des = MIGRATION_DES_NODE;
+								((MigrationMessage*)msg)->part_id = wh_to_part(((TPCCQuery*)m_query)->w_id);
+								((MigrationMessage*)msg)->minipart_id = get_squallpart_id(custKey(((TPCCQuery*)m_query)->c_id, ((TPCCQuery*)m_query)->d_id, ((TPCCQuery*)m_query)->w_id));
+								((MigrationMessage*)msg)->rtype = SEND_MIGRATION;
+								((MigrationMessage*)msg)->data_size = g_dist_per_wh * g_cust_per_dist / Squall_Part_Cnt;
+								((MigrationMessage*)msg)->return_node_id = MIGRATION_DES_NODE;
+								((MigrationMessage*)msg)->key_start = custKey(MIGRATION_PART+1, MIGRATION_PART+1, MIGRATION_PART+1) + ((MigrationMessage*)msg)->minipart_id * (g_dist_per_wh * g_cust_per_dist / Squall_Part_Cnt);
+								((MigrationMessage*)msg)->isdata = false;
+								msg_queue.enqueue(get_thd_id(),msg, MIGRATION_SRC_NODE);						
+							}	
+						}																
+					#endif
 						if (!iscontinue) continue;
 					}
 					else if (squall_status == 2){
@@ -328,8 +426,13 @@ RC ClientThread::run() {
 		
 
 		#if MIGRATION
-			if (partition_id != key_to_part(((YCSBQuery*)m_query)->requests[0]->key))
-				std::cout<<"wrong query ";
+			#if WORKLOAD == YCSB
+				if (partition_id != key_to_part(((YCSBQuery*)m_query)->requests[0]->key))
+					std::cout<<"wrong query ";
+			#elif WORKLOAD == TPCC
+				if (partition_id != wh_to_part(((TPCCQuery*)m_query)->w_id))
+					std::cout<<"wrong query ";
+			#endif
 		#endif
 		
 		if(last_send_time > 0) {
