@@ -1667,6 +1667,10 @@ void YCSBQueryMessage::copy_from_buf(char * buf) {
     if (req->key > g_synth_table_size){
       std::cout<<"req->key is "<<req->key<<' '<<i<<endl;
       std::cout<<"rtype is "<<this->get_rtype()<<endl;
+      if (req->key >= g_synth_table_size) {
+        req->key = myrand().next() % g_synth_table_size;
+        std::cout<<"myrand ";
+      }
     }
     ASSERT(req->key < g_synth_table_size);
     requests.add(req);

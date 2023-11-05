@@ -199,8 +199,8 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
         //std::cout<<"read data start!"<<endl;
 
         //由于迁移数据量可能比较大，拆分成多个msg发过去
-        if (msg->data_size * MAX_TUPLE_SIZE > (MSG_CHUNK_SIZE - 200)){
-            uint64_t tuple_num = max(MSG_CHUNK_SIZE / MAX_TUPLE_SIZE - 50, 1); //每个消息传递的tuple数量
+        if (msg->data_size * MAX_TUPLE_SIZE > (MSG_CHUNK_SIZE - 500)){
+            uint64_t tuple_num = max(MSG_CHUNK_SIZE / MAX_TUPLE_SIZE - 25, 1); //每个消息传递的tuple数量
             uint64_t msg_num; //要传递的次数
             msg_num = msg->data_size / tuple_num + 1; 
             

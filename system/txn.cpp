@@ -590,7 +590,7 @@ RC TxnManager::start_commit() {
 	RC rc = RCOK;
 	DEBUG("%ld start_commit RO?%d\n",get_txn_id(),query->readonly());
 	if(is_multi_part()) {
-		std::cout<<"multi part ";
+		//std::cout<<"multi part ";
 		if(CC_ALG == TICTOC) {
 			rc = validate();
 			if (rc != Abort) {

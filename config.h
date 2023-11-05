@@ -68,8 +68,8 @@
 /***********************************************/
 #define NODE_CNT 2
 #define THREAD_CNT 32
-#define REM_THREAD_CNT 4
-#define SEND_THREAD_CNT 4
+#define REM_THREAD_CNT 8
+#define SEND_THREAD_CNT 8
 #define MIG_THREAD_CNT 1
 #define CORE_CNT 2
 // PART_CNT should be at least NODE_CNT
@@ -95,9 +95,10 @@
 #define REMUS 1
 #define LOCK 2
 #define SQUALL 3
-#define DETEST_SPLIT 4
+#define DETEST_SPLIT PART_SPLIT_CNT
 #define SPLIT_NODE_NUM 300 //split场景下，训练图的节点的数量
 #define ROW_PER_NODE (SYNTH_TABLE_SIZE / PART_CNT / SPLIT_NODE_NUM)  //split场景下，每个node包含的row的数量
+#define COST_ENABLE false
 
 //which partition to be migrated
 #define MIGRATION_PART 0
@@ -106,7 +107,7 @@
 #define MIGRATION_DES_NODE 1 
 
 //migartion_alg DETEST REMUS LOCK DETEST_SPLIT
-#define MIGRATION_ALG SQUALL
+#define MIGRATION_ALG DETEST
 
 //DETEST Migration
 #define PART_SPLIT_CNT 4
@@ -136,14 +137,14 @@
 // # of transactions to run for warmup
 #define WARMUP 0
 // YCSB or TPCC or PPS or DA
-#define WORKLOAD TPCC      //THE INITIAL CONFIG IS FOR YCSB
+#define WORKLOAD YCSB      //THE INITIAL CONFIG IS FOR YCSB
 // print the transaction latency distribution
 #define PRT_LAT_DISTR false
 #define STATS_ENABLE true
 #define TIME_ENABLE true
 
 #define FIN_BY_TIME true
-#define MAX_TXN_IN_FLIGHT 150000
+#define MAX_TXN_IN_FLIGHT 100000
 #define MAX_TXN_IN_PART 10000
 
 #define SERVER_GENERATE_QUERIES false
@@ -190,7 +191,7 @@
 
 #define PRIORITY_WORK_QUEUE false
 #define PRIORITY PRIORITY_ACTIVE
-#define MSG_SIZE_MAX 1048576
+#define MSG_SIZE_MAX 600000
 #define MSG_CHUNK_SIZE 524288 //if msg > MSG_CHUNK_SIZE, SPLIT and SEND
 #define MSG_TIME_LIMIT 0
 
@@ -219,7 +220,7 @@
 #define ENABLE_LATCH false
 #define CENTRAL_INDEX false
 #define CENTRAL_MANAGER false
-#define INDEX_STRUCT IDX_HASH    //TPCC:IDX_HASH YCSB:IDX_BTREE
+#define INDEX_STRUCT IDX_BTREE    //TPCC:IDX_HASH YCSB:IDX_BTREE
 #define BTREE_ORDER 4
 
 // [TIMESTAMP]
@@ -282,7 +283,7 @@
 #define DATA_PERC (SYNTH_TABLE_SIZE / 64)
 #define ACCESS_PERC 0.3
 #define INIT_PARALLELISM (PART_CNT / NODE_CNT)
-#define SYNTH_TABLE_SIZE 16777216 / 16     //8分区正好每个分区512MB
+#define SYNTH_TABLE_SIZE 16777216     //8分区正好每个分区512MB
 #define ZIPF_THETA 0.6
 #define TXN_WRITE_PERC 0.1
 #define TUP_WRITE_PERC 0.1
