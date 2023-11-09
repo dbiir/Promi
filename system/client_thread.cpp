@@ -78,6 +78,10 @@ RC ClientThread::run() {
 						((MigrationMessage*)msg)->return_node_id = node_id_des;
 						((MigrationMessage*)msg)->isdata = false;
 						((MigrationMessage*)msg)->key_start = MIGRATION_PART;
+						#if COSTENABLE == false  //倒序迁移
+							((MigrationMessage*)msg)->minipart_id = PART_SPLIT_CNT - 1;
+							((MigrationMessage*)msg)->key_start = MIGRATION_PART + (PART_SPLIT_CNT - 1) * ((MigrationMessage*)msg)->data_size;
+						#endif
 						std::cout<<"msg size is:"<<msg->get_size()<<endl;
 						std::cout<<"begin migration!"<<endl;
 						std::cout<<"Time is "<<(get_sys_clock() - run_starttime) / BILLION<<endl;

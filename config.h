@@ -98,7 +98,7 @@
 #define DETEST_SPLIT PART_SPLIT_CNT
 #define SPLIT_NODE_NUM 300 //split场景下，训练图的节点的数量
 #define ROW_PER_NODE (SYNTH_TABLE_SIZE / PART_CNT / SPLIT_NODE_NUM)  //split场景下，每个node包含的row的数量
-#define COST_ENABLE false
+#define COSTENABLE false
 
 //which partition to be migrated
 #define MIGRATION_PART 0
@@ -144,7 +144,7 @@
 #define TIME_ENABLE true
 
 #define FIN_BY_TIME true
-#define MAX_TXN_IN_FLIGHT 100000
+#define MAX_TXN_IN_FLIGHT 50000
 #define MAX_TXN_IN_PART 10000
 
 #define SERVER_GENERATE_QUERIES false
@@ -502,7 +502,7 @@ enum PPSTxnType {
 #define START_MIG 140 // migration start time(second)
 #define TPS_LENGTH (DONE_TIMER+WARMUP_TIMER) / BILLION //length of throughut array
 #define SEQ_BATCH_TIMER 5 * 1 * MILLION // ~5ms -- same as CALVIN paper
-#define DONE_TIMER 1 * 100 * BILLION // ~1 minutes  60 BILLION = 1 min
+#define DONE_TIMER 1 * 120 * BILLION // ~1 minutes  60 BILLION = 1 min
 #define WARMUP_TIMER 1 * 120 * BILLION // ~1 minutes
 
 #define SEED 0

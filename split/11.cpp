@@ -2,14 +2,14 @@
 #include<stdlib.h>
 
 using namespace std;
-#define N 41
+#define N 20
 
 int main(){
   int a[N];
   for (int i=0;i<N;i++){
     cin>>a[i];
-    a[i] += (rand() % 5000);
-    a[i] -= (rand() % 5000);
+    a[i] -= 5000;
+    //a[i] -= (rand() % 5000);
     //a[i] -= (rand() % 10000);
     //a[i] += (rand() % 10000);
   }
