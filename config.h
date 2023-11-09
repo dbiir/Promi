@@ -280,10 +280,17 @@
 //    ZIPF: use ZIPF_THETA distribution
 //    HOT: use ACCESS_PERC of the accesses go to DATA_PERC of the data
 #define SKEW_METHOD ZIPF
+<<<<<<< HEAD
 #define DATA_PERC (SYNTH_TABLE_SIZE / 64)
 #define ACCESS_PERC 0.3
 #define INIT_PARALLELISM (PART_CNT / NODE_CNT)
 #define SYNTH_TABLE_SIZE 16777216     //8分区正好每个分区512MB
+=======
+#define DATA_PERC 100
+#define ACCESS_PERC 0.03
+#define INIT_PARALLELISM 8
+#define SYNTH_TABLE_SIZE 16384
+>>>>>>> origin/main
 #define ZIPF_THETA 0.6
 #define TXN_WRITE_PERC 0.1
 #define TUP_WRITE_PERC 0.1
