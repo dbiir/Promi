@@ -64,6 +64,7 @@ public:
   uint64_t local_txn_abort_cnt;
   uint64_t remote_txn_abort_cnt;
   double txn_run_time;
+  //uint64_t distributed_txn_cnt;
   uint64_t multi_part_txn_cnt;
   double multi_part_txn_run_time;
   uint64_t single_part_txn_cnt;
@@ -450,6 +451,7 @@ public:
   void mem_util(FILE * outf);
   void cpu_util(FILE * outf);
   void print_prof(FILE * outf);
+  void analyze(Stats_thd ** _stats);
 
   clock_t lastCPU, lastSysCPU, lastUserCPU;
 private:

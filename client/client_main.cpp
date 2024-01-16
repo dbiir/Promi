@@ -228,6 +228,11 @@ int main(int argc, char *argv[]) {
 	for (size_t i=0; i<query_to_part.size(); i++){
 		std::cout<<"  partition"<<i<<" "<<query_to_part[i]<<endl;
 	}
+
+	std::cout<<"Query to minipartition:"<<endl;
+	for (size_t i=0; i<query_to_minipart.size(); i++){
+		std::cout<<"  minipartition"<<i<<" "<<query_to_minipart[i]<<endl;
+	}
 	/*
 	ofstream fout("query_to_row.txt");
 	for (size_t i=0; i < edge_index.size(); i++){

@@ -171,6 +171,7 @@ public:
 	bool            is_done();
 	void            commit_stats();
 	bool            is_multi_part();
+	bool 						isdistributed;
 
 	void            set_timestamp(ts_t timestamp);
 	ts_t            get_timestamp();

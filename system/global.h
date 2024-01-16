@@ -38,6 +38,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <math.h>
+#include <mutex>
 
 #include "pthread.h"
 #include "config.h"
@@ -168,7 +169,10 @@ extern UInt32 g_clients_per_server;
 extern UInt32 g_server_start_node;
 extern vector<int> query_to_part;
 extern vector<int> query_to_row;
+extern vector<int> query_to_minipart;
 extern vector< pair<uint64_t, uint64_t> > edge_index;
+extern vector<double> wtime;
+extern vector<double> wlatency;
 
 /******************************************/
 // Global Parameter
@@ -197,6 +201,7 @@ extern UInt32 g_tcp_thread_cnt;
 extern UInt32 g_send_thread_cnt;
 extern UInt32 g_migrate_thread_cnt;
 extern UInt32 g_rem_thread_cnt;
+extern UInt32 g_stat_thread_cnt;
 extern ts_t g_abort_penalty;
 extern ts_t g_abort_penalty_max;
 extern bool g_central_man;
@@ -380,12 +385,14 @@ enum TsType {R_REQ = 0, W_REQ, P_REQ, XP_REQ};
 uint64_t get_node_id_mini(uint64_t key);
 
 extern int node_inflight_max[NODE_CNT]; //每个节点的inflight数量，根据节点part数量确定
+extern double percents[TPS_LENGTH];
 
 extern bool g_migrate_flag;
 extern uint64_t g_mig_starttime;
 extern uint64_t g_mig_endtime;
 //part_table:记录每个part的信息,<part_id, <node_id,migrate_status> >, migrate_status{0:not migrated, 1:migrating, 2:migrated}
 extern map <uint64_t,vector<uint64_t> > part_map;
+//extern std::mutex mtx_part_map;
 void part_map_init();
 uint64_t get_part_node_id(uint64_t part_id);
 uint64_t get_part_status(uint64_t part_id);
@@ -394,6 +401,7 @@ void update_part_map_status(uint64_t part_id, uint64_t status);//修改part_map�
 
 //minipart_table:记录迁移中的minipart的状态信息 < <minipart_id, <node_id,status> >, status{0:not migrated, 1:migrating, 2:migrated}
 extern map <uint64_t, vector<uint64_t> > minipart_map;
+//extern std::mutex mtx_minipart_map;
 void minipart_map_init();
 uint64_t get_minipart_id(uint64_t key);
 uint64_t get_minipart_node_id(uint64_t part_id);
@@ -425,8 +433,8 @@ void update_row_map_status_order(uint64_t order, uint64_t node_id);//根据order
 extern map<uint64_t, vector<uint64_t> > order_map;
 void order_map_init();
 extern int cluster[SPLIT_NODE_NUM]; //分类结果
-extern int cluster_num[DETEST_SPLIT]; //每一次order对应的row数量
-extern int Order[SPLIT_NODE_NUM];//迁移的顺序，先迁移哪一类
+extern int cluster_num[PART_SPLIT_CNT]; //每一次order对应的row数量
+extern int Order[PART_SPLIT_CNT];//迁移的顺序，先迁移哪一类
 void cluster_num_init();
 
 //detest状态，0 1 2, 未开始 迁移中 迁移完毕

@@ -373,8 +373,8 @@ RC InputThread::server_recv_loop() {
 #ifdef FAKE_PROCESS
 			if (fakeprocess(msg))
 #endif
-			if (msg->rtype == SEND_MIGRATION) std::cout<<"get SEND"<<endl;
-			if (msg->rtype == RECV_MIGRATION) std::cout<<"get RECV"<<endl;
+			//if (msg->rtype == SEND_MIGRATION) std::cout<<"get SEND"<<endl;
+			//if (msg->rtype == RECV_MIGRATION) std::cout<<"get RECV"<<endl;
 			work_queue.enqueue(get_thd_id(),msg,false);
 			msgs->erase(msgs->begin());
 		}

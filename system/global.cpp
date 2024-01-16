@@ -178,14 +178,15 @@ UInt32 g_migrate_thread_cnt = MIG_THREAD_CNT;
 #else
 UInt32 g_migrate_thread_cnt = 0;
 #endif
+UInt32 g_stat_thread_cnt = 1;
 #if CC_ALG == CALVIN
 // sequencer + scheduler thread
 UInt32 g_total_thread_cnt = g_thread_cnt + g_rem_thread_cnt + g_send_thread_cnt + g_abort_thread_cnt + g_logger_thread_cnt + 3;
 #else
     #if MIGRATION
-        UInt32 g_total_thread_cnt = g_thread_cnt + g_rem_thread_cnt + g_send_thread_cnt + g_abort_thread_cnt + g_logger_thread_cnt + g_migrate_thread_cnt + 1;
+        UInt32 g_total_thread_cnt = g_thread_cnt + g_rem_thread_cnt + g_send_thread_cnt + g_abort_thread_cnt + g_logger_thread_cnt + g_migrate_thread_cnt + g_stat_thread_cnt + 1;
     #else
-        UInt32 g_total_thread_cnt = g_thread_cnt + g_rem_thread_cnt + g_send_thread_cnt + g_abort_thread_cnt + g_logger_thread_cnt + 1;
+        UInt32 g_total_thread_cnt = g_thread_cnt + g_rem_thread_cnt + g_send_thread_cnt + g_abort_thread_cnt + g_logger_thread_cnt + g_stat_thread_cnt + 1;
     #endif
 #endif
 
@@ -205,7 +206,10 @@ UInt32 g_clients_per_server = 0;
 UInt32 g_server_start_node = 0;
 vector<int> query_to_part(g_part_cnt);
 vector<int> query_to_row(g_synth_table_size);
+vector<int> query_to_minipart(PART_SPLIT_CNT);
 vector< pair<uint64_t, uint64_t> > edge_index;
+vector<double> wtime = {}; //by cost model
+vector<double> wlatency = {};
 
 
 UInt32 g_this_thread_cnt = ISCLIENT ? g_client_thread_cnt : g_thread_cnt;
@@ -281,6 +285,8 @@ UInt32 g_repl_cnt = REPLICA_CNT;
 
 map<string, string> g_params;
 
+double percents[TPS_LENGTH];
+
 uint64_t get_node_id_mini(uint64_t key){
   #if MIGRATION_ALG == DETEST
     if (key_to_part(key) != MIGRATION_PART) return GET_NODE_ID(key_to_part(key));
@@ -304,7 +310,8 @@ uint64_t get_node_id_mini(uint64_t key){
 }
 
 //part_table:记录每个part所在的node
-map <uint64_t,vector<uint64_t> > part_map;
+std::map <uint64_t, std::vector<uint64_t>> part_map;
+//std::mutex mtx_part_map;
 //remus迁移成功的时间,源节点记录
 uint64_t remus_finish_time;
 
@@ -334,15 +341,18 @@ uint64_t get_part_status(uint64_t part_id){
 }
 
 void update_part_map(uint64_t part_id, uint64_t node_id){
+  //std::lock_guard<std::mutex> lock(mtx_part_map);
   part_map[part_id][0] = node_id;
 }
 
 void update_part_map_status(uint64_t part_id, uint64_t status){
+  //std::lock_guard<std::mutex> lock(mtx_part_map);
   part_map[part_id][1] = status;
 }
 
 //minipart_table:记录迁移中的minipart的状态信息
 map <uint64_t, vector<uint64_t> > minipart_map;
+std::mutex mtx_minipart_map;
 
 void minipart_map_init(){
   for (uint64_t i=0; i<g_part_split_cnt; i++){
@@ -370,10 +380,12 @@ uint64_t get_minipart_status(uint64_t minipart_id){
 }
 
 void update_minipart_map(uint64_t minipart_id, uint64_t node_id){
+  //std::lock_guard<std::mutex> lock(mtx_minipart_map);
   minipart_map[minipart_id][0] = node_id;
 }
 
 void update_minipart_map_status(uint64_t minipart_id, uint64_t status){
+  //std::lock_guard<std::mutex> lock(mtx_minipart_map);
   minipart_map[minipart_id][1] = status;
 }
 
@@ -472,14 +484,14 @@ void order_map_init(){ //初始化每一个order下对应了哪些row
 }
 
 //int Order[SPLIT_NODE_NUM]={2,3,1,0};
-int Order[SPLIT_NODE_NUM]={0,1,2,3};
+int Order[PART_SPLIT_CNT]={0,1,2,3};
 //int Order[SPLIT_NODE_NUM]={3,0,2,1};
 
 //int cluster[300]={2,3,0,0,3,1,3,1,0,2,2,1,3,2,0,3,3,3,1,3,3,1,0,0,0,1,2,3,3,0,1,2,0,2,0,0,2,0,2,1,2,2,1,3,1,3,0,2,2,3,3,0,3,1,3,2,0,2,2,2,0,0,2,1,2,3,2,1,1,3,2,0,2,2,3,1,2,2,3,1,3,0,2,1,0,2,3,2,2,0,1,3,1,0,2,3,3,2,2,0,0,2,0,3,3,2,3,3,2,2,2,2,2,1,2,2,1,2,0,2,0,3,2,0,3,0,3,1,2,1,0,2,2,0,2,1,3,2,3,2,2,3,1,3,0,3,0,3,2,0,1,1,3,0,2,0,1,3,2,3,0,1,3,2,1,0,2,2,2,3,1,2,3,2,0,0,2,3,0,3,3,0,2,0,3,2,2,3,2,1,1,0,3,0,3,1,2,0,2,3,2,0,0,2,0,1,3,0,2,2,3,3,3,0,2,3,2,0,1,0,3,2,0,2,1,3,1,1,2,1,3,0,2,0,2,0,2,1,3,3,0,3,2,0,2,1,1,2,2,0,2,2,1,0,3,3,0,2,2,0,2,3,3,2,1,3,3,2,1,0,2,0,2,2,3,2,0,0,3,3,2,1,2,0,0,0,2,0,0,0,0,2,1,2,3,0,0,0,3,1};
 
 int cluster[300]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3};
 
-int cluster_num[DETEST_SPLIT];
+int cluster_num[PART_SPLIT_CNT];
 
 void cluster_num_init(){
   for (int i=0;i<SPLIT_NODE_NUM;i++){

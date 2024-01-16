@@ -152,6 +152,15 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
     #if (MIGRATION_ALG == DETEST)
         update_detest_status(1);
         update_minipart_map_status(msg->minipart_id, 1);
+        #if REMUS_SPLIT
+            update_part_map_status(msg->part_id, 1);
+            if (remus_status == 0){
+                update_remus_status(1);
+            }
+            else {
+                std::cout<<"%%%%%%%%%%remus != 0"<<endl;
+            }
+        #endif
     #elif (MIGRATION_ALG == DETEST_SPLIT)
         if (detest_status == 0){
             update_detest_status(1);
@@ -200,7 +209,7 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
 
         //由于迁移数据量可能比较大，拆分成多个msg发过去
         if (msg->data_size * MAX_TUPLE_SIZE > (MSG_CHUNK_SIZE - 500)){
-            uint64_t tuple_num = max(MSG_CHUNK_SIZE / MAX_TUPLE_SIZE - 25, 1); //每个消息传递的tuple数量
+            uint64_t tuple_num = max(MSG_CHUNK_SIZE / MAX_TUPLE_SIZE - 15, 1); //每个消息传递的tuple数量
             uint64_t msg_num; //要传递的次数
             msg_num = msg->data_size / tuple_num + 1; 
             
@@ -216,6 +225,7 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
                     msg1->islast = true;
                 }
                 msg1->key_start = i * tuple_num + msg->key_start;
+                std::cout<<"msg1->key_start is "<<msg1->key_start<<endl;
 
                 //int64_t starttime,endtime;
                 //starttime = get_sys_clock();
@@ -689,6 +699,15 @@ RC MigrateThread::process_recv_migration(MigrationMessage* msg){
             }
             update_minipart_map_status(msg->minipart_id, 1);
             update_part_map_status(msg->part_id, 1);
+            #if REMUS_SPLIT
+                if (remus_status == 0){
+                    update_remus_status(1);
+                }
+                else {
+                    std::cout<<"%%%%%%%%%%remus != 0"<<endl;
+                }
+                update_part_map_status(msg->part_id, 1);
+            #endif
         #elif (MIGRATION_ALG == DETEST_SPLIT)
             if (detest_status == 0){
                 update_detest_status(1);
@@ -910,8 +929,35 @@ RC MigrateThread::process_finish_migration(MigrationMessage* msg){
             msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_DETEST, msg->minipart_id, 2),i);            
         }
        
+        #if REMUS_SPLIT
+             remus_finish_time = get_sys_clock();
+            //update_part_map(msg->part_id, msg->node_id_des);
+            update_part_map_status(msg->part_id, 2);//copied
+            update_remus_status(2);
+            //sync msg to other nodes
+            for (uint64_t i=0; i<g_node_cnt + g_client_node_cnt; i++){
+                if (i == g_node_id) continue;
+                msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_src, 2), i);//stage2还没切主
+                msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_REMUS, msg->part_id, 2),i);            
+            }
+            std::cout<<"remus status is "<<remus_status<<"Time is: "<<(get_sys_clock() - g_starttime) / BILLION <<endl;
+
+            sleep(SYNCTIME); //for remus stage2
+
+            update_remus_status(3);
+            update_part_map_status(msg->part_id, 3);
+            //sync msg to other nodes
+            for (uint64_t i=0; i<g_node_cnt + g_client_node_cnt; i++){
+                if (i == g_node_id) continue;
+                msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 3), i);
+                msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_REMUS, msg->part_id, 3),i);            
+            }
+            std::cout<<"remus status is "<<remus_status<<"Time is: "<<(get_sys_clock() - g_starttime) / BILLION <<endl;
+            std::cout<<"part is "<<msg->part_id<<endl<<"node_id_src is "<<msg->node_id_src<<endl<<"node_id_des is "<<msg->node_id_des<<endl;
+        #endif
+
         #if (COSTENABLE == true)
-        std::cout<<"**********"<<endl;
+            std::cout<<"**********"<<endl;
             if (msg->minipart_id == PART_SPLIT_CNT-1){//子分区迁移完毕
                 //update_part_map(msg->part_id, msg->node_id_des);
                 update_detest_status(2);
@@ -940,6 +986,14 @@ RC MigrateThread::process_finish_migration(MigrationMessage* msg){
                 txn_man->return_id = msg1->return_node_id;
                 txn_man->h_wl = _wl;
                 std::cout<<"the size of msg is "<<msg1->get_size()<<endl;
+
+                #if REMUS_SPLIT  //需要把remus_status重新调成0,没开始迁移的状态
+                    update_remus_status(0);
+                    for (uint64_t i=0; i<g_node_cnt + g_client_node_cnt; i++){
+                        if (i == g_node_id) continue;
+                        msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_REMUS, msg->part_id, 0),i);
+                    }  
+                #endif
 
                 process_send_migration((MigrationMessage*)msg1);
             }        

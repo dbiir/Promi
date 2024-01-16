@@ -83,6 +83,7 @@ void Stats_thd::clear() {
   local_txn_abort_cnt=0;
   remote_txn_abort_cnt=0;
   txn_run_time=0;
+  //distributed_txn_cnt=0;
   multi_part_txn_cnt=0;
   multi_part_txn_run_time=0;
   single_part_txn_cnt=0;
@@ -595,6 +596,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
   ",remote_txn_abort_cnt=%ld"
   ",txn_run_time=%f"
   ",txn_run_avg_time=%f"
+  //",distributed_txn_cnt=%ld"
   ",multi_part_txn_cnt=%ld"
   ",multi_part_txn_run_time=%f"
   ",multi_part_txn_avg_time=%f"
@@ -608,7 +610,7 @@ void Stats_thd::print(FILE * outf, bool prog) {
           tput, g_migration_time / BILLION, txn_cnt, remote_txn_cnt, local_txn_cnt, local_txn_start_cnt, total_txn_commit_cnt,
           local_txn_commit_cnt, remote_txn_commit_cnt, total_txn_abort_cnt,positive_txn_abort_cnt, unique_txn_abort_cnt,
           local_txn_abort_cnt, remote_txn_abort_cnt, txn_run_time / BILLION,
-          txn_run_avg_time / BILLION, multi_part_txn_cnt, multi_part_txn_run_time / BILLION,
+          txn_run_avg_time / BILLION,  multi_part_txn_cnt, multi_part_txn_run_time / BILLION,
           multi_part_txn_avg_time / BILLION, single_part_txn_cnt,
           single_part_txn_run_time / BILLION, single_part_txn_avg_time / BILLION, txn_write_cnt,
           record_write_cnt, parts_touched, avg_parts_touched);
@@ -618,9 +620,11 @@ void Stats_thd::print(FILE * outf, bool prog) {
   
   // 文件路径
   string filePath = "tps" + to_string(g_node_id) + ".txt";
+  string filePathcpu = "cpu" + to_string(g_node_id) + ".txt";
 
   // 打开文件以进行写入，如果文件不存在则创建，如果存在则截断文件
   std::ofstream outFile(filePath, std::ios::out | std::ios::trunc);
+  std::ofstream outFilecpu(filePathcpu, std::ios::out | std::ios::trunc);
 
   // 检查文件是否成功打开
   if (!outFile.is_open()) {
@@ -632,8 +636,13 @@ void Stats_thd::print(FILE * outf, bool prog) {
     //if (i == (g_warmup_timer/BILLION)) std::cout<<"*****"<<endl;
     if (i > (g_warmup_timer/BILLION)) outFile<<throughput[i]<<endl;
   }
+  for (size_t i=0;i<TPS_LENGTH;i++){
+    outFilecpu<<percents[i]<<endl;
+  }
+
   // 关闭文件
   outFile.close();
+  outFilecpu.close();
 
   std::cout<<endl;
   for (size_t i=0;i<g_thread_cnt;i++){
@@ -1406,6 +1415,7 @@ void Stats_thd::combine(Stats_thd * stats) {
   local_txn_abort_cnt+=stats->local_txn_abort_cnt;
   remote_txn_abort_cnt+=stats->remote_txn_abort_cnt;
   txn_run_time+=stats->txn_run_time;
+  //distributed_txn_cnt+=stats->distributed_txn_cnt;
   multi_part_txn_cnt+=stats->multi_part_txn_cnt;
   multi_part_txn_run_time+=stats->multi_part_txn_run_time;
   single_part_txn_cnt+=stats->single_part_txn_cnt;
@@ -2044,4 +2054,10 @@ void Stats::cpu_util(FILE * outf) {
   lastUserCPU = timeSample.tms_utime;
 }
 
+void Stats::analyze(Stats_thd ** _stats){
+  
+  for (uint64_t i = 0; i < thd_cnt; i++){
+
+  }
+}
 

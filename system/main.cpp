@@ -55,6 +55,7 @@
 #include "rts_cache.h"
 #include "index_btree.h"
 #include "migrate_thread.h"
+#include "stat_thread.h"
 #include "migmsg_queue.h"
 #include "partition.h"
 #include <algorithm>
@@ -74,6 +75,7 @@ OutputThread * output_thds;
 AbortThread * abort_thds;
 LogThread * log_thds;
 MigrateThread * migrate_thds;
+StatThread * stat_thds;
 #if CC_ALG == CALVIN
 CalvinLockThread * calvin_lock_thds;
 CalvinSequencerThread * calvin_seq_thds;
@@ -325,7 +327,8 @@ int main(int argc, char *argv[]) {
 	uint64_t rthd_cnt = g_rem_thread_cnt;
 	uint64_t sthd_cnt = g_send_thread_cnt;
 	uint64_t migthd_cnt = g_migrate_thread_cnt;
-	uint64_t all_thd_cnt = thd_cnt + rthd_cnt + sthd_cnt + g_abort_thread_cnt + migthd_cnt + 1;
+	uint64_t statthd_cnt = g_stat_thread_cnt;
+	uint64_t all_thd_cnt = thd_cnt + rthd_cnt + sthd_cnt + g_abort_thread_cnt + migthd_cnt + g_stat_thread_cnt + 1;
 #if LOGGING
 		all_thd_cnt += 1; // logger thread
 #endif
@@ -334,9 +337,11 @@ int main(int argc, char *argv[]) {
 #endif
 
 
-	printf("%ld, %ld, %ld, %d, %ld\n", thd_cnt, rthd_cnt, sthd_cnt, g_abort_thread_cnt, migthd_cnt);
+	printf("%ld, %ld, %ld, %d, %ld, %ld\n", thd_cnt, rthd_cnt, sthd_cnt, g_abort_thread_cnt, migthd_cnt, statthd_cnt);
 	printf("all_thd_cnt: %ld, g_this_total_thread_cnt: %d \n", all_thd_cnt, g_this_total_thread_cnt);
 	fflush(stdout);
+	std::cout<<"g_total_thread_cnt is "<<g_total_thread_cnt<<endl;
+	std::cout<<"g_stat_thread_cnt is "<<g_stat_thread_cnt<<endl;
 	assert(all_thd_cnt == g_this_total_thread_cnt);
 
 	pthread_t *p_thds = (pthread_t *)malloc(sizeof(pthread_t) * (all_thd_cnt));
@@ -350,6 +355,7 @@ int main(int argc, char *argv[]) {
 	abort_thds = new AbortThread[1];
 	log_thds = new LogThread[1];
 	migrate_thds = new MigrateThread[g_migrate_thread_cnt];
+	stat_thds = new StatThread[g_stat_thread_cnt];
 #if CC_ALG == CALVIN
 	calvin_lock_thds = new CalvinLockThread[1];
 	calvin_seq_thds = new CalvinSequencerThread[1];
@@ -474,6 +480,11 @@ int main(int argc, char *argv[]) {
 		pthread_create(&p_thds[id++], NULL, run_thread, (void *)&migrate_thds[i]);
 	}
 	#endif
+
+	for (uint64_t i = 0; i < g_stat_thread_cnt; i++){
+		stat_thds[i].init(id, g_node_id, m_wl);
+		pthread_create(&p_thds[id++], NULL, run_thread, (void *)&stat_thds[i]);
+	}
 
 #if CC_ALG == CALVIN
 #if SET_AFFINITY

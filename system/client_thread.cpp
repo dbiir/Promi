@@ -43,6 +43,50 @@ void ClientThread::setup() {
 
 }
 
+struct MigrationPlan {
+	vector<int> order;
+  uint64_t src, dest;
+	uint64_t part;
+	double theta;
+};
+
+/*
+void ClientThread::assign(std::vector<std::vector<int> > plans, double theta) {
+    std::vector<int> scheduling;
+    double minTime = std::numeric_limits<double>::max();
+
+    for (uint i=0; i<plans.size(); i++) {
+			std::vector<int> plan = plans[i];
+      double latency = ClientThread::callatency(plan);
+
+      if (latency > theta) {
+        continue;
+      }
+
+      double time = ClientThread::caltime(plan);
+      minTime = min(minTime, time);
+
+      if (time == minTime) {
+      	for (uint j=0; j<plan.size(); j++){
+					scheduling[j] = plan[j];
+				}
+      }
+    }
+    assert(scheduling.size() == PART_SPLIT_CNT);
+		for (uint i=0; i<scheduling.size(); i++) {
+			Order[i] = scheduling[i];
+		} 
+}
+*/
+
+void caltime(vector<int> s){
+	
+}
+
+void callatency(vector<int> s){
+	
+}
+
 RC ClientThread::run() {
 
 	tsetup();
@@ -325,7 +369,7 @@ RC ClientThread::run() {
 							if (get_minipart_node_id(get_minipart_id(((YCSBQuery*)m_query)->requests[i]->key)) == MIGRATION_SRC_NODE) node_src++;
 							else node_des++;
 						}
-						if (node_des < 1) next_node = node_id_src; //<1；只要访问了完成迁移的，就发送到目标节点 <5:访问的全部完成迁移，再发送到目标节点
+						if (node_des < 5) next_node = node_id_src; //<1；只要访问了完成迁移的，就发送到目标节点 <5:访问的全部完成迁移，再发送到目标节点
 						else next_node = node_id_des;
 					#elif WORKLOAD == TPCC
 						if (get_minipart_node_id(get_minipart_id(custKey(((TPCCQuery*)m_query)->c_id, ((TPCCQuery*)m_query)->d_id, ((TPCCQuery*)m_query)->w_id))) == MIGRATION_SRC_NODE) next_node = node_id_src;
@@ -476,18 +520,24 @@ RC ClientThread::run() {
 		txns_sent[next_node]++;
 		query_to_part[partition_id] ++;
 		vector <uint64_t> cokeys;
-		/*
-		for (uint64_t i = 0; i < g_req_per_query; i++){
-			query_to_row[((YCSBQuery*)m_query)->requests[i]->key]++;
-			if (key_to_part(((YCSBQuery*)m_query)->requests[i]->key) == 0){
-				cokeys.emplace_back(((YCSBQuery*)m_query)->requests[i]->key);
-				for (uint64_t j = 0 ; j < cokeys.size()-1; j++){
-					//std::cout<<cokeys[j]<<' '<<((YCSBQuery*)m_query)->requests[i]->key<<endl;
-					edge_index.emplace_back(cokeys[j], ((YCSBQuery*)m_query)->requests[i]->key);
+		
+		#if MIGRATION
+		#if MIGRATION_ALG == DETEST
+			if (!ismigrate){
+				for (uint64_t i = 0; i < g_req_per_query; i++){
+					//query_to_row[((YCSBQuery*)m_query)->requests[i]->key]++;
+					if (key_to_part(((YCSBQuery*)m_query)->requests[i]->key) == 0){
+						query_to_minipart[get_minipart_id(((YCSBQuery*)m_query)->requests[i]->key)]++;
+						cokeys.emplace_back(get_minipart_id(((YCSBQuery*)m_query)->requests[i]->key));
+						//for (uint64_t j = 0 ; j < cokeys.size()-1; j++){
+						//	edge_index.emplace_back(cokeys[j], ((YCSBQuery*)m_query)->requests[i]->key);
+						//}
+					}
 				}
 			}
-		}
-		*/
+		#endif
+		#endif
+		
 		INC_STATS(get_thd_id(),txn_sent[(get_sys_clock() - g_starttime) / BILLION],1);
 		INC_STATS(get_thd_id(),txn_sent_cnt,1);
 		/*

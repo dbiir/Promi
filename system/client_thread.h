@@ -26,6 +26,9 @@ class ClientThread : public Thread {
 public:
 	RC 			run();
   void setup();
+  double caltime(vector<int> s);
+  double callatency(vector<int> s);
+  void assign(std::vector<std::vector<int> > plans, double theta);
 private:
   myrand* mrand;
   uint64_t last_send_time;

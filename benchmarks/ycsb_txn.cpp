@@ -195,6 +195,7 @@ RC YCSBTxnManager::run_txn_state() {
 	uint64_t part_id = _wl->key_to_part( req->key );
   assert(part_id >= 0);
   bool loc = GET_NODE_ID_MINI(req->key) == g_node_id;
+  if (!loc) this->isdistributed = true;
   
   #if MIGRATION
   #if MIGRATION_ALG == REMUS
