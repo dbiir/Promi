@@ -208,6 +208,7 @@ vector<int> query_to_part(g_part_cnt);
 vector<int> query_to_row(g_synth_table_size);
 vector<int> query_to_minipart(PART_SPLIT_CNT);
 vector< pair<uint64_t, uint64_t> > edge_index;
+double co_access[PART_SPLIT_CNT][PART_SPLIT_CNT];
 vector<double> wtime = {}; //by cost model
 vector<double> wlatency = {};
 
@@ -498,6 +499,10 @@ void cluster_num_init(){
     cluster_num[cluster[i]] += ROW_PER_NODE;
   }
 }
+
+std::vector<int> Status(PART_SPLIT_CNT);
+
+double theta = 0.20;
 
 int detest_status;  //0未开始 1开始 2结束
 void update_detest_status(int status){

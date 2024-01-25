@@ -2,15 +2,16 @@
 #include<stdlib.h>
 
 using namespace std;
-#define N 39
+#define N 58
 
 int main(){
-  int a[N];
+  float a[N];
   for (int i=0;i<N;i++){
     cin>>a[i];
-    a[i] += 0;
-    a[i] -= (rand() % 2000);
-    a[i] += (rand() % 2000);
+    //a[i] -= 5;
+    a[i] += (rand() % 2);
+    a[i] -= (rand() % 2);
+    a[i] += 0.123;
     //a[i] += (rand() % 10000);
   }
   std::cout<<"*****"<<endl;

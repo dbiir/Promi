@@ -28,7 +28,9 @@ public:
   void setup();
   double caltime(vector<int> s);
   double callatency(vector<int> s);
+  double caldis(vector<int> status);
   void assign(std::vector<std::vector<int> > plans, double theta);
+  void assign1(std::vector<int64_t> vset, double theta);
 private:
   myrand* mrand;
   uint64_t last_send_time;

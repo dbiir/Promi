@@ -284,7 +284,7 @@
 #define DATA_PERC (SYNTH_TABLE_SIZE / 64)
 #define ACCESS_PERC 0.3
 #define INIT_PARALLELISM (PART_CNT / NODE_CNT)
-#define SYNTH_TABLE_SIZE 16777216 / 64    //8分区正好每个分区512MB
+#define SYNTH_TABLE_SIZE 16777216 / 16    //8分区正好每个分区512MB
 #define ZIPF_THETA 0.6
 #define TXN_WRITE_PERC 0.1
 #define TUP_WRITE_PERC 0.1
@@ -503,7 +503,7 @@ enum PPSTxnType {
 #define START_MIG 120 // migration start time(second)
 #define TPS_LENGTH (DONE_TIMER+WARMUP_TIMER) / BILLION //length of throughut array
 #define SEQ_BATCH_TIMER 5 * 1 * MILLION // ~5ms -- same as CALVIN paper
-#define DONE_TIMER 1 * 100 * BILLION // ~1 minutes  60 BILLION = 1 min
+#define DONE_TIMER 1 * 150 * BILLION // ~1 minutes  60 BILLION = 1 min
 #define WARMUP_TIMER 1 * 100 * BILLION // ~1 minutes
 
 #define SEED 0

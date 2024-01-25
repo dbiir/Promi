@@ -79,12 +79,37 @@ void ClientThread::assign(std::vector<std::vector<int> > plans, double theta) {
 }
 */
 
-void caltime(vector<int> s){
-	
+void ClientThread::assign1(std::vector<int64_t> vset, double theta){
+	if (vset.size() == 0) return;
+	std::vector<uint64_t> schedule;
+	schedule.push_back(vset[0]);
+	vset.erase(vset.begin());
+	Status[schedule.back()]=1;
+	while (caldis(Status) > theta){
+		schedule.push_back(vset[0]);
+		vset.erase(vset.begin());
+		Status[schedule.back()]=1;
+	}
+	int order;
+	for (uint i=0;i<PART_SPLIT_CNT;i++){
+		if (Order[i]!=0) order = Order[i];
+	}
+  for (uint i=0; i<schedule.size(); i++){
+		Order[i] = order+1;
+	}
+	assign1(vset, theta);
 }
 
-void callatency(vector<int> s){
-	
+double ClientThread::caldis(std::vector<int> status){
+	double res = 0.0;
+	for (int i=0; i<PART_SPLIT_CNT; i++){
+		for (int j=i+1; j<PART_SPLIT_CNT; j++){
+			if (status[i]!=status[j]){
+				res += co_access[i][j];
+			}
+		}
+	}
+	return res;
 }
 
 RC ClientThread::run() {
@@ -112,6 +137,9 @@ RC ClientThread::run() {
 				if (!ismigrate && (get_thd_id() == 0) && ((get_sys_clock() - run_starttime) / BILLION  >= START_MIG)){
 					#if WORKLOAD == YCSB
 						ismigrate = true;
+						std::vector<int64_t> vset;
+						for (uint i=0; i<PART_SPLIT_CNT; i++) vset.push_back(i);
+						assign1(vset, theta);
 						Message * msg = Message::create_message(SEND_MIGRATION);
 						((MigrationMessage*)msg)->node_id_src = node_id_src;
 						((MigrationMessage*)msg)->node_id_des = node_id_des;
@@ -520,6 +548,7 @@ RC ClientThread::run() {
 		txns_sent[next_node]++;
 		query_to_part[partition_id] ++;
 		vector <uint64_t> cokeys;
+		set <uint64_t> minipartset;
 		
 		#if MIGRATION
 		#if MIGRATION_ALG == DETEST
@@ -527,10 +556,12 @@ RC ClientThread::run() {
 				for (uint64_t i = 0; i < g_req_per_query; i++){
 					//query_to_row[((YCSBQuery*)m_query)->requests[i]->key]++;
 					if (key_to_part(((YCSBQuery*)m_query)->requests[i]->key) == 0){
-						query_to_minipart[get_minipart_id(((YCSBQuery*)m_query)->requests[i]->key)]++;
-						cokeys.emplace_back(get_minipart_id(((YCSBQuery*)m_query)->requests[i]->key));
+						uint64_t mini = get_minipart_id(((YCSBQuery*)m_query)->requests[i]->key);
+						query_to_minipart[mini]++;
+						cokeys.emplace_back(mini);
+						minipartset.insert(mini);
 						//for (uint64_t j = 0 ; j < cokeys.size()-1; j++){
-						//	edge_index.emplace_back(cokeys[j], ((YCSBQuery*)m_query)->requests[i]->key);
+							//edge_index.emplace_back(cokeys[j], ((YCSBQuery*)m_query)->requests[i]->key);
 						//}
 					}
 				}

@@ -171,6 +171,7 @@ extern vector<int> query_to_part;
 extern vector<int> query_to_row;
 extern vector<int> query_to_minipart;
 extern vector< pair<uint64_t, uint64_t> > edge_index;
+extern double co_access[PART_SPLIT_CNT][PART_SPLIT_CNT];
 extern vector<double> wtime;
 extern vector<double> wlatency;
 
@@ -436,6 +437,8 @@ extern int cluster[SPLIT_NODE_NUM]; //分类结果
 extern int cluster_num[PART_SPLIT_CNT]; //每一次order对应的row数量
 extern int Order[PART_SPLIT_CNT];//迁移的顺序，先迁移哪一类
 void cluster_num_init();
+extern std::vector<int> Status;
+extern double theta;
 
 //detest状态，0 1 2, 未开始 迁移中 迁移完毕
 extern int detest_status;
