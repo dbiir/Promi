@@ -1,0 +1,32 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    // /home/zqs/star/bench_tpcc --logtostderr=1 --id=1 --servers="10.77.110.144:10215;10.77.110.145:10216;10.77.110.148:10217" --protocol=Silo --partition_num=24 --partitioner=hash2 --threads=2 --batch_size=1000 --batch_flush=500 --neworder_dist=100 --cpu_core_id=0
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "c++ Launch",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/rundb", //bench_ycsb", // 需要执行的文件位置 ycsb" test/workload_cluster_test
+            "args": ["-nid1"], // 输入的参数 "-f", "../../etc/observer.ini"
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/", // 当前运行的位置 // "cwd": "${workspaceFolder}",// 
+            "environment": [],
+            // "terminal": "external",
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "text": "-enable-pretty-printing",
+                    "description": "enable pretty printing",
+                    "ignoreFailures": true
+                }
+            ],
+            //"preLaunchTask": "bench_tpcc", //与tasks.json 的label项目同名
+            "targetArchitecture": "x86_64",
+            "miDebuggerPath": "/usr/bin/gdb"
+        }
+    ]
+}
