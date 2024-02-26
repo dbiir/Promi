@@ -7,12 +7,12 @@ Wooking+M is a testbed of an OLTP distributed database management system (DBMS).
 ## Dependencies
 To ensure that the code works properly, the server needs to have the following dependencies:
 
-g++ >= 6.4.0
-Boost = 1.6.1
-jemalloc >= 5.2.1
-nanomsg >= 1.1.5
-libevent >= 1.2
-libibverbs
+    g++ >= 6.4.0
+    Boost = 1.6.1
+    jemalloc >= 5.2.1
+    nanomsg >= 1.1.5
+    libevent >= 1.2
+    libibverbs
 
 Build & Test
 ------------
