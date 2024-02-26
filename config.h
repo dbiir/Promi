@@ -96,9 +96,9 @@
 #define LOCK 2
 #define SQUALL 3
 #define DETEST_SPLIT 4
-#define REMUS_SPLIT false //remus下加入split场景，执行逻辑按照detest的，start_commit逻辑按照remus的。使用该参数时，alg应该是detest
-#define SPLIT_NODE_NUM 300 //split场景下，训练图的节点的数量
-#define ROW_PER_NODE (SYNTH_TABLE_SIZE / PART_CNT / SPLIT_NODE_NUM)  //split场景下，每个node包含的row的数量
+#define REMUS_SPLIT false
+#define SPLIT_NODE_NUM 300
+#define ROW_PER_NODE (SYNTH_TABLE_SIZE / PART_CNT / SPLIT_NODE_NUM)  
 #define COSTENABLE true
 
 //which partition to be migrated
@@ -270,10 +270,10 @@
 #define MAX_TXN_PER_PART 200000
 #define FIRST_PART_LOCAL false
 #define SINGLE_PART true
-#define SINGLE_PART_0 true //只发送分区0的事务 part_cnt = 2
-#define SINGLE_PART_012 false //只发送分区012的事务 part_cnt = 4 not used in tpcc
-#define SINGLE_PART_0124 false //只发送分区0124的事务，用于测试负载均衡，分区0开始在节点0,迁移后在节点1 part_cnt = 8
-#define SINGLE_PART_CONSOLIDATION false//合并分区，原来有节点0123，各有分区0123，现移出节点0，把分区0迁到节点1上 part_cnt = 4, node_cnt = 4 
+#define SINGLE_PART_0 true 
+#define SINGLE_PART_012 false 
+#define SINGLE_PART_0124 false 
+#define SINGLE_PART_CONSOLIDATION false
 #define MAX_TUPLE_SIZE        256 // in bytes
 #define GEN_BY_MPR false
 // ==== [YCSB] ====
@@ -284,7 +284,7 @@
 #define DATA_PERC (SYNTH_TABLE_SIZE / 64)
 #define ACCESS_PERC 0.3
 #define INIT_PARALLELISM (PART_CNT / NODE_CNT)
-#define SYNTH_TABLE_SIZE 16777216 / 32    //8分区正好每个分区512MB
+#define SYNTH_TABLE_SIZE 16777216 / 32  
 #define ZIPF_THETA 0.8
 #define TXN_WRITE_PERC 0.1
 #define TUP_WRITE_PERC 0.1

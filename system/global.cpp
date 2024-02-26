@@ -310,10 +310,8 @@ uint64_t get_node_id_mini(uint64_t key){
   #endif
 }
 
-//part_table:记录每个part所在的node
+
 std::map <uint64_t, std::vector<uint64_t>> part_map;
-//std::mutex mtx_part_map;
-//remus迁移成功的时间,源节点记录
 uint64_t remus_finish_time;
 
 
@@ -351,7 +349,6 @@ void update_part_map_status(uint64_t part_id, uint64_t status){
   part_map[part_id][1] = status;
 }
 
-//minipart_table:记录迁移中的minipart的状态信息
 map <uint64_t, vector<uint64_t> > minipart_map;
 std::mutex mtx_minipart_map;
 
@@ -364,11 +361,11 @@ void minipart_map_init(){
   }
 }
 
-uint64_t get_minipart_id(uint64_t key){//只针对0分区
+uint64_t get_minipart_id(uint64_t key){
 #if WORKLOAD == YCSB
   return key / g_part_cnt / (g_synth_table_size / g_part_cnt / g_part_split_cnt);
 #elif WORKLOAD == TPCC
-  return (key -1 - ((MIGRATION_PART+1) * g_dist_per_wh + (MIGRATION_PART+1)) * g_cust_per_dist) / (g_dist_per_wh * g_cust_per_dist / PART_SPLIT_CNT);//以customer表作为分区，customer表大小为g_num_wh / g_node_cnt * g_dist_per_wh * g_cust_per_dist, 
+  return (key -1 - ((MIGRATION_PART+1) * g_dist_per_wh + (MIGRATION_PART+1)) * g_cust_per_dist) / (g_dist_per_wh * g_cust_per_dist / PART_SPLIT_CNT);
 #endif
 }
 
@@ -381,16 +378,13 @@ uint64_t get_minipart_status(uint64_t minipart_id){
 }
 
 void update_minipart_map(uint64_t minipart_id, uint64_t node_id){
-  //std::lock_guard<std::mutex> lock(mtx_minipart_map);
   minipart_map[minipart_id][0] = node_id;
 }
 
 void update_minipart_map_status(uint64_t minipart_id, uint64_t status){
-  //std::lock_guard<std::mutex> lock(mtx_minipart_map);
   minipart_map[minipart_id][1] = status;
 }
 
-//squallpart_table:记录迁移中的minipart的状态信息
 map <uint64_t, vector<uint64_t> > squallpart_map;
 
 void squallpart_map_init(){
@@ -402,7 +396,7 @@ void squallpart_map_init(){
   }
 }
 
-uint64_t get_squallpart_id(uint64_t key){//只针对0分区
+uint64_t get_squallpart_id(uint64_t key){
 #if WORKLOAD == YCSB
   return key / g_part_cnt / (g_synth_table_size / g_part_cnt / Squall_Part_Cnt);
 #elif WORKLOAD == TPCC
@@ -447,11 +441,11 @@ uint64_t get_row_status(uint64_t key){
   return row_map[key][1];
 }
 
-void update_row_map(uint64_t key, uint64_t node_id){//修改row_map的node_id
+void update_row_map(uint64_t key, uint64_t node_id){
   row_map[key][0] = node_id;
 }
 
-void update_row_map_status(uint64_t key, uint64_t status){//修改row_map的migrate_status
+void update_row_map_status(uint64_t key, uint64_t status){
   row_map[key][1] = status;
 }
 
@@ -469,16 +463,16 @@ void update_row_map_status_order(uint64_t order, uint64_t status){
 
 map<uint64_t, vector<uint64_t> > order_map;
 
-void order_map_init(){ //初始化每一个order下对应了哪些row
+void order_map_init(){
   int a;
   for (int i=0; i<SPLIT_NODE_NUM;i++)
   {
     a = cluster[i];
     for (int j=i*ROW_PER_NODE; j<(i+1)*ROW_PER_NODE; j++){
-      order_map[a].emplace_back(j*g_part_cnt);//j*g_part_cnt是row的key
+      order_map[a].emplace_back(j*g_part_cnt);
     } 
   }
-  //安排最后一个节点的row
+
   for (uint64_t j = SPLIT_NODE_NUM * ROW_PER_NODE; j < (g_synth_table_size / g_part_cnt); j++){
     order_map[a].emplace_back(j*g_part_cnt);  
   }
@@ -504,17 +498,17 @@ std::vector<int> Status(PART_SPLIT_CNT);
 
 double theta = 0.20;
 
-int detest_status;  //0未开始 1开始 2结束
+int detest_status; 
 void update_detest_status(int status){
   detest_status = status;
 }
 
-int remus_status; //0:未开始 1:发送副本 2:模式切换 3:双边执行
+int remus_status;
 void update_remus_status(int status){
   remus_status = status;
 }
 
-int squall_status; //0未开始 1拉取 2结束
+int squall_status;
 void update_squall_status(int status){
   squall_status = status;
 }

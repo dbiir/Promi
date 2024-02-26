@@ -177,9 +177,6 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
     
     
     msg->isdata = false;
-    //std::cout<<"the size of msg is "<<((MigrationMessage*)msg)->get_size()<<endl;
-    //对迁移数据加锁, 将迁移数据读入msg
-    //DETEST_SPLIT的key是不连续的，其他的都是连续的
     #if MIGRATION_ALG == DETEST_SPLIT
         idx_key_t key;
         uint64_t label = Order[msg->order]; //这次迁移哪一类的row
@@ -187,7 +184,7 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
             key = order_map[label][i];
             itemid_t* item1 = (itemid_t*)mem_allocator.alloc(sizeof(itemid_t));
 	        itemid_t* &item = item1;
-            RC rc = ((YCSBWorkload*)_wl)->the_index->index_read(key,item,key_to_part(key),g_thread_cnt);//使用g_thread_cnt是为了访问索引的cur_leaf_per_thd数组，索引只允许工作线程和迁移线程访问，数组大小和这两个线程数量之和相同
+            RC rc = ((YCSBWorkload*)_wl)->the_index->index_read(key,item,key_to_part(key),g_thread_cnt);
             row_t* row = ((row_t*)item->location);
             row_t* row_rtn = new(row_t);
             access_t access;
@@ -201,13 +198,9 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
             }
         }
     #else
-        //起始的key，是迁移的part中第一个key，随着part_id变化而变化
         uint64_t key = ((MigrationMessage*)msg)->key_start;
         std::cout<<"key is "<<key<<endl;
         std::cout<<msg->data_size<<endl;
-        //std::cout<<"read data start!"<<endl;
-
-        //由于迁移数据量可能比较大，拆分成多个msg发过去
         if (msg->data_size * MAX_TUPLE_SIZE > (MSG_CHUNK_SIZE - 500)){
             uint64_t tuple_num = max(MSG_CHUNK_SIZE / MAX_TUPLE_SIZE - 15, 1); //每个消息传递的tuple数量
             uint64_t msg_num; //要传递的次数
@@ -233,7 +226,7 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
                     itemid_t* item = new(itemid_t);
                     RC rc=WAIT;
                     while (rc != RCOK){
-                        rc = ((YCSBWorkload*)_wl)->the_index->index_read(key,item,key_to_part(key),g_thread_cnt); //使用g_thread_cnt是为了访问索引的cur_leaf_per_thd数组，索引只允许工作线程和迁移线程访问，数组大小和这两个线程数量之和相同
+                        rc = ((YCSBWorkload*)_wl)->the_index->index_read(key,item,key_to_part(key),g_thread_cnt); 
                     }
                     //std::cout<<"index_read!"<<endl;
 
@@ -261,18 +254,14 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
                         rc = txn_man->get_row(row,access,row_rtn);
                     }
                     //std::cout<<"get_row!"<<endl;
-                
-                    
-                    //读data的数据
+
                     msg1->isdata=true;
                     msg1->data.emplace_back(*row_rtn);
                     
-                    //读row->data的数据
                     char tmp_char[MAX_TUPLE_SIZE];
                     strcpy(tmp_char, row_rtn->get_data());
                     string tmp_str = tmp_char;
-                
-                    //把下面去掉，不让rowdata放进来
+
                     msg1->row_data.emplace_back(tmp_str);
                     
                     //std::cout<<"key is "<<msg1->data[i].get_primary_key();
@@ -286,8 +275,7 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
                 //printf("the size of msg row is %ld\n",msg1->data_size);
                 //std::cout<<"the size of msg is "<<msg1->get_size()<<endl;
 
-                //生成RECV_MIGRATION消息发给目标节点
-                if(rc != WAIT) {//记得初始化MigrationMessage的return_node_id
+                if(rc != WAIT) {
                     msg1->return_node_id = g_node_id;
                     msg1->rtype = RECV_MIGRATION;
                     msg_queue.enqueue(get_thd_id(), msg1, msg1->node_id_des);
@@ -303,7 +291,7 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
                 itemid_t* item = new(itemid_t);
                 RC rc=WAIT;
                 while (rc != RCOK){
-                    rc = ((YCSBWorkload*)_wl)->the_index->index_read(key,item,key_to_part(key),g_thread_cnt); //使用g_thread_cnt是为了访问索引的cur_leaf_per_thd数组，索引只允许工作线程和迁移线程访问，数组大小和这两个线程数量之和相同
+                    rc = ((YCSBWorkload*)_wl)->the_index->index_read(key,item,key_to_part(key),g_thread_cnt); 
                 }
                 //std::cout<<"index_read!"<<endl;
                 /*
@@ -340,10 +328,7 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
                 while(rc != RCOK){
                     rc = txn_man->get_row(row,access,row_rtn);
                 }
-                //std::cout<<"get_row!"<<endl;
-                
-                
-                //读data的数据
+
                 msg->isdata=true;
                 msg->data.emplace_back(*row_rtn);
                 std::cout<<msg->data.back().get_primary_key()<<endl;
@@ -355,7 +340,6 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
                 //std::cout<<"tuple_size is "<<row->tuple_size<<' ';
                 //std::cout<<"tmp_char is "<<tmp_char[0]<<' ';
                 //std::cout<<"tmp_str is "<<tmp_str<<endl;
-                //把下面去掉，不让rowdata放进来
                 msg->row_data.emplace_back(tmp_str);
                 
                 //std::cout<<"copy "<<key<<" ";
@@ -375,8 +359,7 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
             //printf("the size of msg row is %ld\n",msg->data_size);
             //std::cout<<"the size of msg is "<<msg->get_size()<<endl;
 
-            //生成RECV_MIGRATION消息发给目标节点
-            if(rc != WAIT) {//记得初始化MigrationMessage的return_node_id
+            if(rc != WAIT) {
                 MigrationMessage * msg1 = new(MigrationMessage);
                 *msg1 = *msg;
                 msg1->return_node_id = g_node_id;
@@ -385,7 +368,6 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
                 std::cout<<"enqueue finished!"<<endl;
             }
         }
-        //这一段似乎和开头重复了
         #if MIGRATION_ALG == DETEST
             update_minipart_map_status(msg->minipart_id, 1);
             update_part_map_status(msg->part_id, 1);
@@ -432,17 +414,15 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
     
     
     msg->isdata = false;
-    //std::cout<<"the size of msg is "<<((MigrationMessage*)msg)->get_size()<<endl;
-    //对迁移数据加锁, 将迁移数据读入msg
-    //DETEST_SPLIT的key是不连续的，其他的都是连续的
+
     #if MIGRATION_ALG == DETEST_SPLIT
         idx_key_t key;
-        uint64_t label = Order[msg->order]; //这次迁移哪一类的row
-        for (uint64_t i=0;i<order_map[label].size();i++){ //遍历这一类的row
+        uint64_t label = Order[msg->order]; 
+        for (uint64_t i=0;i<order_map[label].size();i++){ 
             key = order_map[label][i];
             itemid_t* item1 = (itemid_t*)mem_allocator.alloc(sizeof(itemid_t));
 	        itemid_t* &item = item1;
-            RC rc = ((YCSBWorkload*)_wl)->the_index->index_read(key,item,key_to_part(key),g_thread_cnt);//使用g_thread_cnt是为了访问索引的cur_leaf_per_thd数组，索引只允许工作线程和迁移线程访问，数组大小和这两个线程数量之和相同
+            RC rc = ((YCSBWorkload*)_wl)->the_index->index_read(key,item,key_to_part(key),g_thread_cnt);
             row_t* row = ((row_t*)item->location);
             row_t* row_rtn = new(row_t);
             access_t access;
@@ -456,16 +436,15 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
             }
         }
     #else
-        //起始的key，是迁移的part中第一个key，随着part_id变化而变化
+        
         uint64_t key = ((MigrationMessage*)msg)->key_start;
         std::cout<<"key is "<<key<<endl;
         std::cout<<msg->data_size<<endl;
         //std::cout<<"read data start!"<<endl;
 
-        //由于迁移数据量可能比较大，拆分成多个msg发过去
         if (msg->data_size * g_tuplesize[2] > (MSG_CHUNK_SIZE - 200)){
-            uint64_t tuple_num = MSG_CHUNK_SIZE / g_tuplesize[2] - 10; //每个消息传递的tuple数量
-            uint64_t msg_num; //要传递的次数
+            uint64_t tuple_num = MSG_CHUNK_SIZE / g_tuplesize[2] - 10; 
+            uint64_t msg_num; 
             msg_num = msg->data_size / tuple_num + 1; 
             
             for (uint i=0;i<msg_num;i++){
@@ -488,7 +467,7 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
                     RC rc=WAIT;
                     while (rc != RCOK){
                         INDEX * index = ((TPCCWorkload*)_wl)->i_customer_id;
-                        rc = index->index_read(key,item,MIGRATION_PART,g_thread_cnt); //使用g_thread_cnt是为了访问索引的cur_leaf_per_thd数组，索引只允许工作线程和迁移线程访问，数组大小和这两个线程数量之和相同
+                        rc = index->index_read(key,item,MIGRATION_PART,g_thread_cnt);
                     }
                     //std::cout<<"index_read!"<<endl;
 
@@ -517,8 +496,6 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
                     }
                     //std::cout<<"get_row!"<<endl;
                 
-                    //std::cout<<"row size is "<<sizeof(row_rtn)<<endl;
-                    //读data的数据
                     msg1->isdata=true;
                     msg1->data.emplace_back(*row_rtn);
                     
@@ -532,8 +509,7 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
                 //printf("the size of msg row is %ld\n",msg1->data_size);
                 std::cout<<"the size of msg is "<<msg1->get_size()<<endl;
 
-                //生成RECV_MIGRATION消息发给目标节点
-                if(rc != WAIT) {//记得初始化MigrationMessage的return_node_id
+                if(rc != WAIT) {
                     msg1->return_node_id = g_node_id;
                     msg1->rtype = RECV_MIGRATION;
                     msg_queue.enqueue(get_thd_id(), msg1, msg1->node_id_des);
@@ -549,7 +525,7 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
                 RC rc=WAIT;
                 while (rc != RCOK){
                     INDEX * index = ((TPCCWorkload*)_wl)->i_customer_id;
-                    rc = index->index_read(key,item,MIGRATION_PART,g_thread_cnt); //使用g_thread_cnt是为了访问索引的cur_leaf_per_thd数组，索引只允许工作线程和迁移线程访问，数组大小和这两个线程数量之和相同
+                    rc = index->index_read(key,item,MIGRATION_PART,g_thread_cnt);
                 }
                 //std::cout<<"index_read!"<<endl;
                 /*
@@ -587,27 +563,10 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
                     rc = txn_man->get_row(row,access,row_rtn);
                 }
                 //std::cout<<"get_row!"<<endl;
-                
-                
-                //读data的数据
+
                 msg->isdata=true;
                 msg->data.emplace_back(*row_rtn);
                 std::cout<<msg->data.back().get_primary_key()<<endl;
-                //读row->data的数据
-                //char tmp_char[MAX_TUPLE_SIZE];
-                //strcpy(tmp_char, row_rtn->get_data());
-                //string tmp_str = tmp_char;
-                
-                //std::cout<<"tuple_size is "<<row->tuple_size<<' ';
-                //std::cout<<"tmp_char is "<<tmp_char[0]<<' ';
-                //std::cout<<"tmp_str is "<<tmp_str<<endl;
-                //把下面去掉，不让rowdata放进来
-                //msg->row_data.emplace_back(tmp_str);
-                
-                //std::cout<<"copy "<<key<<" ";
-                //std::cout<<"key is "<<msg->data[i].get_primary_key();
-                //std::cout<<"data is "<<msg->row_data[i]<<endl;
-                //std::cout<<"lock "<<key<<' ';
                 
                 key ++;
                 //std::cout<<"key is "<<key<<endl;
@@ -618,8 +577,8 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
             //printf("the size of msg row is %ld\n",msg->data_size);
             //std::cout<<"the size of msg is "<<msg->get_size()<<endl;
 
-            //生成RECV_MIGRATION消息发给目标节点
-            if(rc != WAIT) {//记得初始化MigrationMessage的return_node_id
+
+            if(rc != WAIT) {
                 MigrationMessage * msg1 = new(MigrationMessage);
                 *msg1 = *msg;
                 msg1->return_node_id = g_node_id;
@@ -628,7 +587,6 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
                 std::cout<<"enqueue finished!"<<endl;
             }
         }
-        //这一段似乎和开头重复了
         #if MIGRATION_ALG == DETEST
             update_minipart_map_status(msg->minipart_id, 1);
             update_part_map_status(msg->part_id, 1);
@@ -656,7 +614,6 @@ RC MigrateThread::process_recv_migration(MigrationMessage* msg){
     //std::cout<<"minipart_id: "<<((MigrationMessage*)msg)->minipart_id<<' ';
     
     /*fix
-    //把数据从msg里复制出来
     row_t * data_ptr = (row_t*)mem_allocator.alloc(sizeof(row_t)*(msg->data_size));
     //char* row_data_ptr = (char* )malloc((msg->data[0].tuple_size) *  (msg->data_size));
     for (size_t i=0;i<msg->data_size;i++){
@@ -689,9 +646,8 @@ RC MigrateThread::process_recv_migration(MigrationMessage* msg){
         
     }
     */
-   
-    /*修改status*/
-    if (msg->islast){ //消息拆分接受到最后一个时
+
+    if (msg->islast){ 
         update_part_map_status(msg->part_id, 1); //migrating
         #if (MIGRATION_ALG == DETEST)
             if (detest_status == 0){
@@ -727,11 +683,10 @@ RC MigrateThread::process_recv_migration(MigrationMessage* msg){
         #endif
 
         #if WORKLOAD == YCSB
-            //重构本地数据索引结构
             #if MIGRATION_ALG == DETEST_SPLIT
                 uint64_t key;
-                uint64_t label = Order[msg->order]; //这次迁移哪一类的row
-                for (uint64_t i=0;i<order_map[label].size();i++){ //遍历这一类的row
+                uint64_t label = Order[msg->order]; 
+                for (uint64_t i=0;i<order_map[label].size();i++){ 
                     key = order_map[label][i];
                     row_t * new_row = NULL;
                     uint64_t row_id;
@@ -890,7 +845,6 @@ RC MigrateThread::process_recv_migration(MigrationMessage* msg){
             #endif
         #endif
 
-        //生成FINISH_MIGRATION消息给源节点
         if (rc==RCOK){
             MigrationMessage * msg1 = new(MigrationMessage);
             *msg1 = *msg;
@@ -958,8 +912,7 @@ RC MigrateThread::process_finish_migration(MigrationMessage* msg){
 
         #if (COSTENABLE == true)
             std::cout<<"**********"<<endl;
-            if (msg->minipart_id == PART_SPLIT_CNT-1){//子分区迁移完毕
-                //update_part_map(msg->part_id, msg->node_id_des);
+            if (msg->minipart_id == PART_SPLIT_CNT-1){
                 update_detest_status(2);
                 update_part_map_status(msg->part_id, 2);//migrated
                 //sync message to other nodes
@@ -969,7 +922,7 @@ RC MigrateThread::process_finish_migration(MigrationMessage* msg){
                     msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_DETEST, msg->part_id, 2),i);
                 }            
             } 
-            else if (msg->minipart_id < PART_SPLIT_CNT-1) {//发送其他的minipart的迁移消息
+            else if (msg->minipart_id < PART_SPLIT_CNT-1) {
                 Message * msg1 = Message::create_message(SEND_MIGRATION);
                 ((MigrationMessage*)msg1)->node_id_src = msg->node_id_src;
                 ((MigrationMessage*)msg1)->node_id_des = msg->node_id_des;
@@ -987,7 +940,7 @@ RC MigrateThread::process_finish_migration(MigrationMessage* msg){
                 txn_man->h_wl = _wl;
                 std::cout<<"the size of msg is "<<msg1->get_size()<<endl;
 
-                #if REMUS_SPLIT  //需要把remus_status重新调成0,没开始迁移的状态
+                #if REMUS_SPLIT 
                     update_remus_status(0);
                     for (uint64_t i=0; i<g_node_cnt + g_client_node_cnt; i++){
                         if (i == g_node_id) continue;
@@ -1000,7 +953,7 @@ RC MigrateThread::process_finish_migration(MigrationMessage* msg){
 
         #elif (COSTENABLE == false)
             std::cout<<"msg->minipart is "<<msg->minipart_id<<endl;
-            if (msg->minipart_id == 0){//子分区迁移完毕
+            if (msg->minipart_id == 0){
                 std::cout<<"!!!!!!!!!!!!!!"<<endl;
                 //update_part_map(msg->part_id, msg->node_id_des);
                 update_detest_status(2);
@@ -1013,8 +966,7 @@ RC MigrateThread::process_finish_migration(MigrationMessage* msg){
 
                 }            
             }
-            else if (msg->minipart_id > 0) {//发送其他的minipart的迁移消息
-                //先生成send消息
+            else if (msg->minipart_id > 0) {
                 std::cout<<"*********"<<endl;
                 Message * msg1 = Message::create_message(SEND_MIGRATION);
                 ((MigrationMessage*)msg1)->node_id_src = msg->node_id_src;
@@ -1078,7 +1030,7 @@ RC MigrateThread::process_finish_migration(MigrationMessage* msg){
         update_migrate_label(msg->order+1);
         msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_ROWMAP, msg->order, msg->node_id_des, 2),g_node_cnt);
         msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_ROWMAP, msg->order, msg->node_id_des, 2),msg->node_id_des);
-        if (msg->order == DETEST_SPLIT-1){//分类row迁移完毕
+        if (msg->order == DETEST_SPLIT-1){
             //update_part_map(msg->part_id, msg->node_id_des);
             update_part_map_status(msg->part_id, 2);//migrated
             update_migrate_label(msg->order+1);
@@ -1104,7 +1056,7 @@ RC MigrateThread::process_finish_migration(MigrationMessage* msg){
             msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_MINIPARTMAP, msg->minipart_id, msg->node_id_des, 2), i);
             msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_DETEST, msg->minipart_id, 2),i);            
         }
-        if (msg->minipart_id == PART_SPLIT_CNT-1){//子分区迁移完毕
+        if (msg->minipart_id == PART_SPLIT_CNT-1){
             //update_part_map(msg->part_id, msg->node_id_des);
             update_detest_status(2);
             update_part_map_status(msg->part_id, 2);//migrated
@@ -1114,8 +1066,7 @@ RC MigrateThread::process_finish_migration(MigrationMessage* msg){
                 msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 2), i);
                 msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_DETEST, msg->part_id, 2),i);
             }    
-        } else if (((SetMiniPartMapMessage*)msg)->minipart_id < PART_SPLIT_CNT-1) {//发送其他的minipart的迁移消息
-            //先生成send消息
+        } else if (((SetMiniPartMapMessage*)msg)->minipart_id < PART_SPLIT_CNT-1) {
             Message * msg1 = Message::create_message(SEND_MIGRATION);
 			((MigrationMessage*)msg1)->node_id_src = msg->node_id_src;
 			((MigrationMessage*)msg1)->node_id_des = msg->node_id_des;
@@ -1159,7 +1110,7 @@ RC MigrateThread::process_finish_migration(MigrationMessage* msg){
             msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_REMUS, msg->part_id, 2),i);            
         }       
         /* 
-        msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 2),g_node_cnt); //g_node_cnt对应着client节点,发消息通知client修改remus状态
+        msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 2),g_node_cnt); 
         msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 2),msg->node_id_des);
         msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_REMUS, msg->part_id, 2),g_node_cnt);
         msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_REMUS, msg->part_id, 2),msg->node_id_des);
@@ -1177,7 +1128,7 @@ RC MigrateThread::process_finish_migration(MigrationMessage* msg){
             msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_REMUS, msg->part_id, 3),i);            
         }
         /*
-        msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 3),g_node_cnt); //g_node_cnt对应着client节点,发消息通知client修改remus状态
+        msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 3),g_node_cnt); 
         msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 3),msg->node_id_des);
         msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_REMUS, msg->part_id, 3),g_node_cnt);
         msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_REMUS, msg->part_id, 3),msg->node_id_des);
@@ -1190,11 +1141,11 @@ RC MigrateThread::process_finish_migration(MigrationMessage* msg){
         update_migrate_label(msg->order+1);
         msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_ROWMAP, msg->order, msg->node_id_des, 2),g_node_cnt);
         msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_ROWMAP, msg->order, msg->node_id_des, 2),msg->node_id_des);
-        if (msg->order == DETEST_SPLIT-1){//分类row迁移完毕
+        if (msg->order == DETEST_SPLIT-1){//
             //update_part_map(msg->part_id, msg->node_id_des);
             update_part_map_status(msg->part_id, 2);//migrated
             update_migrate_label(msg->order+1);
-            msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 2),g_node_cnt); //g_node_cnt对应着client节点,发消息通知client修改detest状态
+            msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 2),g_node_cnt); 
             msg_queue.enqueue(get_thd_id(),Message::create_message1(SET_PARTMAP, msg->part_id, msg->node_id_des, 2),msg->node_id_des);
             msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_DETEST, msg->part_id, 2),msg->node_id_des);
             msg_queue.enqueue(get_thd_id(),Message::create_message0(SET_DETEST, msg->part_id, 2),g_node_cnt);
