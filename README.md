@@ -25,7 +25,7 @@ To build the database.
 Configuration
 -------------
 
-Wooking+M configurations can be changed in the config.h file. Please refer to README for the meaning of each configuration. Here we only list several most important ones.
+Poem configurations can be changed in the config.h file. Please refer to README for the meaning of each configuration. Here we only list several most important ones.
 
     NODE_CNT          : Number of server nodes in the database
     THREAD_CNT        : Number of worker threads running per server
@@ -40,7 +40,7 @@ Configurations can also be specified as command argument at runtime. Run the fol
 Run
 ---
 
-The Wooking+M can be run with
+The Poem can be run with
 
     ./rundb -nid[N]
     ./runcl -nid[M]
