@@ -1,7 +1,7 @@
-Wooking+M
+Poem
 =======
-Implementation of the paper “Wooking+M: Progressive and Efficient Live Migration in Distributed Database Systems”
-Wooking+M is a testbed of an OLTP distributed database management system (DBMS).
+Implementation of the paper “Poem: Progressive and Efficient Live Migration in Distributed Database Systems”
+Poem is a testbed of an OLTP distributed database management system (DBMS).
 
 
 ## Dependencies
