@@ -121,6 +121,9 @@
 
 #define SERVER_GENERATE_QUERIES false
 
+//detest migration
+#define PART_SPLIT_CNT 4
+
 /***********************************************/
 // Memory System
 /***********************************************/

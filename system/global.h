@@ -38,6 +38,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <math.h>
+#include <shared_mutex>
 
 #include "pthread.h"
 #include "config.h"
@@ -189,6 +190,7 @@ extern UInt32 g_this_total_thread_cnt;
 extern UInt32 g_thread_cnt;
 extern UInt32 g_abort_thread_cnt;
 extern UInt32 g_logger_thread_cnt;
+extern UInt32 g_part_split_cnt;
 extern UInt32 g_tcp_thread_cnt;
 extern UInt32 g_send_thread_cnt;
 extern UInt32 g_migrate_thread_cnt;
@@ -362,11 +364,24 @@ enum TsType {R_REQ = 0, W_REQ, P_REQ, XP_REQ};
 /*DA query build queue*/
 //queue<DAQuery> query_build_queue;
 
-//part_table:记录每个part所在的node
-extern map <uint64_t,uint64_t> part_map;
+
+//part_table:记录每个part的信息,<part_id, <node_id,migrate_status> >, migrate_status{0:not migrated, 1:migrating, 2:migrated}
+extern map <uint64_t, vector<uint64_t> > part_map;
+extern std::shared_mutex mtx_part_map;
 void part_map_init();
 uint64_t get_part_node_id(uint64_t part_id);
+uint64_t get_part_status(uint64_t part_id);
 void update_part_map(uint64_t part_id, uint64_t node_id);
+void update_part_map_status(uint64_t part_id, uint64_t status);
+
+extern map <uint64_t, vector<uint64_t> > minipart_map;
+extern std::shared_mutex mtx_minipart_map;
+void minipart_map_init();
+uint64_t get_minipart_id(uint64_t key);
+uint64_t get_minipart_node_id(uint64_t part_id);
+uint64_t get_minipart_status(uint64_t part_id);
+void update_minipart_map(uint64_t part_id, uint64_t node_id);
+void update_minipart_map_status(uint64_t part_id, uint64_t status);
 
 
 #define GET_THREAD_ID(id)	(id % g_thread_cnt)

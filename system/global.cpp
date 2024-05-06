@@ -152,6 +152,7 @@ UInt32 g_node_cnt = NODE_CNT;
 UInt32 g_part_cnt = PART_CNT;
 UInt32 g_virtual_part_cnt = VIRTUAL_PART_CNT;
 UInt32 g_core_cnt = CORE_CNT;
+UInt32 g_part_split_cnt = PART_SPLIT_CNT;
 
 #if CC_ALG == HSTORE || CC_ALG == HSTORE_SPEC
 UInt32 g_thread_cnt = PART_CNT/NODE_CNT;
@@ -266,22 +267,111 @@ UInt32 g_repl_cnt = REPLICA_CNT;
 map<string, string> g_params;
 
 //part_table:记录每个part所在的node
-map <uint64_t,uint64_t> part_map;
+std::map <uint64_t, std::vector<uint64_t> > part_map;
+std::shared_mutex mtx_part_map;
+uint64_t remus_finish_time;
+
 
 void part_map_init(){
+  mtx_part_map.lock();
   for (uint64_t i=0;i<g_part_cnt;i++){
     #if (PART_TO_NODE == HASH_MODE)
-      part_map[i] = i % g_node_cnt;
+      std::vector<uint64_t> vtmp;
+      vtmp.emplace_back(i % g_node_cnt);
+      vtmp.emplace_back(0);
+      part_map[i] = vtmp;
     #elif (PART_TO_NODE == CONST_MODE)
-      part_map[i] = i / (g_part_cnt / g_node_cnt);
+      part_map[i][0].store(i % g_node_cnt);
+      part_map[i][1].store(0);
+      /*vector<uint64_t> vtmp;
+      vtmp.emplace_back(i / (g_part_cnt / g_node_cnt));
+      vtmp.emplace_back(0);
+      part_map[i].store(vtmp);*/
     #endif
   }
+  mtx_part_map.unlock();
 }
 
 uint64_t get_part_node_id(uint64_t part_id){
-  return part_map[part_id];
+  mtx_part_map.lock_shared();
+  uint64_t res = part_map[part_id][0];
+  mtx_part_map.unlock_shared();
+  return res;
+}
+
+uint64_t get_part_status(uint64_t part_id){
+  mtx_part_map.lock_shared();
+  uint64_t res = part_map[part_id][1];
+  mtx_part_map.unlock_shared();
+  return res;
 }
 
 void update_part_map(uint64_t part_id, uint64_t node_id){
-  part_map[part_id] = node_id;
+  //std::lock_guard<std::mutex> lock(mtx_part_map);
+  //vector<uint64_t> vtmp;
+  //vtmp = part_map[part_id].load();
+  //vtmp[0] = node_id;
+  mtx_part_map.lock();
+  part_map[part_id][0] = node_id;
+  mtx_part_map.unlock();
+}
+
+void update_part_map_status(uint64_t part_id, uint64_t status){
+  //std::lock_guard<std::mutex> lock(mtx_part_map);
+  //vector<uint64_t> vtmp;
+  //vtmp = part_map[part_id].load();
+  //vtmp[1] = status;
+  mtx_part_map.lock();
+  part_map[part_id][1] = status;  
+  mtx_part_map.unlock();
+}
+
+map <uint64_t, vector<uint64_t> > minipart_map;
+std::shared_mutex mtx_minipart_map;
+
+void minipart_map_init(){
+  for (uint64_t i=0; i<g_part_split_cnt; i++){
+    std::vector<uint64_t> vtmp;
+    vtmp.emplace_back(0);
+    vtmp.emplace_back(0);
+    minipart_map[i] = vtmp;    
+    //std::atomic<uint64_t> x0(0);
+    //std::atomic<uint64_t> x1(0);
+    //minipart_map[i].push_back(std::ref(x0));
+    //minipart_map[i].push_back(std::ref(x1));
+  }
+}
+
+uint64_t get_minipart_id(uint64_t key){
+#if WORKLOAD == YCSB
+  return key / g_part_cnt / (g_synth_table_size / g_part_cnt / g_part_split_cnt);
+#elif WORKLOAD == TPCC
+  return (key -1 - ((MIGRATION_PART+1) * g_dist_per_wh + (MIGRATION_PART+1)) * g_cust_per_dist) / (g_dist_per_wh * g_cust_per_dist / PART_SPLIT_CNT);
+#endif
+}
+
+uint64_t get_minipart_node_id(uint64_t minipart_id){  
+  mtx_minipart_map.lock_shared();
+  uint64_t res = minipart_map[minipart_id][0];
+  mtx_minipart_map.unlock_shared();
+  return res;
+}
+
+uint64_t get_minipart_status(uint64_t minipart_id){
+  mtx_minipart_map.lock_shared();
+  uint64_t res = minipart_map[minipart_id][0];
+  mtx_minipart_map.unlock_shared();
+  return res;
+}
+
+void update_minipart_map(uint64_t minipart_id, uint64_t node_id){
+  mtx_minipart_map.lock();
+  minipart_map[minipart_id][0] = node_id;
+  mtx_minipart_map.unlock();
+}
+
+void update_minipart_map_status(uint64_t minipart_id, uint64_t status){
+  mtx_minipart_map.lock();
+  minipart_map[minipart_id][0] = status;
+  mtx_minipart_map.unlock();
 }
