@@ -152,7 +152,6 @@ UInt32 g_node_cnt = NODE_CNT;
 UInt32 g_part_cnt = PART_CNT;
 UInt32 g_virtual_part_cnt = VIRTUAL_PART_CNT;
 UInt32 g_core_cnt = CORE_CNT;
-UInt32 g_part_split_cnt = PART_SPLIT_CNT;
 
 #if CC_ALG == HSTORE || CC_ALG == HSTORE_SPEC
 UInt32 g_thread_cnt = PART_CNT/NODE_CNT;
@@ -265,6 +264,37 @@ UInt32 g_repl_type = REPL_TYPE;
 UInt32 g_repl_cnt = REPLICA_CNT;
 
 map<string, string> g_params;
+
+
+/*************    Migration    ************/
+vector <uint64_t> migration_part;
+
+UInt64 g_mig_start_time = 0;
+
+uint64_t g_mig_starttime;//start time of migration
+uint64_t g_mig_endtime;//end time of migration
+
+UInt32 g_part_split_cnt = PART_SPLIT_CNT;  //number of minipart for each part
+uint64_t g_minipart_size = MINIPART_SIZE;  //size of minipart
+
+uint64_t part_to_key_start(uint64_t part_id){
+  return part_id;
+}
+
+uint64_t part_to_key_end(uint64_t part_id){
+  g_synth_table_size - (g_part_cnt - part_id);
+}
+
+uint64_t minipart_to_key_start(uint64_t part_id, uint64_t minipart_id){
+  return g_part_cnt * minipart_id + part_id;
+}
+
+uint64_t minipart_to_key_end(uint64_t part_id, uint64_t minipart_id){
+  return g_synth_table_size - (g_part_cnt * g_part_split_cnt - (g_part_cnt * minipart_id + part_id));
+}
+
+
+
 
 //part_table:记录每个part所在的node
 std::map <uint64_t, std::vector<uint64_t> > part_map;

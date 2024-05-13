@@ -153,7 +153,7 @@ void WorkerThread::process(Message * msg) {
   RC rc __attribute__ ((unused));
 
   DEBUG("%ld Processing %ld %d\n",get_thd_id(),msg->get_txn_id(),msg->get_rtype());
-  assert(msg->get_rtype() == CL_QRY || msg->get_rtype() == CL_QRY_O || msg->get_txn_id() != UINT64_MAX);
+  assert(msg->get_rtype() == CL_QRY || msg->get_rtype() == CL_QRY_O || msg->get_rtype() == SEND_MIGRATION || msg->get_rtype() == RECV_MIGRATION || msg->get_rtype() == FINISH_MIGRATION || msg->get_rtype() == SET_PARTMAP ||  msg->get_rtype() == SET_MINIPARTMAP || msg->get_txn_id() != UINT64_MAX);
   uint64_t starttime = get_sys_clock();
 		switch(msg->get_rtype()) {
 			case RPASS:
@@ -195,6 +195,12 @@ void WorkerThread::process(Message * msg) {
         break;
       case FINISH_MIGRATION:
         rc = process_finish_migration(msg);
+        break;
+      case SET_PARTMAP:
+        rc = process_set_partmap(msg);
+        break;
+      case SET_MINIPARTMAP:
+        rc = process_set_minipartmap(msg);
         break;
       case CL_QRY:
       case CL_QRY_O:
@@ -416,7 +422,7 @@ RC WorkerThread::run() {
     }
     //uint64_t starttime = get_sys_clock();
 
-    if((msg->rtype != CL_QRY && msg->rtype != CL_QRY_O) || CC_ALG == CALVIN) {
+    if((msg->rtype != CL_QRY && msg->rtype != CL_QRY_O && msg->rtype != SET_PARTMAP && msg->rtype != SET_MINIPARTMAP) || CC_ALG == CALVIN) {
       txn_man = get_transaction_manager(msg);
 
       if (CC_ALG != CALVIN && IS_LOCAL(txn_man->get_txn_id())) {
@@ -1061,6 +1067,26 @@ RC WorkerThread::process_finish_migration(Message* msg){
   migmsg_queue.enqueue(get_thd_id(), msg1, g_node_id);
   return rc;
 }
+
+RC process_set_partmap(Message* msg){
+  SetPartMapMessage * msg1 = new(SetPartMapMessage);
+  *msg1 = *(SetPartMapMessage *)msg;
+  update_part_map(msg1->part_id, msg1->node_id);
+  update_part_map_status(msg1->part_id, msg1->status);
+  delete(msg1);
+  return RCOK;  
+}
+
+RC process_set_minipartmap(Message* msg){
+  SetMiniPartMapMessage * msg1 = new(SetMiniPartMapMessage);
+  *msg1 = *(SetMiniPartMapMessage *)msg;
+  update_minipart_map(msg1->minipart_id, msg1->node_id);
+  update_minipart_map_status(msg1->minipart_id, msg1->status);
+  delete(msg1);
+  return RCOK;  
+}
+
+
 
 /*
 RC WorkerThread::process_send_migration(MigrationMessage* msg){

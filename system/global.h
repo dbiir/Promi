@@ -190,7 +190,6 @@ extern UInt32 g_this_total_thread_cnt;
 extern UInt32 g_thread_cnt;
 extern UInt32 g_abort_thread_cnt;
 extern UInt32 g_logger_thread_cnt;
-extern UInt32 g_part_split_cnt;
 extern UInt32 g_tcp_thread_cnt;
 extern UInt32 g_send_thread_cnt;
 extern UInt32 g_migrate_thread_cnt;
@@ -322,6 +321,8 @@ enum RemReqType {
     SEND_MIGRATION,
     RECV_MIGRATION,
     FINISH_MIGRATION,
+    SET_PARTMAP,
+    SET_MINIPARTMAP,
   NO_MSG
 };
 
@@ -363,6 +364,25 @@ enum TsType {R_REQ = 0, W_REQ, P_REQ, XP_REQ};
 
 /*DA query build queue*/
 //queue<DAQuery> query_build_queue;
+
+
+/******************  Migration   ****************/
+extern vector <uint64_t> migration_part;
+
+extern UInt64 g_start_time;//start time of running system 
+
+extern uint64_t g_mig_starttime;//start time of migration
+extern uint64_t g_mig_endtime;//end time of migration
+
+extern UInt32 g_part_split_cnt;
+extern uint64_t g_minipart_size;
+
+
+//paramter transfer, part, minipart, key, size, etc.
+uint64_t part_to_key_start(uint64_t part_id);
+uint64_t part_to_key_end(uint64_t part_id);
+uint64_t minipart_to_key_start(uint64_t part_id, uint64_t minipart_id);
+uint64_t minipart_to_key_end(uint64_t part_id, uint64_t minipart_id);
 
 
 //part_table:记录每个part的信息,<part_id, <node_id,migrate_status> >, migrate_status{0:not migrated, 1:migrating, 2:migrated}

@@ -113,6 +113,33 @@ RC InputThread::client_recv_loop() {
 		if (msgs == NULL) continue;
 		while(!msgs->empty()) {
 			Message * msg = msgs->front();
+
+			//update migration metadata
+			#if MIGRATION
+				switch(msg->get_rtype()){
+					case SET_PARTMAP:{
+						update_part_map(((SetPartMapMessage*)msg)->part_id, ((SetPartMapMessage*)msg)->node_id);
+
+						std::cout<<"!!!!!!!!!!!partition "<<((SetPartMapMessage*)msg)->part_id<<" is on node "<<GET_NODE_ID(((SetPartMapMessage*)msg)->part_id)<<endl;
+						std::cout<<"Time is "<<(get_sys_clock() - run_starttime) / BILLION<<endl;
+						
+						break;
+					}
+					case SET_MINIPARTMAP:{
+						update_minipart_map(((SetMiniPartMapMessage*)msg)->minipart_id, ((SetMiniPartMapMessage*)msg)->node_id);
+						update_minipart_map_status(((SetMiniPartMapMessage*)msg)->minipart_id, ((SetMiniPartMapMessage*)msg)->status);
+
+						std::cout<<"minipart "<<((SetMiniPartMapMessage*)msg)->minipart_id<<" is on node "<<get_minipart_node_id(((SetMiniPartMapMessage*)msg)->minipart_id)<<endl;
+						std::cout<<"Time is "<<(get_sys_clock() - run_starttime) / BILLION<<endl;
+						
+						break;
+					}
+					default:
+						break;
+				}
+			#endif
+
+
 			//assert(msg->rtype == CL_RSP); 注释掉看看
 		#if CC_ALG == BOCC || CC_ALG == FOCC || ONE_NODE_RECIEVE == 1
 			return_node_offset = msg->return_node_id;

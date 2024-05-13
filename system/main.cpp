@@ -377,6 +377,7 @@ int main(int argc, char *argv[]) {
 	starttime = get_server_clock();
 	simulation->run_starttime = starttime;
 	simulation->last_da_query_time = starttime;
+	g_start_time = starttime;
 
 	uint64_t id = 0;
 	for (uint64_t i = 0; i < wthd_cnt; i++) {
@@ -467,24 +468,6 @@ int main(int argc, char *argv[]) {
 
 	worker_num_thds[0].init(id,g_node_id,m_wl);
 	pthread_create(&p_thds[id++], &attr, run_thread, (void *)&worker_num_thds[0]);
-	
-	#if MIGRATION
-	//搞一个迁移消息
-	if (g_node_id ==0){
-		uint64_t node_id_src=0, node_id_des=1;
-		uint64_t part_id = 0;
-		MigrationMessage* msg = new(MigrationMessage);
-		msg->node_id_src = node_id_src;
-		msg->node_id_des = node_id_des;
-		msg->rtype = SEND_MIGRATION;
-		msg->data_size = g_synth_table_size / g_part_cnt;
-		msg->return_node_id = node_id_des;
-		msg->part_id = part_id;
-		msg->isdata = false;
-		std::cout<<"msg size is:"<<msg->get_size()<<endl;
-		work_queue.enqueue(wthd_cnt-1,msg,false);
-	}
-	#endif
 
 	for (uint64_t i = 0; i < all_thd_cnt; i++) pthread_join(p_thds[i], NULL);
 

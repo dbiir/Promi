@@ -54,9 +54,47 @@ RC ClientThread::run() {
 	run_starttime = get_sys_clock();
 	while(!simulation->is_done()) {
 		heartbeat();
-#if SERVER_GENERATE_QUERIES
-		break;
-#endif
+		#if SERVER_GENERATE_QUERIES
+			break;
+		#endif
+
+		#if MIGRATION
+			//init migration msg
+			bool ismigrate=false;//default
+			uint64_t node_id_src_, node_id_des_;
+			uint64_t part_id_;
+			uint64_t minipart_id_;
+			bool islast_ = true;
+
+			//msg param
+			#if MIGRATION_ALG == DETEST
+				uint64_t data_size_ = g_synth_table_size / g_part_cnt / g_part_split_cnt;
+				uint64_t key_start_ = minipart_to_key_start(part_id_, minipart_id_);
+				uint64_t key_end_ = minipart_to_key_end(part_id_, minipart_id_);
+				islast_ = false;
+			#endif
+
+			//migrate at START_MIG
+			if (!ismigrate && (get_thd_id() == 0) && ((get_sys_clock() - run_starttime) / BILLION  >= START_MIG)){
+				ismigrate = true;
+				Message * msg = Message::create_message(SEND_MIGRATION);
+				((MigrationMessage*)msg)->node_id_src = node_id_src_;
+				((MigrationMessage*)msg)->node_id_des = node_id_des_;
+				((MigrationMessage*)msg)->part_id = part_id_;
+				((MigrationMessage*)msg)->minipart_id = minipart_id_;
+				((MigrationMessage*)msg)->rtype = SEND_MIGRATION;
+				((MigrationMessage*)msg)->data_size = data_size_;
+				((MigrationMessage*)msg)->return_node_id = node_id_des_;
+				((MigrationMessage*)msg)->isdata = islast_;
+				((MigrationMessage*)msg)->key_start = key_start_;			
+				((MigrationMessage*)msg)->key_end = key_end_;		
+
+				msg_queue.enqueue(get_thd_id(), msg, ((MigrationMessage*)msg)->node_id_des);
+			}
+
+		#endif
+
+
 		//uint32_t next_node = iters++ % g_node_cnt;
 		progress_stats();
 		int32_t inf_cnt;

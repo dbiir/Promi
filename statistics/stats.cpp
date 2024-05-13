@@ -587,6 +587,9 @@ void Stats_thd::print(FILE * outf, bool prog) {
           multi_part_txn_avg_time / BILLION, single_part_txn_cnt,
           single_part_txn_run_time / BILLION, single_part_txn_avg_time / BILLION, txn_write_cnt,
           record_write_cnt, parts_touched, avg_parts_touched);
+  fprintf(outf, "G_starttime: %ld\n", g_start_time/ BILLION);
+  fprintf(outf, "Migration start:%ld\n", (g_mig_starttime - g_start_time) / BILLION);
+  fprintf(outf, "Migration end:%ld\n", (g_mig_endtime - g_start_time) / BILLION);          
 
   // Breakdown
   fprintf(outf,

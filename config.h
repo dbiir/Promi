@@ -121,8 +121,13 @@
 
 #define SERVER_GENERATE_QUERIES false
 
+//migartion_alg DETEST REMUS SQUALL LOCK DETEST_SPLIT
+#define MIGRATION_ALG DETEST
+
 //detest migration
-#define PART_SPLIT_CNT 4
+#define PART_SPLIT_CNT 4  //number of minipart for each part
+#define MINIPART_SIZE (SYNTH_TABLE_SIZE / PART_CNT / PART_SPLIT_CNT) //size of minipart
+#define MSG_CHUNK_SIZE 524288 //if msg > MSG_CHUNK_SIZE, SPLIT and SEND
 
 /***********************************************/
 // Memory System
@@ -466,6 +471,7 @@ enum PPSTxnType {
 #define STAT_ARR_SIZE 1024
 #define PROG_TIMER 10 * BILLION // in s
 #define BATCH_TIMER 0
+#define START_MIG 30 // migration start time(second)
 #define SEQ_BATCH_TIMER 5 * 1 * MILLION // ~5ms -- same as CALVIN paper
 #define DONE_TIMER 1 * 20 * BILLION // ~1 minutes  60 BILLION = 1 min
 #define WARMUP_TIMER 1 * 20 * BILLION // ~1 minutes

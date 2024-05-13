@@ -39,6 +39,11 @@ public:
   static Message * create_message(uint64_t txn_id,uint64_t batch_id, RemReqType rtype);
   static Message * create_message(LogRecord * record, RemReqType rtype);
   static Message * create_message(RemReqType rtype);
+
+  //create update migration metadata msg
+  static SetPartMapMessage * create_partmap_message(RemReqType rtype, uint64_t part_id, uint64_t node_id, uint64_t status);
+  static SetMiniPartMapMessage * create_minipartmap_message(RemReqType rtype, uint64_t part_id, uint64_t minipart_id, uint64_t node_id, uint64_t status);
+
   static std::vector<Message*> * create_messages(char * buf);
   static void release_message(Message * msg);
   RemReqType rtype;
@@ -499,8 +504,13 @@ class MigrationMessage : public Message {
 public:
   uint64_t node_id_src,node_id_des;//迁移源节点目标节点的id
   uint64_t part_id;//迁移分区id
-  uint64_t data_size;
+  uint64_t minipart_id;
+  uint64_t key_start,key_end;
+  uint64_t order;//记录第几次迁移minipart
+  uint64_t data_size;//row data的数量
   bool isdata;//数据是否传入
+  bool islast;//是否是分片的最后一个迁移消息
+  vector<uint64_t> mig_order;//迁移minipart的顺序
   vector<row_t> data;
   vector<string> row_data;//row_t的真正信息保存在char[]中
 
@@ -512,5 +522,57 @@ public:
   void init();
   void release();
 };
+
+
+class SetPartMapMessage : public Message{
+public:
+  uint64_t part_id, node_id, status;
+  uint64_t get_size();
+  void copy_from_buf(char * buf);
+  void copy_to_buf(char * buf);
+  void copy_from_txn(TxnManager * txn);
+  void copy_to_txn(TxnManager * txn);
+  void init();
+  void release();
+};
+
+
+class SetMiniPartMapMessage : public Message{
+public:
+  uint64_t part_id, minipart_id, node_id, status;
+  uint64_t get_size();
+  void copy_from_buf(char * buf);
+  void copy_to_buf(char * buf);
+  void copy_from_txn(TxnManager * txn);
+  void copy_to_txn(TxnManager * txn);
+  void init();
+  void release();
+};
+
+class SetSquallMessage : public Message{
+public:
+  uint64_t squallpart_id, status;
+  uint64_t get_size();
+  void copy_from_buf(char * buf);
+  void copy_to_buf(char * buf);
+  void copy_from_txn(TxnManager * txn);
+  void copy_to_txn(TxnManager * txn);
+  void init();
+  void release();
+};
+
+class SetSquallPartMapMessage : public Message{
+public:
+  uint64_t squallpart_id, node_id;
+  int status;
+  uint64_t get_size();
+  void copy_from_buf(char * buf);
+  void copy_to_buf(char * buf);
+  void copy_from_txn(TxnManager * txn);
+  void copy_to_txn(TxnManager * txn);
+  void init();
+  void release();
+};
+
 
 #endif

@@ -204,6 +204,12 @@ Message * Message::create_message(RemReqType rtype) {
     case CL_RSP:
       msg = new ClientResponseMessage;
       break;
+    case SET_PARTMAP:
+      msg = new SetPartMapMessage;
+      break;
+    case SET_MINIPARTMAP:
+      msg = new SetMiniPartMapMessage;
+      break;
     default:
       assert(false);
   }
@@ -227,6 +233,27 @@ Message * Message::create_message(RemReqType rtype) {
 
   return msg;
 }
+
+
+//create update migration metadata msg
+SetPartMapMessage * Message::create_partmap_message(RemReqType rtype, uint64_t part_id, uint64_t node_id, uint64_t status){
+  Message * msg = create_message(rtype);
+  ((SetPartMapMessage*)msg)->part_id = part_id;
+  ((SetPartMapMessage*)msg)->node_id = node_id;
+  ((SetPartMapMessage*)msg)->status = status;
+  return (SetPartMapMessage*)msg;
+}
+
+SetMiniPartMapMessage * Message::create_minipartmap_message(RemReqType rtype, uint64_t part_id, uint64_t minipart_id, uint64_t node_id, uint64_t status){
+  Message * msg = create_message(rtype);
+  ((SetMiniPartMapMessage*)msg)->part_id = part_id;
+  ((SetMiniPartMapMessage*)msg)->minipart_id = minipart_id;
+  ((SetMiniPartMapMessage*)msg)->node_id = node_id;
+  ((SetMiniPartMapMessage*)msg)->status = status;
+  return (SetMiniPartMapMessage*)msg;  
+}
+
+
 
 uint64_t Message::mget_size() {
   uint64_t size = 0;
@@ -422,6 +449,18 @@ void Message::release_message(Message * msg) {
       m_msg->release();
       delete m_msg;
       break;
+    }
+    case SET_PARTMAP:{
+      SetPartMapMessage * m_msg = (SetPartMapMessage*) msg;
+      m_msg->release();
+      delete m_msg;
+      break;
+    }
+    case SET_MINIPARTMAP:{
+      SetMiniPartMapMessage * m_msg = (SetMiniPartMapMessage*) msg;
+      m_msg->release();
+      delete m_msg;
+      break;      
     }
     default: {
       assert(false);
@@ -2010,12 +2049,19 @@ void DAQueryMessage::release() { QueryMessage::release(); }
 
 uint64_t MigrationMessage::get_size(){
   uint64_t size = Message::mget_size();
-  size += sizeof(uint64_t)*4;
-  size += sizeof(bool);
+  size += sizeof(uint64_t)*8;
+  size += sizeof(bool)*2;
+  size += sizeof(uint64_t) * mig_order.size();
+  #if WORKLOAD == YCSB
   if (isdata){
-    //size += sizeof(row_t) * data.size();
-    //size += data[0].tuple_size * data.size();
+    size += sizeof(row_t) * data.size();
+    size += MAX_TUPLE_SIZE * data.size();
   }
+  #elif WORKLOAD == TPCC
+  if (isdata){
+    size += g_tuplesize[2] * data.size();
+  }  
+  #endif
   return size;
 }
 
@@ -2025,25 +2071,34 @@ void MigrationMessage::copy_from_buf(char* buf){
   COPY_VAL(node_id_src,buf,ptr);
   COPY_VAL(node_id_des,buf,ptr);
   COPY_VAL(part_id,buf,ptr);
+  COPY_VAL(minipart_id,buf,ptr);
+  COPY_VAL(key_start,buf,ptr);
+  COPY_VAL(key_end,buf,ptr);
+  COPY_VAL(order,buf,ptr);
   COPY_VAL(data_size,buf,ptr);
   COPY_VAL(isdata,buf,ptr);
+  COPY_VAL(islast,buf,ptr);
+  for (size_t i=0; i<g_part_split_cnt; i++){
+    uint64_t mig_order_;
+    COPY_VAL(mig_order_,buf,ptr);
+    mig_order.emplace_back(mig_order_);
+  }
   if (isdata){
-    /*
     for (size_t i=0;i<data_size;i++){
       row_t tmp;
       COPY_VAL(tmp,buf,ptr);
       data.emplace_back(tmp);
     }
-    */
-    /*
+    
+    #if WORKLOAD == YCSB
     for (size_t i=0;i<data_size;i++){
       //char* tmp = (char*)malloc(sizeof(char)*data[0].get_tuple_size());
-      char tmp_char[data[0].tuple_size];
+      char tmp_char[MAX_TUPLE_SIZE];
       COPY_VAL(tmp_char,buf,ptr);
       string tmp_str = tmp_char;
       row_data.emplace_back(tmp_str);
     }
-    */
+    #endif
   }
 }
 
@@ -2053,30 +2108,28 @@ void MigrationMessage::copy_to_buf(char* buf){
   COPY_BUF(buf,node_id_src,ptr);
   COPY_BUF(buf,node_id_des,ptr);
   COPY_BUF(buf,part_id,ptr);
+  COPY_BUF(buf,minipart_id,ptr);
+  COPY_BUF(buf,key_start,ptr);
+  COPY_BUF(buf,key_end,ptr);
+  COPY_BUF(buf,order,ptr);
   COPY_BUF(buf,data_size,ptr);
   COPY_BUF(buf,isdata,ptr);
-  //std::cout<<sizeof(data[0])<<' '<<sizeof(row_data[0])<<endl;
-  std::cout<<"ptr is "<<ptr<<endl;
+  COPY_BUF(buf,islast,ptr);
+  for (size_t i=0;i<mig_order.size();i++){
+    COPY_BUF(buf,mig_order[i],ptr);
+  }
   if (isdata){
-    //COPY_BUF(buf, data, ptr);
-    //std::cout<<"ptr is "<<ptr<<endl;
-    //COPY_BUF(buf, row_data, ptr);
-    
-    /*
-    for (size_t i=0;i<data_size;i++){
+    for (size_t i=0;i<this->data.size();i++){
       //std::cout<<i<<" "<<buf<<" "<<&(data[i])<<endl;
       //std::cout<<i<<" "<<ptr<<endl;
       COPY_BUF(buf,data[i],ptr);
     }
-    */
     
-    /*
-    for (size_t i=0;i<data_size;i++){
+    for (size_t i=0;i<this->row_data.size();i++){
       COPY_BUF(buf,row_data[i],ptr);
     }
-    */
+    
   }
-  std::cout<<"ptr is "<<ptr<<endl;
 }
 
 
@@ -2098,3 +2151,71 @@ void MigrationMessage::copy_from_txn(TxnManager* txn){
 void MigrationMessage::copy_to_txn(TxnManager* txn){
   Message::mcopy_to_txn(txn);
 }
+
+
+
+uint64_t SetPartMapMessage::get_size(){
+  uint64_t size;
+  size = Message::mget_size();
+  size += 3 * sizeof(uint64_t);
+  return size;  
+}
+
+void SetPartMapMessage::copy_from_buf(char * buf){
+  Message::mcopy_from_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_VAL(part_id,buf,ptr);
+  COPY_VAL(node_id,buf,ptr);
+  COPY_VAL(status,buf,ptr);  
+}
+
+void SetPartMapMessage::copy_to_buf(char * buf){
+  Message::mcopy_to_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_BUF(buf,part_id,ptr);
+  COPY_BUF(buf,node_id,ptr);
+  COPY_BUF(buf,status,ptr);
+}  
+
+void SetPartMapMessage::copy_from_txn(TxnManager * txn){}
+
+void SetPartMapMessage::copy_to_txn(TxnManager * txn){}
+
+void SetPartMapMessage::init(){}
+
+void SetPartMapMessage::release(){}
+
+
+
+uint64_t SetMiniPartMapMessage::get_size(){
+  uint64_t size;
+  size = Message::mget_size();
+  size += 4 * sizeof(uint64_t);
+  return size;  
+}
+
+void SetMiniPartMapMessage::copy_from_buf(char * buf){
+  Message::mcopy_from_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_VAL(part_id,buf,ptr);
+  COPY_VAL(minipart_id,buf,ptr);
+  COPY_VAL(node_id,buf,ptr);
+  COPY_VAL(status,buf,ptr);
+}
+
+void SetMiniPartMapMessage::copy_to_buf(char * buf){
+  Message::mcopy_to_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_BUF(buf,part_id,ptr);
+  COPY_BUF(buf,minipart_id,ptr);
+  COPY_BUF(buf,node_id,ptr);
+  COPY_BUF(buf,status,ptr);
+}  
+
+void SetMiniPartMapMessage::copy_from_txn(TxnManager * txn){}
+
+void SetMiniPartMapMessage::copy_to_txn(TxnManager * txn){}
+
+void SetMiniPartMapMessage::init(){}
+
+void SetMiniPartMapMessage::release(){}

@@ -19,8 +19,10 @@
 #include "work_queue.h"
 #include "txn.h"
 #include "ycsb.h"
+#include "tpcc.h"
 #include "index_btree.h"
 #include "table.h"
+#include "wl.h"
 
 void MigrateThread::setup() {
     /*
@@ -91,7 +93,7 @@ RC MigrateThread::run(){
         heartbeat();
         progress_stats();
         MigrationMessage* msg = new(MigrationMessage);
-        printf("begin receive message!\n");
+        //printf("begin receive message!\n");
         while(migmsg_queue.get_size()==0){
             if (simulation->is_done()) return RCOK;
         }
@@ -105,9 +107,6 @@ RC MigrateThread::run(){
         printf("get message!\n");
         //std::cout<<"node_id_des is "<<msg->node_id_des<<endl;
         std::cout<<"message type is:"<<msg->get_rtype()<<" by migrate dequeue"<<endl;
-        //std::cout<<"the size of msg is "<<msg->get_size()<<endl;
-    
-        //std::cout<<"node_id_des is "<<msg->node_id_des<<endl;
         RC rc;
         txn_man = get_transaction_manager(msg);
         txn_man->register_thread(this);
@@ -129,139 +128,186 @@ RC MigrateThread::run(){
                 printf("message->rtpye is %d\n",msg->get_rtype());
                 break;
         }
+        delete msg;
     }
     return RCOK;
 }
 
 RC MigrateThread::process_send_migration(MigrationMessage* msg){
     DEBUG("SEND_MIGRATION %ld\n",msg->get_txn_id());
-    printf("SEND_MIGRATION\n");
-    std::cout<<&msg<<endl;
+    std::cout<<"SEND_MIGRATION Time:"<<(get_sys_clock() - g_start_time) / BILLION<<endl;
+    if (g_mig_starttime == 0) g_mig_starttime = get_sys_clock();
+
+
     RC rc =RCOK;
     start_time = get_sys_clock();
-    txn_man->return_id = msg->return_node_id;
+    txn_man->return_id = ((MigrationMessage*)msg)->return_node_id;
     txn_man->h_wl = _wl;
     
-    msg->isdata = false;
+    ((MigrationMessage*)msg)->isdata = false;
     //std::cout<<&msg<<endl;
-    std::cout<<"the size of msg is "<<msg->get_size()<<endl;
-    //对迁移数据加锁, 将迁移数据读入msg
-    idx_key_t key = 0;//起始的key，是迁移的part中第一个key，随着part_id变化而变化
-	for (size_t i=0;i<msg->data_size;i++){
-        itemid_t* item1 = (itemid_t*)mem_allocator.alloc(sizeof(itemid_t));
-	    itemid_t* &item = item1;
-        RC rc = ((YCSBWorkload*)_wl)->the_index->index_read(key,item,key_to_part(key),g_thread_cnt); //使用g_thread_cnt是为了访问索引的cur_leaf_per_thd数组，索引只允许工作线程和迁移线程访问，数组大小和这两个线程数量之和相同
-        if (rc!=RCOK) {
-            miss_cnt++;
-            if (KEY_TO_PART == HASH_MODE) key += g_part_cnt;
-            else key ++;
-            continue;
+    std::cout<<"the size of msg is "<<((MigrationMessage*)msg)->get_size()<<endl;
+
+    //update the migration metadata
+    #if MIGRATION_ALG==DETEST
+        update_part_map_status(((MigrationMessage*)msg)->part_id, 1);
+        update_minipart_map_status(((MigrationMessage*)msg)->minipart_id, 1);
+    #endif
+
+    //init metadata
+    uint64_t key_ptr = ((MigrationMessage*)msg)->key_start;//scan ptr
+    int msg_num = 0;//msg max num
+    msg_num = max(MSG_CHUNK_SIZE / MAX_TUPLE_SIZE - 15, 1);
+
+    MigrationMessage* msg1 = new(MigrationMessage);
+    *msg1 = *msg;  
+    msg1->isdata = true;  
+    msg1->islast = false;
+    msg1->data_size = 0;
+    msg1->key_start = key_ptr; 
+
+    //fetch data and add into msg
+    while(key_ptr <= ((MigrationMessage*)msg)->key_end){
+        itemid_t* item = new(itemid_t);
+        RC rc=WAIT;
+        while (rc != RCOK){
+            rc = ((YCSBWorkload*)_wl)->the_index->index_read(key_ptr,item,key_to_part(key_ptr),g_thread_cnt); 
         }
-        //std::cout<<"OK"<<endl;
-		//((YCSBWorkload*)_wl)->the_index->index_read(key,item,msg->part_id,get_thd_id());        
-        row_t* row = ((row_t*)item->location);
-        //rc = txn_man->get_lock(row,WR); fix
+
+        row_t* row = new(row_t);
+        row = ((row_t*)item->location);
         row_t* row_rtn = new(row_t);
-        rc = txn_man->get_row(row,access_t::WR,row_rtn);
+        access_t access;
+        #if MIGRATION_ALG == DETEST
+            access = access_t::RD;
+        #endif
+        rc = txn_man->get_row(row,access,row_rtn);
         if (rc != RCOK){
             std::cout<<"trying to get lock..."<<endl;
         }
         while(rc != RCOK){
-            rc = txn_man->get_row(row,access_t::WR,row_rtn);
-        }
-        /*
-        //读data的数据
-        msg->data.emplace_back(*row_rtn);
-        //读row->data的数据
-        char* tmp_char = new char[row->tuple_size];
-        memcpy(tmp_char, row->get_data(), row->tuple_size);
-        string tmp_str = tmp_char;
-        //std::cout<<"tuple_size is "<<row->tuple_size<<' ';
-        //std::cout<<"tmp_char is "<<tmp_char[0]<<' ';
-        //std::cout<<"tmp_str is "<<tmp_str<<endl;
-		//把下面去掉，不让rowdata放进来
-        //msg->row_data.emplace_back(tmp_str);
-        */
-        std::cout<<"lock "<<key<<" ";
-        //std::cout<<"key is "<<msg->data[i].get_primary_key();
-        //std::cout<<" data is "<<msg->row_data[i]<<endl;
-        if (KEY_TO_PART == HASH_MODE) key += g_part_cnt;
-        else key ++;
-	}
-    msg->isdata=true;
-    printf("the size of msg row is %ld\n",msg->data_size);
-    std::cout<<"the size of msg is "<<msg->get_size()<<endl;
+            rc = txn_man->get_row(row,access,row_rtn);
+        }        
 
-    //生成RECV_MIGRATION消息发给目标节点
-    if(rc != WAIT) {//记得初始化MigrationMessage的return_node_id
-        MigrationMessage * msg1 = new(MigrationMessage);
-        *msg1 = *msg;
-        msg1->return_node_id = g_node_id;
-        msg1->rtype = RECV_MIGRATION;
-        msg_queue.enqueue(get_thd_id(), msg1, msg1->node_id_des);
-        free(msg);
-        std::cout<<"enqueue finished!"<<endl;
+        msg1->isdata=true;
+        msg1->data.emplace_back(*row_rtn);
+        char tmp_char[MAX_TUPLE_SIZE];
+        strcpy(tmp_char, row_rtn->get_data());
+        string tmp_str = tmp_char;
+        msg1->row_data.emplace_back(tmp_str);
+        msg1->data_size ++;
+
+
+        //send this msg and constrcut new msg
+        if (msg1->data_size >= msg_num || key_ptr == ((MigrationMessage*)msg)->key_end){
+            msg1->return_node_id = g_node_id;
+            msg1->rtype = RECV_MIGRATION;
+            msg1->key_end = key_ptr;
+            if (key_ptr == ((MigrationMessage*)msg)->key_end){
+                msg1->islast = true;
+            }
+
+            msg_queue.enqueue(get_thd_id(), msg1, msg1->node_id_des);
+            std::cout<<"Send migration from "<<msg1->node_id_src<<"to "<<msg1->node_id_des<<" : enqueue finished "<<key_ptr<<endl;
+
+            if (key_ptr == ((MigrationMessage*)msg)->key_end) break;
+
+            MigrationMessage* msg1 = new(MigrationMessage);
+            *msg1 = *msg;  
+            msg1->isdata = true;  
+            msg1->islast = false;     
+            msg1->data_size = 0;   
+            msg1->key_start = key_ptr + PART_CNT; 
+        }
+
+        key_ptr += PART_CNT;
     }
-    std::cout<<"miss is:"<<miss_cnt<<endl;
+
+    //update migration metadata
+    #if MIGRATION_ALG == DETEST
+        update_minipart_map_status(((MigrationMessage*)msg)->minipart_id, 1);
+        update_part_map_status(((MigrationMessage*)msg)->part_id, 1);
+    #endif    
+
     return rc;
 }
 
 RC MigrateThread::process_recv_migration(MigrationMessage* msg){
     DEBUG("RECV_MIGRATION %ld\n",msg->get_txn_id());
-    printf("RECV_MIGRATION\n");
+    std::cout<<"RECV_MIGRATION Time:"<<(get_server_clock() - g_start_time) / BILLION<<endl;
     RC rc = RCOK;
-    sleep(1);
-    /*不要本地生成数据了
-    //把数据从msg里复制出来
-    row_t * data_ptr = (row_t*)mem_allocator.alloc(sizeof(row_t)*(msg->data_size));
-    //char* row_data_ptr = (char* )malloc((msg->data[0].tuple_size) *  (msg->data_size));
-    for (size_t i=0;i<msg->data_size;i++){
-        row_t* data_ = &msg->data[i];
-        memcpy(data_ptr,data_,sizeof(row_t));
-        //memcpy(row_data_ptr,&msg->row_data,msg->data[0].tuple_size);
-    }
-    */
 
-    /*去除本地恢复数据的过程
-    void* data_ptr = mem_allocator.alloc(sizeof(row_t)*(msg->data_size)); //存row_t
-    char* row_data_ptr = (char* )malloc((msg->data[0].tuple_size) *  (msg->data_size)); //存row_t->data
-    uint64_t ptr = 0;
-    uint64_t ptr_data = 0;
-    for (size_t i=0;i<msg->data_size;i++){
-        row_t* data_ = &msg->data[i];
-        memcpy(data_ptr,(const void*)data_,ptr);
-        ptr += sizeof(row_t);
-        memcpy(row_data_ptr,(const void*)&msg->row_data,ptr_data);
-        ptr_data += sizeof(data_->get_tuple_size());
-        //本地生成索引 索引是全局的不需要再次生成
-        
-        ((YCSBWorkload*)_wl)->the_table->get_new_row(data_);
-        itemid_t * m_item = (itemid_t *) mem_allocator.alloc(sizeof(itemid_t));
-	    assert(m_item != NULL);
-	    m_item->type = DT_row;
-	    m_item->location = row_data_ptr+ptr_data-sizeof(data_->get_tuple_size());
-	    m_item->valid = true;
-	    uint64_t idx_key = data_->get_primary_key();
-	    rc = ((YCSBWorkload*)_wl)->the_index->index_insert(idx_key, m_item, msg->part_id);
+    //receive data and construct
+    uint64_t key_ptr;//received key
+    key_ptr = ((MigrationMessage*)msg)->key_start;
+    while (key_ptr != ((MigrationMessage*)msg)->key_end){
+        row_t * new_row = NULL;
+        uint64_t row_id;
+        rc = this->_wl->tables["MAIN_TABLE"]->get_new_row(new_row, ((MigrationMessage*)msg)-> part_id, row_id);
         assert(rc == RCOK);
-        
+        uint64_t primary_key = key_ptr;
+        new_row->set_primary_key(primary_key);
+
+        #if SIM_FULL_ROW
+            new_row->set_value(0, &primary_key,sizeof(uint64_t));
+            Catalog * schema = this->_wl->tables["MAIN_TABLE"]->get_schema();
+            for (UInt32 fid = 0; fid < schema->get_field_cnt(); fid ++) {
+                char value[6] = "hello";
+                new_row->set_value(fid, value,sizeof(value));				
+            }
+        #endif        
+
+        itemid_t * m_item = (itemid_t *) mem_allocator.alloc( sizeof(itemid_t));
+        assert(m_item != NULL);
+        m_item->type = DT_row;
+        m_item->location = new_row;
+        m_item->valid = true;
+        uint64_t idx_key = primary_key;
+        rc = this->_wl->indexes["MAIN_INDEX"]->index_insert(idx_key, m_item, ((MigrationMessage*)msg)->part_id);
+        assert(rc == RCOK);
+
+        key_ptr += PART_CNT;
     }
-    */
 
+    //update migration metadata 
+    if (((MigrationMessage*)msg)->islast){
+        update_minipart_map_status(((MigrationMessage*)msg)->minipart_id, 1);
+        update_part_map_status(((MigrationMessage*)msg)->part_id, 1);
+    }
 
-    //生成FINISH_MIGRATION消息给源节点
+    //send finish migration msg
     if (rc==RCOK){
-        msg_queue.enqueue(get_thd_id(),Message::create_message(txn_man,FINISH_MIGRATION),msg->node_id_src);
-    }
+        MigrationMessage * msg1 = new(MigrationMessage);
+        *msg1 = *msg;
+        msg1->rtype = FINISH_MIGRATION;
+        #if MIGRATION_ALG == DETEST
+            msg1->minipart_id = msg->minipart_id;
+        #endif
+        msg_queue.enqueue(get_thd_id(), msg1, msg1->node_id_src);
+        std::cout<<"Recv migration from "<<msg1->node_id_src<<" to "<<msg1->node_id_des<<" : enqueue finished "<<endl<<"part is "<<msg1->part_id<<endl;
+        std::cout<<(get_server_clock() - g_start_time) / BILLION<<endl;
+        g_mig_endtime = get_sys_clock();
+    }    
+
     return rc;
 }
 
 RC MigrateThread::process_finish_migration(MigrationMessage* msg){
     DEBUG("FINISH_MIGRATION %ld\n",msg->get_txn_id());
-    printf("FINISH_MIGRATION\n");
+    std::cout<<"FINISH_MIGRATION Time:"<<(get_server_clock() - g_start_time) / BILLION<<endl;
     RC rc = RCOK;
-    //msg->copy_to_txn(txn_man);
-    //txn_man->h_wl = _wl;
+
+    //update migration metadata
+    #if MIGRATION_ALG == DETEST
+        update_minipart_map(msg->minipart_id, msg->node_id_des);
+        update_minipart_map_status(msg->minipart_id, 2);
+        //sync msg to other nodes    
+        for (uint64_t i=0; i< g_node_cnt + g_client_node_cnt; i++){
+            if (i == g_node_id) continue;
+            msg_queue.enqueue(get_thd_id(),Message::create_minipartmap_message(SET_PARTMAP, msg->part_id, msg->minipart_id, msg->node_id_des, 2), i);        
+        }        
+    #endif
+
     update_part_map(msg->part_id, msg->node_id_des);
     double migration_time = get_sys_clock() - start_time;
     std::cout<<"M Time:"<<migration_time / BILLION <<endl;
