@@ -7,6 +7,7 @@
 #include "ycsb.h"
 #include "row.h"
 #include "thread.h"
+#include "catalog.h"
 
 class Workload;
 

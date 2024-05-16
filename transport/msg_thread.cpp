@@ -513,9 +513,12 @@ void MessageThread::run() {
 
   sbuf = buffer[dest_node_id];
 
+  //debug
+  //if (msg->rtype == RECV_MIGRATION) std::cout<<"RECV_MIGRATION MSG SIZE IS "<<msg->get_size()<<endl;
+
   if(!sbuf->fits(msg->get_size())) {
     //assert(sbuf->cnt > 0); //报错
-    if (msg->rtype == RECV_MIGRATION) std::cout<<"RECV_MIGRATION MSG IS SENDING"<<endl;
+    //if (msg->rtype == RECV_MIGRATION) std::cout<<"RECV_MIGRATION MSG IS SENDING"<<endl;
     send_batch(dest_node_id);
   }
   
@@ -540,7 +543,7 @@ void MessageThread::run() {
         dest_node_id);
   sbuf->cnt += 1;
   sbuf->ptr += msg->get_size();
-  if (msg->rtype == RECV_MIGRATION) std::cout<<"RECV_MIGRATION MSG IS SENDING by 542"<<endl;
+  //f (msg->rtype == RECV_MIGRATION) std::cout<<"RECV_MIGRATION MSG IS SENDING by 542"<<endl;
   /*
   // Free message here, no longer needed unless CALVIN sequencer
   if(CC_ALG != CALVIN) {
@@ -553,7 +556,7 @@ void MessageThread::run() {
   if (sbuf->starttime == 0) sbuf->starttime = get_sys_clock();
   check_and_send_batches();
   INC_STATS(_thd_id,mtx[10],get_sys_clock() - starttime);
-    if (msg->rtype == RECV_MIGRATION) std::cout<<"RECV_MIGRATION MSG IS SENDING by 555 "<<"flag is "<<flag<<endl;
+    //if (msg->rtype == RECV_MIGRATION) std::cout<<"RECV_MIGRATION MSG IS SENDING by 555 "<<"flag is "<<flag<<endl;
   if(CC_ALG != CALVIN) {
     Message::release_message(msg);
   }

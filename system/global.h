@@ -394,14 +394,14 @@ uint64_t get_part_status(uint64_t part_id);
 void update_part_map(uint64_t part_id, uint64_t node_id);
 void update_part_map_status(uint64_t part_id, uint64_t status);
 
-extern map <uint64_t, vector<uint64_t> > minipart_map;
-extern std::shared_mutex mtx_minipart_map;
+extern std::vector<std::map<uint64_t, std::vector<uint64_t>>> minipart_map;
+extern std::vector<std::shared_mutex> mtx_minipart_map;
 void minipart_map_init();
 uint64_t get_minipart_id(uint64_t key);
-uint64_t get_minipart_node_id(uint64_t part_id);
-uint64_t get_minipart_status(uint64_t part_id);
-void update_minipart_map(uint64_t part_id, uint64_t node_id);
-void update_minipart_map_status(uint64_t part_id, uint64_t status);
+uint64_t get_minipart_node_id(uint64_t part_id, uint64_t minipart_id);
+uint64_t get_minipart_status(uint64_t part_id, uint64_t minipart_id);
+void update_minipart_map(uint64_t part_id, uint64_t minipart_id, uint64_t node_id);
+void update_minipart_map_status(uint64_t part_id, uint64_t minipart_id, uint64_t status);
 
 
 #define GET_THREAD_ID(id)	(id % g_thread_cnt)

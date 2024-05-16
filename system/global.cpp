@@ -269,28 +269,28 @@ map<string, string> g_params;
 /*************    Migration    ************/
 vector <uint64_t> migration_part;
 
-UInt64 g_mig_start_time = 0;
+UInt64 g_start_time = 0;
 
 uint64_t g_mig_starttime;//start time of migration
 uint64_t g_mig_endtime;//end time of migration
 
 UInt32 g_part_split_cnt = PART_SPLIT_CNT;  //number of minipart for each part
-uint64_t g_minipart_size = MINIPART_SIZE;  //size of minipart
+uint64_t g_minipart_size = g_synth_table_size / g_part_cnt / g_part_split_cnt; //size of minipart
 
 uint64_t part_to_key_start(uint64_t part_id){
   return part_id;
 }
 
 uint64_t part_to_key_end(uint64_t part_id){
-  g_synth_table_size - (g_part_cnt - part_id);
+  return (part_to_key_start(part_id) + g_part_cnt * (g_synth_table_size / g_part_cnt - 1));
 }
 
 uint64_t minipart_to_key_start(uint64_t part_id, uint64_t minipart_id){
-  return g_part_cnt * minipart_id + part_id;
+  return g_minipart_size * minipart_id * g_part_cnt + part_id;
 }
 
 uint64_t minipart_to_key_end(uint64_t part_id, uint64_t minipart_id){
-  return g_synth_table_size - (g_part_cnt * g_part_split_cnt - (g_part_cnt * minipart_id + part_id));
+  return minipart_to_key_start(part_id, minipart_id) + (g_minipart_size - 1) * g_part_cnt;
 }
 
 
@@ -356,19 +356,19 @@ void update_part_map_status(uint64_t part_id, uint64_t status){
   mtx_part_map.unlock();
 }
 
-map <uint64_t, vector<uint64_t> > minipart_map;
-std::shared_mutex mtx_minipart_map;
+std::vector<std::map<uint64_t, std::vector<uint64_t>>> minipart_map;
+std::vector<std::shared_mutex> mtx_minipart_map(PART_CNT);
 
 void minipart_map_init(){
-  for (uint64_t i=0; i<g_part_split_cnt; i++){
-    std::vector<uint64_t> vtmp;
-    vtmp.emplace_back(0);
-    vtmp.emplace_back(0);
-    minipart_map[i] = vtmp;    
-    //std::atomic<uint64_t> x0(0);
-    //std::atomic<uint64_t> x1(0);
-    //minipart_map[i].push_back(std::ref(x0));
-    //minipart_map[i].push_back(std::ref(x1));
+  for (uint64_t i=0; i<g_part_cnt; i++){
+    std::map<uint64_t, std::vector<uint64_t>> maptmp;
+    for (uint64_t j=0; j<g_part_split_cnt; j++){
+      std::vector<uint64_t> vtmp;
+      vtmp.emplace_back(i % g_node_cnt);
+      vtmp.emplace_back(0);
+      maptmp[j] = vtmp;
+    }
+    minipart_map.emplace_back(maptmp);
   }
 }
 
@@ -380,28 +380,28 @@ uint64_t get_minipart_id(uint64_t key){
 #endif
 }
 
-uint64_t get_minipart_node_id(uint64_t minipart_id){  
-  mtx_minipart_map.lock_shared();
-  uint64_t res = minipart_map[minipart_id][0];
-  mtx_minipart_map.unlock_shared();
+uint64_t get_minipart_node_id(uint64_t part_id, uint64_t minipart_id){  
+  mtx_minipart_map[part_id].lock_shared();
+  uint64_t res = minipart_map[part_id][minipart_id][0];
+  mtx_minipart_map[part_id].unlock_shared();
   return res;
 }
 
-uint64_t get_minipart_status(uint64_t minipart_id){
-  mtx_minipart_map.lock_shared();
-  uint64_t res = minipart_map[minipart_id][0];
-  mtx_minipart_map.unlock_shared();
+uint64_t get_minipart_status(uint64_t part_id, uint64_t minipart_id){
+  mtx_minipart_map[part_id].lock_shared();
+  uint64_t res = minipart_map[part_id][minipart_id][1];
+  mtx_minipart_map[part_id].unlock_shared();
   return res;
 }
 
-void update_minipart_map(uint64_t minipart_id, uint64_t node_id){
-  mtx_minipart_map.lock();
-  minipart_map[minipart_id][0] = node_id;
-  mtx_minipart_map.unlock();
+void update_minipart_map(uint64_t part_id, uint64_t minipart_id, uint64_t node_id){
+  mtx_minipart_map[part_id].lock();
+  minipart_map[part_id][minipart_id][0] = node_id;
+  mtx_minipart_map[part_id].unlock();
 }
 
-void update_minipart_map_status(uint64_t minipart_id, uint64_t status){
-  mtx_minipart_map.lock();
-  minipart_map[minipart_id][0] = status;
-  mtx_minipart_map.unlock();
+void update_minipart_map_status(uint64_t part_id, uint64_t minipart_id, uint64_t status){
+  mtx_minipart_map[part_id].lock();
+  minipart_map[part_id][minipart_id][1] = status;
+  mtx_minipart_map[part_id].unlock();
 }

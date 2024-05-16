@@ -187,7 +187,7 @@ void WorkerThread::process(Message * msg) {
         rc = process_rtxn_cont(msg);
 				break;
       case SEND_MIGRATION:
-        std::cout<<"message type is:"<<msg->get_rtype()<<" by worker thread"<<endl;
+        //std::cout<<"message type is:"<<msg->get_rtype()<<" by worker thread"<<endl;
         rc = process_send_migration(msg);
         break;
       case RECV_MIGRATION:
@@ -1036,7 +1036,7 @@ bool WorkerThread::is_mine(Message* msg) {  //TODO:have some problems!
 
 RC WorkerThread::process_send_migration(Message* msg){
   DEBUG("SEND_MIGRATION %ld\n",msg->get_txn_id());
-  std::cout<<"message type is:"<<msg->get_rtype()<<" by process_send_migration"<<endl;
+  //std::cout<<"message type is:"<<msg->get_rtype()<<" by process_send_migration"<<endl;
   RC rc = RCOK;
   //MigrationMessage * msg1 =(MigrationMessage *) mem_allocator.alloc(sizeof(MigrationMessage));
   MigrationMessage * msg1 = new(MigrationMessage);
@@ -1068,7 +1068,7 @@ RC WorkerThread::process_finish_migration(Message* msg){
   return rc;
 }
 
-RC process_set_partmap(Message* msg){
+RC WorkerThread::process_set_partmap(Message* msg){
   SetPartMapMessage * msg1 = new(SetPartMapMessage);
   *msg1 = *(SetPartMapMessage *)msg;
   update_part_map(msg1->part_id, msg1->node_id);
@@ -1077,11 +1077,11 @@ RC process_set_partmap(Message* msg){
   return RCOK;  
 }
 
-RC process_set_minipartmap(Message* msg){
+RC WorkerThread::process_set_minipartmap(Message* msg){
   SetMiniPartMapMessage * msg1 = new(SetMiniPartMapMessage);
   *msg1 = *(SetMiniPartMapMessage *)msg;
-  update_minipart_map(msg1->minipart_id, msg1->node_id);
-  update_minipart_map_status(msg1->minipart_id, msg1->status);
+  update_minipart_map(msg1->part_id, msg1->minipart_id, msg1->node_id);
+  update_minipart_map_status(msg1->part_id, msg1->minipart_id, msg1->status);
   delete(msg1);
   return RCOK;  
 }

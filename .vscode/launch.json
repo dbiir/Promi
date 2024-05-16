@@ -1,0 +1,31 @@
+{
+  // 使用 IntelliSense 了解相关属性。 
+  // 悬停以查看现有属性的描述。
+  // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+      {
+          "name": "gdb attach",
+          "type": "cppdbg",
+          "request": "attach",
+          "processId":"${command:pickProcess}", 
+          "program": "/data3/dzh/project/wooking-dev/rundb",  // 替换为你的可执行文件路径
+          "args": [],                                    // 程序的命令行参数
+          "stopAtEntry": false,
+          "cwd": "${workspaceFolder}",
+          "environment": [],
+          "externalConsole": false,
+          "MIMode": "gdb",
+          "setupCommands": [
+              {
+                  "description": "Enable pretty-printing for gdb",
+                  "text": "-enable-pretty-printing",
+                  "ignoreFailures": true
+              }
+          ],
+          //"preLaunchTask": "build",                       // 构建任务的名称，确保你的任务已配置
+          "miDebuggerPath": "/usr/bin/gdb"            // GDB 的路径，根据实际情况修改
+          
+      }
+  ]
+}

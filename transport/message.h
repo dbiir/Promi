@@ -41,8 +41,8 @@ public:
   static Message * create_message(RemReqType rtype);
 
   //create update migration metadata msg
-  static SetPartMapMessage * create_partmap_message(RemReqType rtype, uint64_t part_id, uint64_t node_id, uint64_t status);
-  static SetMiniPartMapMessage * create_minipartmap_message(RemReqType rtype, uint64_t part_id, uint64_t minipart_id, uint64_t node_id, uint64_t status);
+  static Message * create_partmap_message(RemReqType rtype, uint64_t part_id, uint64_t node_id, uint64_t status);
+  static Message * create_minipartmap_message(RemReqType rtype, uint64_t part_id, uint64_t minipart_id, uint64_t node_id, uint64_t status);
 
   static std::vector<Message*> * create_messages(char * buf);
   static void release_message(Message * msg);

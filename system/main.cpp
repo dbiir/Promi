@@ -78,7 +78,11 @@ void parser(int argc, char * argv[]);
 
 int main(int argc, char *argv[]) {
 	// 0. initialize global data structure
-	if (g_node_id == 1 || g_node_id == 0) part_map_init();
+	if (g_node_id >= 0 && g_node_id < g_node_cnt) {
+		part_map_init();
+		minipart_map_init();		
+	}
+
 	parser(argc, argv);
 #if SEED != 0
 	uint64_t seed = SEED + g_node_id;

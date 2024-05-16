@@ -81,8 +81,8 @@ void MigrateMessageQueue::enqueue(uint64_t thd_id, MigrationMessage * msg, uint6
     while (!m_queue[rand]->push(entry) && !simulation->is_done()) {
     }
     // migmsg_entry * entry1 = (migmsg_entry*) mem_allocator.alloc(sizeof(struct migmsg_entry));
-    std::cout<<"message type is:"<<entry->msg->get_rtype()<<" by enqueue"<<endl;
-    std::cout<<"migmsg queue size is:"<<msg_queue_size<<endl;
+    //std::cout<<"message type is:"<<entry->msg->get_rtype()<<" by enqueue"<<endl;
+    //std::cout<<"migmsg queue size is:"<<msg_queue_size<<endl;
     // bool valid = m_queue[0]->pop(entry1);
     // assert(valid==1);
     // std::cout<<"the message rtype is "<<entry1->msg->get_rtype()<<" by 84"<<endl;
@@ -90,10 +90,10 @@ void MigrateMessageQueue::enqueue(uint64_t thd_id, MigrationMessage * msg, uint6
 
     INC_STATS(thd_id,mtx[3],get_sys_clock() - mtx_time_start);
     INC_STATS(thd_id,migmsg_queue_enq_cnt,1);
-    std::cout<<"migmsg queue size is:"<<msg_queue_size<<endl;
+    //std::cout<<"migmsg queue size is:"<<msg_queue_size<<endl;
     sem_wait(&_semaphore);
     msg_queue_size++;
-    std::cout<<"migmsg queue size is:"<<msg_queue_size<<endl;
+    //std::cout<<"migmsg queue size is:"<<msg_queue_size<<endl;
     sem_post(&_semaphore);
     INC_STATS(thd_id,trans_migmsg_queue_item_total,msg_queue_size);
     //printf("the entry is %p, msg: %p. 133\n",entry, entry->msg);

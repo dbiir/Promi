@@ -102,11 +102,11 @@ RC MigrateThread::run(){
         //std::cout<<"the size is "<<migmsg_queue.get_size()<<endl;
 
         assert(dest>=0);
-        printf("get message111!\n");
+        //printf("get message111!\n");
         //if (msg->node_id_src != g_node_id) continue;
-        printf("get message!\n");
+        //printf("get message!\n");
         //std::cout<<"node_id_des is "<<msg->node_id_des<<endl;
-        std::cout<<"message type is:"<<msg->get_rtype()<<" by migrate dequeue"<<endl;
+        //std::cout<<"message type is:"<<msg->get_rtype()<<" by migrate dequeue"<<endl;
         RC rc;
         txn_man = get_transaction_manager(msg);
         txn_man->register_thread(this);
@@ -138,6 +138,9 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
     std::cout<<"SEND_MIGRATION Time:"<<(get_sys_clock() - g_start_time) / BILLION<<endl;
     if (g_mig_starttime == 0) g_mig_starttime = get_sys_clock();
 
+    //debug
+    //for (uint i=0; i< msg->mig_order.size(); i++) std::cout<<msg->mig_order[i]<<' ';    
+
 
     RC rc =RCOK;
     start_time = get_sys_clock();
@@ -151,23 +154,34 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
     //update the migration metadata
     #if MIGRATION_ALG==DETEST
         update_part_map_status(((MigrationMessage*)msg)->part_id, 1);
-        update_minipart_map_status(((MigrationMessage*)msg)->minipart_id, 1);
+        update_minipart_map_status(
+            ((MigrationMessage*)msg)->part_id,
+            ((MigrationMessage*)msg)->minipart_id, 1);
     #endif
 
     //init metadata
     uint64_t key_ptr = ((MigrationMessage*)msg)->key_start;//scan ptr
-    int msg_num = 0;//msg max num
+    uint64_t msg_num = 0;//msg max num
     msg_num = max(MSG_CHUNK_SIZE / MAX_TUPLE_SIZE - 15, 1);
-
-    MigrationMessage* msg1 = new(MigrationMessage);
-    *msg1 = *msg;  
-    msg1->isdata = true;  
-    msg1->islast = false;
-    msg1->data_size = 0;
-    msg1->key_start = key_ptr; 
+    std::cout<<"msg_num is "<<msg_num<<endl;
+    
+    bool new_msg = true;//whether to construct new msg
+    MigrationMessage *msg1;
 
     //fetch data and add into msg
     while(key_ptr <= ((MigrationMessage*)msg)->key_end){
+        //construct new msg
+        if (new_msg){
+            msg1 = new MigrationMessage;
+            *msg1 = *msg;  
+            msg1->isdata = true;  
+            msg1->islast = false;
+            msg1->data_size = 0;
+            msg1->key_start = key_ptr; 
+            new_msg = false;
+        }
+
+
         itemid_t* item = new(itemid_t);
         RC rc=WAIT;
         while (rc != RCOK){
@@ -189,7 +203,6 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
             rc = txn_man->get_row(row,access,row_rtn);
         }        
 
-        msg1->isdata=true;
         msg1->data.emplace_back(*row_rtn);
         char tmp_char[MAX_TUPLE_SIZE];
         strcpy(tmp_char, row_rtn->get_data());
@@ -198,7 +211,7 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
         msg1->data_size ++;
 
 
-        //send this msg and constrcut new msg
+        //send this msg
         if (msg1->data_size >= msg_num || key_ptr == ((MigrationMessage*)msg)->key_end){
             msg1->return_node_id = g_node_id;
             msg1->rtype = RECV_MIGRATION;
@@ -207,28 +220,33 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
                 msg1->islast = true;
             }
 
+            //debug
+            //for (uint i=0; i< msg1->mig_order.size(); i++) std::cout<<msg1->mig_order[i]<<' ';              
+
             msg_queue.enqueue(get_thd_id(), msg1, msg1->node_id_des);
-            std::cout<<"Send migration from "<<msg1->node_id_src<<"to "<<msg1->node_id_des<<" : enqueue finished "<<key_ptr<<endl;
+
+            std::cout<<"key up to "<<key_ptr<<endl;
 
             if (key_ptr == ((MigrationMessage*)msg)->key_end) break;
 
-            MigrationMessage* msg1 = new(MigrationMessage);
-            *msg1 = *msg;  
-            msg1->isdata = true;  
-            msg1->islast = false;     
-            msg1->data_size = 0;   
-            msg1->key_start = key_ptr + PART_CNT; 
+            new_msg = true;
+
         }
 
         key_ptr += PART_CNT;
     }
 
+    std::cout<<"Send migration from "<<msg1->node_id_src<<" to "<<msg1->node_id_des<<" part_id "<<msg1->part_id<<" minipart_id "<<msg1->minipart_id<<endl;
+
     //update migration metadata
     #if MIGRATION_ALG == DETEST
-        update_minipart_map_status(((MigrationMessage*)msg)->minipart_id, 1);
+        update_minipart_map_status(
+            ((MigrationMessage*)msg)->part_id,
+            ((MigrationMessage*)msg)->minipart_id, 1);
         update_part_map_status(((MigrationMessage*)msg)->part_id, 1);
     #endif    
 
+    txn_man->commit();
     return rc;
 }
 
@@ -237,10 +255,13 @@ RC MigrateThread::process_recv_migration(MigrationMessage* msg){
     std::cout<<"RECV_MIGRATION Time:"<<(get_server_clock() - g_start_time) / BILLION<<endl;
     RC rc = RCOK;
 
+    //debug
+    //for (uint i=0; i< msg->mig_order.size(); i++) std::cout<<msg->mig_order[i]<<' ';        
+
     //receive data and construct
     uint64_t key_ptr;//received key
     key_ptr = ((MigrationMessage*)msg)->key_start;
-    while (key_ptr != ((MigrationMessage*)msg)->key_end){
+    while (key_ptr <= ((MigrationMessage*)msg)->key_end){
         row_t * new_row = NULL;
         uint64_t row_id;
         rc = this->_wl->tables["MAIN_TABLE"]->get_new_row(new_row, ((MigrationMessage*)msg)-> part_id, row_id);
@@ -271,15 +292,16 @@ RC MigrateThread::process_recv_migration(MigrationMessage* msg){
 
     //update migration metadata 
     if (((MigrationMessage*)msg)->islast){
-        update_minipart_map_status(((MigrationMessage*)msg)->minipart_id, 1);
+        update_minipart_map_status(
+            ((MigrationMessage*)msg)->part_id,
+            ((MigrationMessage*)msg)->minipart_id, 1);
         update_part_map_status(((MigrationMessage*)msg)->part_id, 1);
-    }
 
-    //send finish migration msg
-    if (rc==RCOK){
+        //send finish migration msg
         MigrationMessage * msg1 = new(MigrationMessage);
         *msg1 = *msg;
         msg1->rtype = FINISH_MIGRATION;
+        msg1->isdata = false;
         #if MIGRATION_ALG == DETEST
             msg1->minipart_id = msg->minipart_id;
         #endif
@@ -289,6 +311,7 @@ RC MigrateThread::process_recv_migration(MigrationMessage* msg){
         g_mig_endtime = get_sys_clock();
     }    
 
+    txn_man->commit();
     return rc;
 }
 
@@ -297,21 +320,79 @@ RC MigrateThread::process_finish_migration(MigrationMessage* msg){
     std::cout<<"FINISH_MIGRATION Time:"<<(get_server_clock() - g_start_time) / BILLION<<endl;
     RC rc = RCOK;
 
+    assert(msg->islast);
+
+    //debug
+    //for (uint i=0; i< msg->mig_order.size(); i++) std::cout<<msg->mig_order[i]<<' ';    
+
     //update migration metadata
     #if MIGRATION_ALG == DETEST
-        update_minipart_map(msg->minipart_id, msg->node_id_des);
-        update_minipart_map_status(msg->minipart_id, 2);
+        update_minipart_map(
+            msg->part_id, msg->minipart_id, msg->node_id_des);
+        update_minipart_map_status(msg->part_id, msg->minipart_id, 2);
+        std::cout<<"Finish migration from "<<msg->node_id_src<<" to "<<msg->node_id_des<<" part_id "<<msg->part_id<<" minipart_id "<<msg->minipart_id<<endl;
+
         //sync msg to other nodes    
         for (uint64_t i=0; i< g_node_cnt + g_client_node_cnt; i++){
             if (i == g_node_id) continue;
-            msg_queue.enqueue(get_thd_id(),Message::create_minipartmap_message(SET_PARTMAP, msg->part_id, msg->minipart_id, msg->node_id_des, 2), i);        
-        }        
+            msg_queue.enqueue(get_thd_id(),Message::create_minipartmap_message(SET_MINIPARTMAP, msg->part_id, msg->minipart_id, msg->node_id_des, 2), i);        
+        } 
+    
+    
+        //construct new migration msg
+        if (msg->order == g_part_split_cnt -1){//finish migrating all minipart in this part
+            update_part_map(msg->part_id, msg->node_id_des);
+            update_part_map_status(msg->part_id, 2);
+
+            for (uint64_t i=0; i< g_node_cnt + g_client_node_cnt; i++){
+                if (i == g_node_id) continue;
+                msg_queue.enqueue(get_thd_id(),Message::create_partmap_message(SET_PARTMAP, msg->part_id,  msg->node_id_des, 2), i);        
+            }               
+        } else{ //send next minipart migration msg
+			uint64_t node_id_src_ = msg->node_id_src;
+			uint64_t node_id_des_ = msg->node_id_des;
+			uint64_t part_id_ = msg->part_id;
+			uint64_t minipart_id_ = msg->mig_order[msg->order + 1];
+            uint64_t order_ = msg->order + 1;
+			bool islast_ = true;
+
+            uint64_t data_size_ = g_synth_table_size / g_part_cnt / g_part_split_cnt;
+            uint64_t key_start_ = minipart_to_key_start(part_id_, minipart_id_);
+            uint64_t key_end_ = minipart_to_key_end(part_id_, minipart_id_);
+            islast_ = false;   
+
+            //debug
+            //for (uint i=0; i< msg->mig_order.size(); i++) std::cout<<msg->mig_order[i]<<' ';
+            //std::cout<<endl<<"part_id "<<part_id_<<" minpart_id "<<minipart_id_<<endl;
+
+
+            MigrationMessage * msg1 = new(MigrationMessage);
+            *msg1 = *msg;
+            ((MigrationMessage*)msg1)->node_id_src = node_id_src_;
+            ((MigrationMessage*)msg1)->node_id_des = node_id_des_;
+            ((MigrationMessage*)msg1)->part_id = part_id_;
+            ((MigrationMessage*)msg1)->minipart_id = minipart_id_;
+            ((MigrationMessage*)msg1)->rtype = SEND_MIGRATION;
+            ((MigrationMessage*)msg1)->data_size = data_size_;
+            ((MigrationMessage*)msg1)->return_node_id = node_id_des_;
+            ((MigrationMessage*)msg1)->isdata = islast_;
+            ((MigrationMessage*)msg1)->key_start = key_start_;			
+            ((MigrationMessage*)msg1)->key_end = key_end_;	
+            ((MigrationMessage*)msg1)->order = order_;		
+            ((MigrationMessage*)msg1)->txn_id = msg->get_txn_id();      
+
+            //debug
+            //std::cout<<"minipart_id: "<<((MigrationMessage*)msg1)->minipart_id<<' ';
+
+            start_time = get_sys_clock();
+            txn_man->return_id = msg1->return_node_id;
+            txn_man->h_wl = _wl;
+            std::cout<<"the size of msg is "<<msg1->get_size()<<endl;
+
+            process_send_migration((MigrationMessage*)msg1);
+        }
     #endif
 
-    update_part_map(msg->part_id, msg->node_id_des);
-    double migration_time = get_sys_clock() - start_time;
-    std::cout<<"M Time:"<<migration_time / BILLION <<endl;
-    txn_man->txn_stats.migration_time = migration_time;
     txn_man->commit();
     return rc;
 }

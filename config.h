@@ -72,7 +72,7 @@
 #define MIG_THREAD_CNT 1 //迁移线程
 #define CORE_CNT 2
 // PART_CNT should be at least NODE_CNT
-#define PART_CNT NODE_CNT*2
+#define PART_CNT NODE_CNT*1
 #define CLIENT_NODE_CNT 1
 #define CLIENT_THREAD_CNT 4
 #define CLIENT_REM_THREAD_CNT 2
@@ -126,8 +126,8 @@
 
 //detest migration
 #define PART_SPLIT_CNT 4  //number of minipart for each part
-#define MINIPART_SIZE (SYNTH_TABLE_SIZE / PART_CNT / PART_SPLIT_CNT) //size of minipart
-#define MSG_CHUNK_SIZE 524288 //if msg > MSG_CHUNK_SIZE, SPLIT and SEND
+
+
 
 /***********************************************/
 // Memory System
@@ -154,7 +154,7 @@
 // Message Passing
 /***********************************************/
 #define TPORT_TYPE tcp
-#define TPORT_PORT 7000
+#define TPORT_PORT 8100
 #define SET_AFFINITY true
 
 #define MAX_TPORT_NAME 128
@@ -169,7 +169,8 @@
 
 #define PRIORITY_WORK_QUEUE false
 #define PRIORITY PRIORITY_ACTIVE
-#define MSG_SIZE_MAX 134217728
+#define MSG_SIZE_MAX 600000
+#define MSG_CHUNK_SIZE 524288 //if msg > MSG_CHUNK_SIZE, SPLIT and SEND
 #define MSG_TIME_LIMIT 0
 
 #define SIM_FULL_ROW true
@@ -473,7 +474,7 @@ enum PPSTxnType {
 #define BATCH_TIMER 0
 #define START_MIG 30 // migration start time(second)
 #define SEQ_BATCH_TIMER 5 * 1 * MILLION // ~5ms -- same as CALVIN paper
-#define DONE_TIMER 1 * 20 * BILLION // ~1 minutes  60 BILLION = 1 min
+#define DONE_TIMER 1 * 60 * BILLION // ~1 minutes  60 BILLION = 1 min
 #define WARMUP_TIMER 1 * 20 * BILLION // ~1 minutes
 
 #define SEED 0

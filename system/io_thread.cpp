@@ -126,10 +126,18 @@ RC InputThread::client_recv_loop() {
 						break;
 					}
 					case SET_MINIPARTMAP:{
-						update_minipart_map(((SetMiniPartMapMessage*)msg)->minipart_id, ((SetMiniPartMapMessage*)msg)->node_id);
-						update_minipart_map_status(((SetMiniPartMapMessage*)msg)->minipart_id, ((SetMiniPartMapMessage*)msg)->status);
+						update_minipart_map(
+							((SetMiniPartMapMessage*)msg)->part_id, 
+							((SetMiniPartMapMessage*)msg)->minipart_id, ((SetMiniPartMapMessage*)msg)->node_id);
+						update_minipart_map_status(
+							((SetMiniPartMapMessage*)msg)->part_id, 
+							((SetMiniPartMapMessage*)msg)->minipart_id, ((SetMiniPartMapMessage*)msg)->status);
 
-						std::cout<<"minipart "<<((SetMiniPartMapMessage*)msg)->minipart_id<<" is on node "<<get_minipart_node_id(((SetMiniPartMapMessage*)msg)->minipart_id)<<endl;
+						std::cout<<"minipart "<<((SetMiniPartMapMessage*)msg)->minipart_id<<" is on node "<<
+						get_minipart_node_id(
+							((SetMiniPartMapMessage*)msg)->part_id,
+							((SetMiniPartMapMessage*)msg)->minipart_id)
+						<<endl;
 						std::cout<<"Time is "<<(get_sys_clock() - run_starttime) / BILLION<<endl;
 						
 						break;
@@ -275,7 +283,7 @@ RC InputThread::server_recv_loop() {
 #ifdef FAKE_PROCESS
 			if (fakeprocess(msg))
 #endif
-			if (msg->rtype == RECV_MIGRATION) std::cout<<"get RECV"<<endl;
+			//if (msg->rtype == RECV_MIGRATION) std::cout<<"get RECV"<<endl;
 			work_queue.enqueue(get_thd_id(),msg,false);
 			msgs->erase(msgs->begin());
 		}

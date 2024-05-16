@@ -46,8 +46,13 @@ OutputThread * output_thds;
 void parser(int argc, char * argv[]);
 
 int main(int argc, char *argv[]) {
-    printf("Running client...\n\n");
+  printf("Running client...\n\n");
+	
 	// 0. initialize global data structure
+	part_map_init();
+	minipart_map_init();
+
+
 	parser(argc, argv);
     assert(g_node_id >= g_node_cnt);
     //assert(g_client_node_cnt <= g_node_cnt);

@@ -51,6 +51,9 @@ RC ClientThread::run() {
 	int txns_sent[g_servers_per_client];
 	for (uint32_t i = 0; i < g_servers_per_client; ++i) txns_sent[i] = 0;
 
+	bool ismigrate=false;//default
+	assert(!ismigrate);
+	
 	run_starttime = get_sys_clock();
 	while(!simulation->is_done()) {
 		heartbeat();
@@ -60,17 +63,25 @@ RC ClientThread::run() {
 
 		#if MIGRATION
 			//init migration msg
-			bool ismigrate=false;//default
-			uint64_t node_id_src_, node_id_des_;
-			uint64_t part_id_;
-			uint64_t minipart_id_;
+			uint64_t node_id_src_ = 0;
+			uint64_t node_id_des_ = 1;
+			uint64_t part_id_ = 0;
+			uint64_t minipart_id_ = 0;
 			bool islast_ = true;
+			std::vector<uint64_t> mig_order_;
+			for (uint i=0; i<g_part_split_cnt; i++){
+				mig_order_.emplace_back(i);
+			}
+
 
 			//msg param
 			#if MIGRATION_ALG == DETEST
 				uint64_t data_size_ = g_synth_table_size / g_part_cnt / g_part_split_cnt;
 				uint64_t key_start_ = minipart_to_key_start(part_id_, minipart_id_);
 				uint64_t key_end_ = minipart_to_key_end(part_id_, minipart_id_);
+				
+				assert((key_end_ - key_start_) / g_part_cnt + 1 == data_size_);
+			
 				islast_ = false;
 			#endif
 
@@ -87,9 +98,19 @@ RC ClientThread::run() {
 				((MigrationMessage*)msg)->return_node_id = node_id_des_;
 				((MigrationMessage*)msg)->isdata = islast_;
 				((MigrationMessage*)msg)->key_start = key_start_;			
-				((MigrationMessage*)msg)->key_end = key_end_;		
+				((MigrationMessage*)msg)->key_end = key_end_;	
+				((MigrationMessage*)msg)->order = 0;	
+				for (uint i=0; i<g_part_split_cnt; i++){
+					((MigrationMessage*)msg)->mig_order.emplace_back(mig_order_[i]);
+				}					
 
-				msg_queue.enqueue(get_thd_id(), msg, ((MigrationMessage*)msg)->node_id_des);
+				//debug
+				for (uint i=0; i< ((MigrationMessage*)msg)->mig_order.size(); i++) std::cout<<((MigrationMessage*)msg)->mig_order[i]<<' ';
+
+				msg_queue.enqueue(get_thd_id(), msg, ((MigrationMessage*)msg)->node_id_src);
+
+				std::cout<<"Begin migration! "<<"part_id "<<part_id_<<" minipart_id "<<minipart_id_<<endl;
+				std::cout<<" Time is "<<(get_sys_clock() - run_starttime) / BILLION<<endl;				
 			}
 
 		#endif

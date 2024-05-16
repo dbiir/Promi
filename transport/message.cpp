@@ -236,21 +236,21 @@ Message * Message::create_message(RemReqType rtype) {
 
 
 //create update migration metadata msg
-SetPartMapMessage * Message::create_partmap_message(RemReqType rtype, uint64_t part_id, uint64_t node_id, uint64_t status){
+Message * Message::create_partmap_message(RemReqType rtype, uint64_t part_id, uint64_t node_id, uint64_t status){
   Message * msg = create_message(rtype);
   ((SetPartMapMessage*)msg)->part_id = part_id;
   ((SetPartMapMessage*)msg)->node_id = node_id;
   ((SetPartMapMessage*)msg)->status = status;
-  return (SetPartMapMessage*)msg;
+  return msg;
 }
 
-SetMiniPartMapMessage * Message::create_minipartmap_message(RemReqType rtype, uint64_t part_id, uint64_t minipart_id, uint64_t node_id, uint64_t status){
+Message * Message::create_minipartmap_message(RemReqType rtype, uint64_t part_id, uint64_t minipart_id, uint64_t node_id, uint64_t status){
   Message * msg = create_message(rtype);
   ((SetMiniPartMapMessage*)msg)->part_id = part_id;
   ((SetMiniPartMapMessage*)msg)->minipart_id = minipart_id;
   ((SetMiniPartMapMessage*)msg)->node_id = node_id;
   ((SetMiniPartMapMessage*)msg)->status = status;
-  return (SetMiniPartMapMessage*)msg;  
+  return msg;  
 }
 
 
