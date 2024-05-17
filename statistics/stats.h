@@ -197,10 +197,14 @@ public:
   uint64_t * work_queue_etx_cnt;
   uint64_t * work_queue_dtx_cnt;
   
-  //Migration 待补充
+  //Migration
   uint64_t migmsg_queue_cnt;
   uint64_t migmsg_queue_enq_cnt;
   double migmsg_queue_delay_time;
+
+  uint64_t num_row_null;
+  uint64_t num_client_id;
+  uint64_t num_abort_rqry;
 
   // IO
   double msg_queue_delay_time;

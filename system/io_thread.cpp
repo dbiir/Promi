@@ -120,7 +120,7 @@ RC InputThread::client_recv_loop() {
 					case SET_PARTMAP:{
 						update_part_map(((SetPartMapMessage*)msg)->part_id, ((SetPartMapMessage*)msg)->node_id);
 
-						std::cout<<"!!!!!!!!!!!partition "<<((SetPartMapMessage*)msg)->part_id<<" is on node "<<GET_NODE_ID(((SetPartMapMessage*)msg)->part_id)<<endl;
+						std::cout<<"!!!!!!!!!!!partition "<<((SetPartMapMessage*)msg)->part_id<<" is on node "<<get_part_node_id(((SetPartMapMessage*)msg)->part_id)<<endl;
 						std::cout<<"Time is "<<(get_sys_clock() - run_starttime) / BILLION<<endl;
 						
 						break;

@@ -125,7 +125,7 @@ uint64_t YCSBQuery::get_participants(Workload * wl) {
 	assert(participant_nodes.size()==g_node_cnt);
 	assert(active_nodes.size()==g_node_cnt);
 	for(uint64_t i = 0; i < requests.size(); i++) {
-		uint64_t req_nid = GET_NODE_ID(((YCSBWorkload*)wl)->key_to_part(requests[i]->key));
+		uint64_t req_nid = get_key_node_id(requests[i]->key);
 		if(requests[i]->acctype == RD) {
 			if (participant_nodes[req_nid] == 0) ++participant_cnt;
 			participant_nodes.set(req_nid,1);
@@ -140,7 +140,8 @@ uint64_t YCSBQuery::participants(bool *& pps,Workload * wl) {
 	for (uint64_t i = 0; i < g_node_cnt; i++) pps[i] = false;
 
 	for(uint64_t i = 0; i < requests.size(); i++) {
-		uint64_t req_nid = GET_NODE_ID(((YCSBWorkload*)wl)->key_to_part(requests[i]->key));
+		uint64_t req_nid = get_key_node_id
+		(requests[i]->key);
 		if (!pps[req_nid]) n++;
 		pps[req_nid] = true;
 	}
@@ -151,7 +152,7 @@ std::set<uint64_t> YCSBQuery::participants(Message * msg, Workload * wl) {
 	std::set<uint64_t> participant_set;
 	YCSBClientQueryMessage* ycsb_msg = ((YCSBClientQueryMessage*)msg);
 	for(uint64_t i = 0; i < ycsb_msg->requests.size(); i++) {
-		uint64_t req_nid = GET_NODE_ID(((YCSBWorkload*)wl)->key_to_part(ycsb_msg->requests[i]->key));
+		uint64_t req_nid = get_key_node_id(ycsb_msg->requests[i]->key);
 		participant_set.insert(req_nid);
 	}
 	return participant_set;

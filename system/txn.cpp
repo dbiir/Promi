@@ -656,11 +656,11 @@ void TxnManager::send_prepare_messages() {
 	rsp_cnt = query->partitions_touched.size() - 1;
 	DEBUG("%ld Send PREPARE messages to %d\n",get_txn_id(),rsp_cnt);
 	for(uint64_t i = 0; i < query->partitions_touched.size(); i++) {
-	if(GET_NODE_ID(query->partitions_touched[i]) == g_node_id) {
+	if(get_part_node_id(query->partitions_touched[i]) == g_node_id) {
 		continue;
 	}
 		msg_queue.enqueue(get_thd_id(), Message::create_message(this, RPREPARE),
-											GET_NODE_ID(query->partitions_touched[i]));
+											get_part_node_id(query->partitions_touched[i]));
 	}
 }
 
@@ -669,11 +669,11 @@ void TxnManager::send_finish_messages() {
 	assert(IS_LOCAL(get_txn_id()));
 	DEBUG("%ld Send FINISH messages to %d\n",get_txn_id(),rsp_cnt);
 	for(uint64_t i = 0; i < query->partitions_touched.size(); i++) {
-		if(GET_NODE_ID(query->partitions_touched[i]) == g_node_id) {
+		if(get_part_node_id(query->partitions_touched[i]) == g_node_id) {
 			continue;
     }
 		msg_queue.enqueue(get_thd_id(), Message::create_message(this, RFIN),
-											GET_NODE_ID(query->partitions_touched[i]));
+											get_part_node_id(query->partitions_touched[i]));
 	}
 }
 
@@ -844,6 +844,15 @@ void TxnManager::cleanup_row(RC rc, uint64_t rid) {
 			version = orig_r->return_row(rc, type, this, txn->accesses[rid]->data);
 		}
 #else
+
+		//FIX BUG 
+		if (txn->accesses[rid]->data == NULL) {
+			rc = Abort;
+			//std::cout<<"row=NULL ";
+			INC_STATS(get_thd_id(), num_row_null, 1);
+			return;
+		}
+
 		version = orig_r->return_row(rc, type, this, txn->accesses[rid]->data);
 #endif
 	}

@@ -246,7 +246,6 @@ RC MigrateThread::process_send_migration(MigrationMessage* msg){
         update_part_map_status(((MigrationMessage*)msg)->part_id, 1);
     #endif    
 
-    txn_man->commit();
     return rc;
 }
 
@@ -327,9 +326,9 @@ RC MigrateThread::process_finish_migration(MigrationMessage* msg){
 
     //update migration metadata
     #if MIGRATION_ALG == DETEST
-        update_minipart_map(
-            msg->part_id, msg->minipart_id, msg->node_id_des);
-        update_minipart_map_status(msg->part_id, msg->minipart_id, 2);
+        // update_minipart_map(
+        //    msg->part_id, msg->minipart_id, msg->node_id_des);
+        // update_minipart_map_status(msg->part_id, msg->minipart_id, 2);
         std::cout<<"Finish migration from "<<msg->node_id_src<<" to "<<msg->node_id_des<<" part_id "<<msg->part_id<<" minipart_id "<<msg->minipart_id<<endl;
 
         //sync msg to other nodes    
@@ -341,8 +340,8 @@ RC MigrateThread::process_finish_migration(MigrationMessage* msg){
     
         //construct new migration msg
         if (msg->order == g_part_split_cnt -1){//finish migrating all minipart in this part
-            update_part_map(msg->part_id, msg->node_id_des);
-            update_part_map_status(msg->part_id, 2);
+            //update_part_map(msg->part_id, msg->node_id_des);
+            //update_part_map_status(msg->part_id, 2);
 
             for (uint64_t i=0; i< g_node_cnt + g_client_node_cnt; i++){
                 if (i == g_node_id) continue;

@@ -293,7 +293,11 @@ uint64_t minipart_to_key_end(uint64_t part_id, uint64_t minipart_id){
   return minipart_to_key_start(part_id, minipart_id) + (g_minipart_size - 1) * g_part_cnt;
 }
 
-
+uint64_t get_key_node_id(uint64_t key){
+  uint64_t part_id = key_to_part(key);
+  uint64_t minipart_id = get_minipart_id(key);
+  return get_minipart_node_id(part_id, minipart_id);
+}
 
 
 //part_table:记录每个part所在的node

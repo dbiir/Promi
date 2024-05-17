@@ -300,6 +300,11 @@ void WorkerThread::commit() {
 
   // Send result back to client
 #if !SERVER_GENERATE_QUERIES
+  if (txn_man->client_id == 0){
+    txn_man->client_id = g_node_cnt;
+    INC_STATS(get_thd_id(), num_client_id, 1);
+    //std::cout<<"client_id ";
+  }
   msg_queue.enqueue(get_thd_id(),Message::create_message(txn_man,CL_RSP),txn_man->client_id);
 #endif
   // remove txn from pool
@@ -677,9 +682,21 @@ RC WorkerThread::process_rqry(Message * msg) {
   DEBUG("RQRY %ld\n",msg->get_txn_id());
 #if ONE_NODE_RECIEVE == 1 && defined(NO_REMOTE) && LESS_DIS_NUM == 10
 #else
+
+  // running this code, because rqry msg would be sent many times when minipart's node and status change.
+  if (IS_LOCAL(msg->get_txn_id())) { //msg is constructed locally
+    //std::cout<<"abort "; 
+    INC_STATS(get_thd_id(), num_abort_rqry, 1);
+    this->txn_man->start_abort();
+    return Abort;
+  }  
+
+
   M_ASSERT_V(!IS_LOCAL(msg->get_txn_id()), "RQRY local: %ld %ld/%d\n", msg->get_txn_id(),
-             msg->get_txn_id() % g_node_cnt, g_node_id);
+               msg->get_txn_id() % g_node_cnt, g_node_id);
   assert(!IS_LOCAL(msg->get_txn_id()));
+  
+  
 #endif
   RC rc = RCOK;
 

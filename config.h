@@ -117,7 +117,7 @@
 #define TIME_ENABLE         true //STATS_ENABLE
 
 #define FIN_BY_TIME true
-#define MAX_TXN_IN_FLIGHT 10000
+#define MAX_TXN_IN_FLIGHT 100000
 
 #define SERVER_GENERATE_QUERIES false
 

@@ -384,6 +384,7 @@ uint64_t part_to_key_end(uint64_t part_id);
 uint64_t minipart_to_key_start(uint64_t part_id, uint64_t minipart_id);
 uint64_t minipart_to_key_end(uint64_t part_id, uint64_t minipart_id);
 
+uint64_t get_key_node_id(uint64_t key);//get node_id by key
 
 //part_table:记录每个part的信息,<part_id, <node_id,migrate_status> >, migrate_status{0:not migrated, 1:migrating, 2:migrated}
 extern map <uint64_t, vector<uint64_t> > part_map;
@@ -407,6 +408,8 @@ void update_minipart_map_status(uint64_t part_id, uint64_t minipart_id, uint64_t
 #define GET_THREAD_ID(id)	(id % g_thread_cnt)
 
 #define GET_NODE_ID(id) (get_part_node_id(id))
+
+#define GET_KEY_ID(id) (get_key_node_id(id))
 /*
 #if (PART_TO_NODE == HASH_MODE) 
   #define GET_NODE_ID(id)	(id % g_node_cnt)

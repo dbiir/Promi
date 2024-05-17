@@ -59,8 +59,8 @@ RC YCSBTxnManager::acquire_locks() {
 		ycsb_request * req = ycsb_query->requests[rid];
 		uint64_t part_id = _wl->key_to_part( req->key );
     DEBUG("LK Acquire (%ld,%ld) %d,%ld -> %ld\n", get_txn_id(), get_batch_id(), req->acctype,
-          req->key, GET_NODE_ID(part_id));
-    if (GET_NODE_ID(part_id) != g_node_id) continue;
+          req->key, get_key_node_id(req->key));
+    if (get_key_node_id(req->key) != g_node_id) continue;
 		INDEX * index = _wl->the_index;
 		itemid_t * item;
 		item = index_read(index, req->key, part_id);
@@ -155,12 +155,12 @@ void YCSBTxnManager::next_ycsb_state() {
 }
 
 bool YCSBTxnManager::is_local_request(uint64_t idx) {
-  return GET_NODE_ID(_wl->key_to_part(((YCSBQuery*)query)->requests[idx]->key)) == g_node_id;
+  return get_key_node_id(((YCSBQuery*)query)->requests[idx]->key) == g_node_id;
 }
 
 RC YCSBTxnManager::send_remote_request() {
   YCSBQuery* ycsb_query = (YCSBQuery*) query;
-  uint64_t dest_node_id = GET_NODE_ID(key_to_part(ycsb_query->requests[next_record_id]->key));
+  uint64_t dest_node_id = get_key_node_id(ycsb_query->requests[next_record_id]->key);
   ycsb_query->partitions_touched.add_unique(GET_PART_ID(0,dest_node_id));
   DEBUG("ycsb send remote request %ld, %ld\n",txn->txn_id,txn->batch_id);
   msg_queue.enqueue(get_thd_id(),Message::create_message(this,RQRY),dest_node_id);
@@ -171,12 +171,12 @@ RC YCSBTxnManager::send_remote_request() {
 void YCSBTxnManager::copy_remote_requests(YCSBQueryMessage * msg) {
   YCSBQuery* ycsb_query = (YCSBQuery*) query;
   //msg->requests.init(ycsb_query->requests.size());
-  uint64_t dest_node_id = GET_NODE_ID(key_to_part(ycsb_query->requests[next_record_id]->key));
+  uint64_t dest_node_id = get_key_node_id(ycsb_query->requests[next_record_id]->key);
 #if ONE_NODE_RECIEVE == 1 && defined(NO_REMOTE) && LESS_DIS_NUM == 10
-  while (next_record_id < ycsb_query->requests.size() && GET_NODE_ID(key_to_part(ycsb_query->requests[next_record_id]->key)) == dest_node_id) {
+  while (next_record_id < ycsb_query->requests.size() && get_key_node_id(ycsb_query->requests[next_record_id]->key) == dest_node_id) {
 #else
   while (next_record_id < ycsb_query->requests.size() && !is_local_request(next_record_id) &&
-         GET_NODE_ID(key_to_part(ycsb_query->requests[next_record_id]->key)) == dest_node_id) {
+         get_key_node_id(ycsb_query->requests[next_record_id]->key) == dest_node_id) {
 #endif
     YCSBQuery::copy_request_to_msg(ycsb_query,msg,next_record_id++);
   }
@@ -186,7 +186,15 @@ RC YCSBTxnManager::run_txn_state() {
   YCSBQuery* ycsb_query = (YCSBQuery*) query;
 	ycsb_request * req = ycsb_query->requests[next_record_id];
 	uint64_t part_id = _wl->key_to_part( req->key );
-  bool loc = GET_NODE_ID(part_id) == g_node_id;
+  assert(part_id < g_part_cnt);
+
+  /*
+    the loc variable is modified using minipart_map
+  */
+  //bool loc = GET_NODE_ID(part_id) == g_node_id;
+  bool loc = get_key_node_id(req->key) == g_node_id;
+
+
   //std::cout<<"key is:"<<req->key<<" node is "<<GET_NODE_ID(part_id)<<" part is "<<part_id<<endl;
 
 	RC rc = RCOK;
@@ -347,7 +355,9 @@ RC YCSBTxnManager::run_ycsb() {
     if (this->phase == CALVIN_EXEC_WR && req->acctype == RD) continue;
 
 		uint64_t part_id = _wl->key_to_part( req->key );
-    bool loc = GET_NODE_ID(part_id) == g_node_id;
+    assert(part_id < g_part_cnt);
+    
+    bool loc = get_key_node_id(req->key) == g_node_id;
 
     if (!loc) continue;
 

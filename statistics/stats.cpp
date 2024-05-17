@@ -1329,6 +1329,16 @@ void Stats_thd::print(FILE * outf, bool prog) {
         (double)start_abort_commit_latency.get_percentile(99) / BILLION,
         (double)start_abort_commit_latency.get_idx(start_abort_commit_latency.cnt - 1) / BILLION,
         (double)start_abort_commit_latency.get_avg() / BILLION, start_abort_commit_latency.cnt);
+
+    //migration
+    fprintf(
+      outf,
+      "\n[Migration]\n"
+      "num_row_null=%ld"
+      ", num_client_id=%ld"
+      ", num_abort_rqry=%ld",
+      num_row_null, num_client_id, num_abort_rqry
+    );
   }
 
   //first_start_commit_latency.print(outf);
@@ -1684,6 +1694,10 @@ void Stats_thd::combine(Stats_thd * stats) {
   ano_3_trans_read_skew_2 += stats->ano_3_trans_read_skew_2;
   ano_4_trans_read_skew += stats->ano_4_trans_read_skew;
   ano_unknown += stats->ano_unknown;
+
+  num_row_null += stats->num_row_null;
+  num_client_id += stats->num_client_id;
+  num_abort_rqry += stats->num_abort_rqry;
 }
 
 void Stats::init(uint64_t thread_cnt) {
