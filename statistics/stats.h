@@ -50,6 +50,8 @@ public:
 
   uint64_t parts_touched;
 
+  uint64_t throughput[TPS_LENGTH];
+
   // Execution
   uint64_t txn_cnt;
   uint64_t remote_txn_cnt;

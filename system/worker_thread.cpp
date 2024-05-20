@@ -647,6 +647,11 @@ RC WorkerThread::process_rack_rfin(Message * msg) {
     INC_STATS(get_thd_id(), trans_commit_network, get_sys_clock() - txn_man->txn_stats.trans_commit_network_start_time);
     //txn_man->commit();
     commit();
+
+    //update throughput data (distributed transaction)
+    uint64_t warmuptime1 = get_sys_clock() - g_start_time;
+    INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1);     			
+
   } else {
     INC_STATS(get_thd_id(), trans_abort_network, get_sys_clock() - txn_man->txn_stats.trans_abort_network_start_time);
     //txn_man->abort();

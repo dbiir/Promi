@@ -477,6 +477,8 @@ enum PPSTxnType {
 #define DONE_TIMER 1 * 60 * BILLION // ~1 minutes  60 BILLION = 1 min
 #define WARMUP_TIMER 1 * 20 * BILLION // ~1 minutes
 
+#define TPS_LENGTH (DONE_TIMER+WARMUP_TIMER) / BILLION //length of throughut 
+
 #define SEED 0
 #define SHMEM_ENV false
 #define ENVIRONMENT_EC2 false

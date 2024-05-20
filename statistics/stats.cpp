@@ -552,6 +552,28 @@ void Stats_thd::print(FILE * outf, bool prog) {
     multi_part_txn_avg_time = multi_part_txn_run_time / multi_part_txn_cnt;
   if(single_part_txn_cnt > 0)
     single_part_txn_avg_time = single_part_txn_run_time / single_part_txn_cnt;
+  
+  // output throughput data
+  string filePath = "tps" + to_string(g_node_id) + ".txt";
+  string filePathcpu = "cpu" + to_string(g_node_id) + ".txt";
+
+  // 打开文件以进行写入，如果文件不存在则创建，如果存在则截断文件
+  std::ofstream outFile(filePath, std::ios::out | std::ios::trunc);
+  std::ofstream outFilecpu(filePathcpu, std::ios::out | std::ios::trunc);
+
+  // 检查文件是否成功打开
+  if (!outFile.is_open()) {
+    std::cerr << "Error opening file: " << filePath << std::endl;
+  }
+
+  for (size_t i=0;i<TPS_LENGTH;i++){
+    //fprintf(outf,"%ld\n",throughput[i]);
+    //if (i == (g_warmup_timer/BILLION)) std::cout<<"*****"<<endl;
+    if (i > (g_warmup_timer/BILLION)) outFile<<throughput[i]<<endl;
+  }  
+
+
+
   fprintf(outf,
   ",tput=%f"
   ",g_migration_time=%f\n"
@@ -1348,6 +1370,8 @@ void Stats_thd::print(FILE * outf, bool prog) {
 
 void Stats_thd::combine(Stats_thd * stats) {
   if (stats->total_runtime > total_runtime) total_runtime = stats->total_runtime;
+
+  for (uint i=0;i<TPS_LENGTH;i++) throughput[i]+=stats->throughput[i];  
 
   last_start_commit_latency.append(stats->first_start_commit_latency);
   first_start_commit_latency.append(stats->first_start_commit_latency);

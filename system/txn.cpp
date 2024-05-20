@@ -635,8 +635,13 @@ RC TxnManager::start_commit() {
 		if(CC_ALG == WSI) {
 			wsi_man.gene_finish_ts(this);
 		}
-		if(rc == RCOK)
+		if(rc == RCOK){
 			rc = commit();
+
+			//update throughput data (local transaction)
+			uint64_t warmuptime1 = get_sys_clock() - g_start_time;
+			INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1); 		
+		}
 		else {
 			txn->rc = Abort;
 			DEBUG("%ld start_abort\n",get_txn_id());
@@ -850,6 +855,12 @@ void TxnManager::cleanup_row(RC rc, uint64_t rid) {
 			rc = Abort;
 			//std::cout<<"row=NULL ";
 			INC_STATS(get_thd_id(), num_row_null, 1);
+
+			//update throughput data (local transaction)
+			uint64_t warmuptime1 = get_sys_clock() - g_start_time;
+			INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1); 	
+			
+						
 			return;
 		}
 
