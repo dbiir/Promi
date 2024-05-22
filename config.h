@@ -72,7 +72,7 @@
 #define MIG_THREAD_CNT 1 //迁移线程
 #define CORE_CNT 2
 // PART_CNT should be at least NODE_CNT
-#define PART_CNT NODE_CNT*1
+#define PART_CNT NODE_CNT*2
 #define CLIENT_NODE_CNT 1
 #define CLIENT_THREAD_CNT 4
 #define CLIENT_REM_THREAD_CNT 2
@@ -92,6 +92,10 @@
 
 //MIGRATION
 #define MIGRATION true
+#define SINGLE_PART true //single part query
+
+
+
 // Replication
 #define REPLICA_CNT 0
 // AA (Active-Active), AP (Active-Passive)
@@ -245,7 +249,7 @@
 #define MAX_ROW_PER_TXN       65536
 #define QUERY_INTVL         1UL
 #define MAX_TXN_PER_PART 500000
-#define FIRST_PART_LOCAL      true
+#define FIRST_PART_LOCAL      false
 #define MAX_TUPLE_SIZE        512 // in bytes
 #define GEN_BY_MPR false
 // ==== [YCSB] ====

@@ -110,7 +110,7 @@ RC ClientThread::run() {
 				msg_queue.enqueue(get_thd_id(), msg, ((MigrationMessage*)msg)->node_id_src);
 
 				std::cout<<"Begin migration! "<<"part_id "<<part_id_<<" minipart_id "<<minipart_id_<<endl;
-				std::cout<<" Time is "<<(get_sys_clock() - run_starttime) / BILLION<<endl;				
+				std::cout<<"Time is "<<(get_sys_clock() - run_starttime) / BILLION<<endl;				
 			}
 
 		#endif
@@ -119,41 +119,69 @@ RC ClientThread::run() {
 		//uint32_t next_node = iters++ % g_node_cnt;
 		progress_stats();
 		int32_t inf_cnt;
-	#if CC_ALG == BOCC || CC_ALG == FOCC || ONE_NODE_RECIEVE == 1
-		uint32_t next_node = 0;
-		uint32_t next_node_id = next_node;
-	#else
-		uint32_t next_node = (((iters++) * g_client_thread_cnt) + _thd_id )% g_servers_per_client;
-		uint32_t next_node_id = next_node + g_server_start_node;
-	#endif
+		#if CC_ALG == BOCC || CC_ALG == FOCC || ONE_NODE_RECIEVE == 1
+			uint32_t next_node = 0;
+			uint32_t next_node_id = next_node;
+		#else
+			uint32_t next_node = (((iters++) * g_client_thread_cnt) + _thd_id )% g_servers_per_client;
+			uint32_t next_node_id = next_node + g_server_start_node;
+		#endif
 		// uint32_t next_node_id = next_node + g_server_start_node;
 		// Just in case...
 		if (iters == UINT64_MAX)
 			iters = 0;
-#if LOAD_METHOD == LOAD_MAX
-	#if WORKLOAD != DA
-		if ((inf_cnt = client_man.inc_inflight(next_node)) < 0)
-			continue;
-	#endif
-		m_query = client_query_queue.get_next_query(next_node,_thd_id);
-		if(last_send_time > 0) {
-			INC_STATS(get_thd_id(),cl_send_intv,get_sys_clock() - last_send_time);
-		}
-		last_send_time = get_sys_clock();
-		simulation->last_da_query_time = get_sys_clock();
-#elif LOAD_METHOD == LOAD_RATE
-		if ((inf_cnt = client_man.inc_inflight(next_node)) < 0)
-			continue;
-		uint64_t gate_time;
-		while((gate_time = get_sys_clock()) - last_send_time < send_interval) { }
-		if(last_send_time > 0) {
-			INC_STATS(get_thd_id(),cl_send_intv,gate_time - last_send_time);
-		}
-		last_send_time = gate_time;
-		m_query = client_query_queue.get_next_query(next_node,_thd_id);
-#else
-		assert(false);
-#endif
+
+		#if MIGRATION
+			//determine the partition first
+			uint64_t partition_id = (iters) % g_part_cnt;
+			next_node = get_part_node_id(partition_id);
+			next_node_id = next_node + g_server_start_node;
+			assert(next_node_id < g_node_cnt);
+
+			if (iters == UINT64_MAX)
+				iters = 0;		
+
+			if ((inf_cnt = client_man.inc_inflight(next_node)) < 0) 
+				continue;
+				
+			if (partition_id % g_part_cnt == next_node) //not migrated 
+				m_query = client_query_queue.get_next_query_partition(next_node,partition_id, _thd_id);
+			else //migrated
+				m_query = client_query_queue.get_next_query_partition(partition_id % g_node_cnt,partition_id, _thd_id);
+
+			if(last_send_time > 0) {
+				INC_STATS(get_thd_id(),cl_send_intv,get_sys_clock() - last_send_time);
+			}
+			last_send_time = get_sys_clock();
+			simulation->last_da_query_time = get_sys_clock();			
+		#else
+			#if LOAD_METHOD == LOAD_MAX
+				#if WORKLOAD != DA
+					if ((inf_cnt = client_man.inc_inflight(next_node)) < 0)
+						continue;
+				#endif
+					m_query = client_query_queue.get_next_query(next_node,_thd_id);
+					if(last_send_time > 0) {
+						INC_STATS(get_thd_id(),cl_send_intv,get_sys_clock() - last_send_time);
+					}
+					last_send_time = get_sys_clock();
+					simulation->last_da_query_time = get_sys_clock();
+			#elif LOAD_METHOD == LOAD_RATE
+					if ((inf_cnt = client_man.inc_inflight(next_node)) < 0)
+						continue;
+					uint64_t gate_time;
+					while((gate_time = get_sys_clock()) - last_send_time < send_interval) { }
+					if(last_send_time > 0) {
+						INC_STATS(get_thd_id(),cl_send_intv,gate_time - last_send_time);
+					}
+					last_send_time = gate_time;
+					m_query = client_query_queue.get_next_query(next_node,_thd_id);
+			#else
+					assert(false);
+			#endif
+		#endif
+
+
 		assert(m_query);
 
 		DEBUG("Client: thread %lu sending query to node: %u, %d, %f\n",

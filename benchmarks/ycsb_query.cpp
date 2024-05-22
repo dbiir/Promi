@@ -309,9 +309,12 @@ BaseQuery * YCSBQueryGenerator::gen_requests_zipf(uint64_t home_partition_id, Wo
 	double r_twr = (double)(mrand->next() % 10000) / 10000;
 
 	int rid = 0;
+	uint64_t partition_init;
 	for (UInt32 i = 0; i < g_req_per_query; i ++) {
 		double r = (double)(mrand->next() % 10000) / 10000;
 		uint64_t partition_id;
+
+
 #ifdef LESS_DIS
 		if ( rid < LESS_DIS_NUM) {
 			partition_id = home_partition_id;
@@ -324,7 +327,20 @@ BaseQuery * YCSBQueryGenerator::gen_requests_zipf(uint64_t home_partition_id, Wo
 	#else
 		if ( FIRST_PART_LOCAL && rid == 0) {
 			partition_id = home_partition_id;
-		} else {
+		} 
+		else if (MIGRATION){ //home_partition_id is the node_id
+			#if SINGLE_PART
+				//randomly select a partition on this node
+				if (rid == 0){
+					partition_init = mrand->next() % (g_part_cnt / g_node_cnt);
+					partition_id = partition_init * g_node_cnt + home_partition_id;
+				}
+				else {
+					partition_id = partition_init;
+				}
+			#endif
+		}
+		else {
 			partition_id = mrand->next() % g_part_cnt;
 			if(g_strict_ppt && g_part_per_txn <= g_part_cnt) {
 				while ((partitions_accessed.size() < g_part_per_txn &&
@@ -346,6 +362,7 @@ BaseQuery * YCSBQueryGenerator::gen_requests_zipf(uint64_t home_partition_id, Wo
 		assert(row_id < table_size);
 		uint64_t primary_key = row_id * g_part_cnt + partition_id;
 		assert(primary_key < g_synth_table_size);
+		assert(key_to_part(primary_key) == partition_id);
 
 		req->key = primary_key;
 		req->value = mrand->next() % (1<<8);

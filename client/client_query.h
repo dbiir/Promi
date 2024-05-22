@@ -35,6 +35,7 @@ public:
 	void init(Workload * h_wl);
   bool done();
 	BaseQuery * get_next_query(uint64_t server_id,uint64_t thread_id);
+  BaseQuery * get_next_query_partition(uint64_t server_id, uint64_t partition_id,uint64_t thread_id);
   void initQueriesParallel(uint64_t thd_id);
   static void * initQueriesHelper(void * context);
 
