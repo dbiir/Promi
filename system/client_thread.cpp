@@ -144,7 +144,7 @@ RC ClientThread::run() {
 			if ((inf_cnt = client_man.inc_inflight(next_node)) < 0) 
 				continue;
 				
-			if (partition_id % g_part_cnt == next_node) //not migrated 
+			if (partition_id % g_node_cnt == next_node) //not migrated 
 				m_query = client_query_queue.get_next_query_partition(next_node,partition_id, _thd_id);
 			else //migrated
 				m_query = client_query_queue.get_next_query_partition(partition_id % g_node_cnt,partition_id, _thd_id);
@@ -195,6 +195,7 @@ RC ClientThread::run() {
 		msg_queue.enqueue(get_thd_id(),msg,next_node_id);
 		num_txns_sent++;
 		txns_sent[next_node]++;
+		query_to_part[partition_id] ++;
 		INC_STATS(get_thd_id(),txn_sent_cnt,1);
 		#if WORKLOAD==DA
 			delete m_query;

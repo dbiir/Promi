@@ -52,6 +52,10 @@ int main(int argc, char *argv[]) {
 	part_map_init();
 	minipart_map_init();
 
+	for (size_t i=0; i<query_to_part.size(); i++){
+		query_to_part[i] = 0;
+	}
+
 
 	parser(argc, argv);
     assert(g_node_id >= g_node_cnt);
@@ -203,6 +207,15 @@ int main(int argc, char *argv[]) {
 		pthread_join(p_thds[i], NULL);
 
 	endtime = get_server_clock();
+
+
+	std::cout<<"Query to partition:"<<endl;
+	for (size_t i=0; i<query_to_part.size(); i++){
+		std::cout<<"  partition"<<i<<" "<<query_to_part[i]<<endl;
+	}	
+
+	query_to_part.clear();
+
 
   fflush(stdout);
   printf("CLIENT PASS! SimTime = %ld\n", endtime - starttime);

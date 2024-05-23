@@ -167,6 +167,7 @@ extern UInt32 g_client_node_cnt;
 extern UInt32 g_servers_per_client;
 extern UInt32 g_clients_per_server;
 extern UInt32 g_server_start_node;
+extern vector<int> query_to_part;
 
 /******************************************/
 // Global Parameter
