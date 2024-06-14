@@ -127,6 +127,20 @@ bool g_ts_batch_alloc = TS_BATCH_ALLOC;
 UInt32 g_ts_batch_num = TS_BATCH_NUM;
 int32_t g_inflight_max = MAX_TXN_IN_FLIGHT;
 //int32_t g_inflight_max = MAX_TXN_IN_FLIGHT/NODE_CNT;
+
+std::vector<int32_t> g_node_inflight_max(g_node_cnt);
+
+void g_node_inflight_max_init(){
+  for (uint i=0; i<g_node_cnt; i++){
+    g_node_inflight_max[i] = g_part_cnt / g_node_cnt * g_inflight_max;
+  }
+}
+
+void g_node_inflight_max_update(uint64_t node_id, int delta){
+  assert(node_id < g_node_cnt);
+  g_node_inflight_max[node_id] += delta;
+}
+
 uint64_t g_msg_size = MSG_SIZE_MAX;
 int32_t g_load_per_server = LOAD_PER_SERVER;
 
@@ -197,6 +211,7 @@ UInt32 g_servers_per_client = 0;
 UInt32 g_clients_per_server = 0;
 UInt32 g_server_start_node = 0;
 vector<int> query_to_part(g_part_cnt);
+vector<int> query_to_minipart(g_part_split_cnt);
 
 UInt32 g_this_thread_cnt = ISCLIENT ? g_client_thread_cnt : g_thread_cnt;
 UInt32 g_this_rem_thread_cnt = ISCLIENT ? g_client_rem_thread_cnt : g_rem_thread_cnt;
@@ -274,6 +289,8 @@ UInt64 g_start_time = 0;
 
 uint64_t g_mig_starttime;//start time of migration
 uint64_t g_mig_endtime;//end time of migration
+std::vector<uint64_t> g_mig_time;//migration time for each mini-partition
+uint64_t g_mig_tmp_time;
 
 UInt32 g_part_split_cnt = PART_SPLIT_CNT;  //number of minipart for each part
 uint64_t g_minipart_size = g_synth_table_size / g_part_cnt / g_part_split_cnt; //size of minipart

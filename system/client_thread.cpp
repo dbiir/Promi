@@ -63,9 +63,9 @@ RC ClientThread::run() {
 
 		#if MIGRATION
 			//init migration msg
-			uint64_t node_id_src_ = 0;
-			uint64_t node_id_des_ = 1;
-			uint64_t part_id_ = 0;
+			uint64_t node_id_src_ = 1;
+			uint64_t node_id_des_ = 0;
+			uint64_t part_id_ = 1;
 			uint64_t minipart_id_ = 0;
 			bool islast_ = true;
 			std::vector<uint64_t> mig_order_;
@@ -141,13 +141,17 @@ RC ClientThread::run() {
 			if (iters == UINT64_MAX)
 				iters = 0;		
 
-			if ((inf_cnt = client_man.inc_inflight(next_node)) < 0) 
+			if ((inf_cnt = client_man.inc_inflight(next_node)) < 0) {
+				//std::cout<<next_node<<' ';
+				//std::cout<<g_node_inflight_max[next_node]<<" ";
 				continue;
+			}
 				
 			if (partition_id % g_node_cnt == next_node) //not migrated 
 				m_query = client_query_queue.get_next_query_partition(next_node,partition_id, _thd_id);
 			else //migrated
 				m_query = client_query_queue.get_next_query_partition(partition_id % g_node_cnt,partition_id, _thd_id);
+				
 
 			if(last_send_time > 0) {
 				INC_STATS(get_thd_id(),cl_send_intv,get_sys_clock() - last_send_time);
@@ -195,8 +199,18 @@ RC ClientThread::run() {
 		msg_queue.enqueue(get_thd_id(),msg,next_node_id);
 		num_txns_sent++;
 		txns_sent[next_node]++;
-		query_to_part[partition_id] ++;
 		INC_STATS(get_thd_id(),txn_sent_cnt,1);
+
+		#if MIGRATION
+			query_to_part[partition_id] ++;
+			if (partition_id == part_id_){
+				for (uint i=0; i<((YCSBQuery*)m_query)->requests.size(); i++){
+					uint64_t minipart_ = get_minipart_id(((YCSBQuery*)m_query)->requests[i]->key);
+					query_to_minipart[minipart_]++;
+				}
+			}
+		#endif
+
 		#if WORKLOAD==DA
 			delete m_query;
 		#endif

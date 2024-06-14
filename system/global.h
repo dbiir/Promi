@@ -168,6 +168,7 @@ extern UInt32 g_servers_per_client;
 extern UInt32 g_clients_per_server;
 extern UInt32 g_server_start_node;
 extern vector<int> query_to_part;
+extern vector<int> query_to_minipart;
 
 /******************************************/
 // Global Parameter
@@ -203,6 +204,11 @@ extern bool g_key_order;
 extern bool g_ts_batch_alloc;
 extern UInt32 g_ts_batch_num;
 extern int32_t g_inflight_max;
+
+extern std::vector<int32_t> g_node_inflight_max;
+extern void g_node_inflight_max_init();
+extern void g_node_inflight_max_update(uint64_t node_id, int delta);
+
 extern uint64_t g_msg_size;
 extern uint64_t g_log_buf_max;
 extern uint64_t g_log_flush_timeout;
@@ -374,6 +380,8 @@ extern UInt64 g_start_time;//start time of running system
 
 extern uint64_t g_mig_starttime;//start time of migration
 extern uint64_t g_mig_endtime;//end time of migration
+extern std::vector<uint64_t> g_mig_time;//migration time for each mini-partition
+extern uint64_t g_mig_tmp_time;
 
 extern UInt32 g_part_split_cnt;
 extern uint64_t g_minipart_size;

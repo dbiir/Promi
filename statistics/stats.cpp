@@ -611,7 +611,11 @@ void Stats_thd::print(FILE * outf, bool prog) {
           record_write_cnt, parts_touched, avg_parts_touched);
   fprintf(outf, "G_starttime: %ld\n", g_start_time/ BILLION);
   fprintf(outf, "Migration start:%ld\n", (g_mig_starttime - g_start_time) / BILLION);
-  fprintf(outf, "Migration end:%ld\n", (g_mig_endtime - g_start_time) / BILLION);          
+  fprintf(outf, "Migration end:%ld\n", (g_mig_endtime - g_start_time) / BILLION);  
+
+  for (uint64_t i = 0; i < g_mig_time.size(); i++ ){
+    fprintf(outf, "Round %ld Migration Time: %ld\n", i, g_mig_time[i]);
+  }
 
   // Breakdown
   fprintf(outf,

@@ -83,6 +83,8 @@ int main(int argc, char *argv[]) {
 		minipart_map_init();		
 	}
 
+	std::cout<<"TPS_LEN IS "<<TPS_LENGTH<<endl;
+
 	parser(argc, argv);
 #if SEED != 0
 	uint64_t seed = SEED + g_node_id;

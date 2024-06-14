@@ -119,6 +119,8 @@ RC InputThread::client_recv_loop() {
 				switch(msg->get_rtype()){
 					case SET_PARTMAP:{
 						update_part_map(((SetPartMapMessage*)msg)->part_id, ((SetPartMapMessage*)msg)->node_id);
+						update_part_map_status(((SetPartMapMessage*)msg)->part_id, ((SetPartMapMessage*)msg)->status);		
+						
 
 						std::cout<<"!!!!!!!!!!!partition "<<((SetPartMapMessage*)msg)->part_id<<" is on node "<<get_part_node_id(((SetPartMapMessage*)msg)->part_id)<<endl;
 						std::cout<<"Time is "<<(get_sys_clock() - run_starttime) / BILLION<<endl;
@@ -126,6 +128,22 @@ RC InputThread::client_recv_loop() {
 						break;
 					}
 					case SET_MINIPARTMAP:{
+						#if MIGRATION
+							#if MIGRATION_ALG == DETEST
+								uint64_t node_src_id = get_minipart_node_id(((SetMiniPartMapMessage*)msg)->part_id, ((SetMiniPartMapMessage*)msg)->minipart_id);
+								
+								//debug
+								//std::cout<<"node_src_id is "<<node_src_id<<endl;
+								//std::cout<<"node_id is "<<((SetMiniPartMapMessage*)msg)->node_id<<endl;
+								
+								g_node_inflight_max_update(node_src_id, -(g_inflight_max / g_part_split_cnt));		
+								g_node_inflight_max_update(((SetMiniPartMapMessage*)msg)->node_id, g_inflight_max / g_part_split_cnt);
+
+								std::cout<<"g_node_inflight_max "<<g_node_inflight_max[node_src_id]<<" "<<g_node_inflight_max[((SetMiniPartMapMessage*)msg)->node_id]<<endl;
+							#endif
+						#endif
+
+
 						update_minipart_map(
 							((SetMiniPartMapMessage*)msg)->part_id, 
 							((SetMiniPartMapMessage*)msg)->minipart_id, ((SetMiniPartMapMessage*)msg)->node_id);

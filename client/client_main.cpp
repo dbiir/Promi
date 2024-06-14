@@ -51,10 +51,16 @@ int main(int argc, char *argv[]) {
 	// 0. initialize global data structure
 	part_map_init();
 	minipart_map_init();
+	g_node_inflight_max_init();
 
 	for (size_t i=0; i<query_to_part.size(); i++){
 		query_to_part[i] = 0;
 	}
+
+	for (size_t i=0; i<query_to_minipart.size(); i++){
+		query_to_minipart[i] = 0;
+	}
+
 
 
 	parser(argc, argv);
@@ -214,7 +220,13 @@ int main(int argc, char *argv[]) {
 		std::cout<<"  partition"<<i<<" "<<query_to_part[i]<<endl;
 	}	
 
+	std::cout<<"Query to minipartition:"<<endl;
+	for (size_t i=0; i<query_to_minipart.size(); i++){
+		std::cout<<"  minipartition"<<i<<" "<<query_to_minipart[i]<<endl;
+	}		
+
 	query_to_part.clear();
+	query_to_minipart.clear();
 
 
   fflush(stdout);

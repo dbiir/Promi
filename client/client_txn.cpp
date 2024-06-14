@@ -22,10 +22,10 @@ void Inflight_entry::init() {
     sem_init(&mutex, 0, 1);
 }
 
-int32_t Inflight_entry::inc_inflight() {
+int32_t Inflight_entry::inc_inflight(int32_t node_id) {
     int32_t result;
     sem_wait(&mutex);
-    if (num_inflight_txns < g_inflight_max) {
+    if (num_inflight_txns < g_node_inflight_max[node_id]) {
     // if (num_inflight_txns < 1) {
         result = ++num_inflight_txns;
     } else {
@@ -66,7 +66,7 @@ void Client_txn::init() {
 
 int32_t Client_txn::inc_inflight(uint32_t node_id) {
     assert(node_id < g_servers_per_client);
-    return inflight_txns[node_id]->inc_inflight();
+    return inflight_txns[node_id]->inc_inflight(node_id);
 }
 
 int32_t Client_txn::dec_inflight(uint32_t node_id) {

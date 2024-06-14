@@ -23,7 +23,7 @@
 class Inflight_entry {
  public:
      void init();
-     int32_t inc_inflight();
+     int32_t inc_inflight(int32_t node_id);
      int32_t dec_inflight();
      int32_t get_inflight();
  private:

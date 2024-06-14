@@ -72,7 +72,7 @@
 #define MIG_THREAD_CNT 1 //迁移线程
 #define CORE_CNT 2
 // PART_CNT should be at least NODE_CNT
-#define PART_CNT NODE_CNT*8
+#define PART_CNT NODE_CNT*4
 #define CLIENT_NODE_CNT 1
 #define CLIENT_THREAD_CNT 4
 #define CLIENT_REM_THREAD_CNT 2
@@ -121,7 +121,7 @@
 #define TIME_ENABLE         true //STATS_ENABLE
 
 #define FIN_BY_TIME true
-#define MAX_TXN_IN_FLIGHT 100000
+#define MAX_TXN_IN_FLIGHT 10000
 
 #define SERVER_GENERATE_QUERIES false
 
@@ -246,7 +246,7 @@
 // Benchmark
 /***********************************************/
 // max number of rows touched per transaction
-#define MAX_ROW_PER_TXN       65536
+#define MAX_ROW_PER_TXN     SYNTH_TABLE_SIZE
 #define QUERY_INTVL         1UL
 #define MAX_TXN_PER_PART 500000
 #define FIRST_PART_LOCAL      false
@@ -260,10 +260,10 @@
 #define DATA_PERC 100
 #define ACCESS_PERC 0.03
 #define INIT_PARALLELISM (PART_CNT / NODE_CNT)
-#define SYNTH_TABLE_SIZE 131072
+#define SYNTH_TABLE_SIZE 131072 * 128
 #define ZIPF_THETA 0.6
-#define TXN_WRITE_PERC 0.5
-#define TUP_WRITE_PERC 0.5
+#define TXN_WRITE_PERC 0.1
+#define TUP_WRITE_PERC 0.1
 #define SCAN_PERC           0
 #define SCAN_LEN          20
 #define PART_PER_TXN 2
@@ -476,10 +476,11 @@ enum PPSTxnType {
 #define STAT_ARR_SIZE 1024
 #define PROG_TIMER 10 * BILLION // in s
 #define BATCH_TIMER 0
-#define START_MIG 30 // migration start time(second)
+#define START_MIG 45 // migration start time(second)
 #define SEQ_BATCH_TIMER 5 * 1 * MILLION // ~5ms -- same as CALVIN paper
-#define DONE_TIMER 1 * 60 * BILLION // ~1 minutes  60 BILLION = 1 min
-#define WARMUP_TIMER 1 * 20 * BILLION // ~1 minutes
+
+#define DONE_TIMER 1 * 30 * BILLION // ~1 minutes  60 BILLION = 1 min
+#define WARMUP_TIMER 1 * 30 * BILLION // ~1 minutes
 
 #define TPS_LENGTH (DONE_TIMER+WARMUP_TIMER) / BILLION //length of throughut 
 

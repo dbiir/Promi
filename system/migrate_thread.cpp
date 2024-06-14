@@ -136,7 +136,8 @@ RC MigrateThread::run(){
 RC MigrateThread::process_send_migration(MigrationMessage* msg){
     DEBUG("SEND_MIGRATION %ld\n",msg->get_txn_id());
     std::cout<<"SEND_MIGRATION Time:"<<(get_sys_clock() - g_start_time) / BILLION<<endl;
-    if (g_mig_starttime == 0) g_mig_starttime = get_sys_clock();
+    //if (g_mig_starttime == 0) g_mig_starttime = get_sys_clock();
+    g_mig_tmp_time = get_sys_clock();
 
     //debug
     //for (uint i=0; i< msg->mig_order.size(); i++) std::cout<<msg->mig_order[i]<<' ';    
@@ -391,6 +392,9 @@ RC MigrateThread::process_finish_migration(MigrationMessage* msg){
             process_send_migration((MigrationMessage*)msg1);
         }
     #endif
+
+    g_mig_time.emplace_back((get_sys_clock() - g_mig_tmp_time) / MILLION);
+    std::cout<<"size of g_mig_time is "<<g_mig_time.size()<<endl;
 
     txn_man->commit();
     return rc;
