@@ -91,7 +91,7 @@
 #define LOAD_PER_SERVER 100
 
 //MIGRATION
-#define MIGRATION true
+#define MIGRATION false
 #define SINGLE_PART true //single part query
 
 
