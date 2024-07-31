@@ -148,7 +148,7 @@ RC TPCCWorkload::init_table() {
 			exit(-1);
 		}
   }
-  printf("ITEM Done\n");
+  printf("CUSTOMER Done\n");
   fflush(stdout);
 
   // Order Table
@@ -240,7 +240,7 @@ void TPCCWorkload::init_tab_item(int id) {
 void TPCCWorkload::init_tab_wh() {
   if (WL_VERB) printf("[init] workload table.\n");
 	for (UInt32 wid = 1; wid <= g_num_wh; wid ++) {
-	if(GET_NODE_ID(wh_to_part(wid)) != g_node_id) continue;
+	//if(GET_NODE_ID(wh_to_part(wid)) != g_node_id) continue;
 		row_t * row;
 		uint64_t row_id;
 		t_warehouse->get_new_row(row, 0, row_id);
@@ -352,7 +352,7 @@ void TPCCWorkload::init_tab_stock(int id, uint64_t wid) {
 }
 
 void TPCCWorkload::init_tab_cust(int id, uint64_t did, uint64_t wid) {
-	assert(g_cust_per_dist >= 1000);
+	//assert(g_cust_per_dist >= 1000);
 	for (UInt32 cid = id+1; cid <= g_cust_per_dist; cid += g_init_parallelism) {
 		row_t * row;
 		uint64_t row_id;
@@ -566,7 +566,7 @@ void * TPCCWorkload::threadInitWh(void * This) {
 void * TPCCWorkload::threadInitDist(void * This) {
   TPCCWorkload * wl = (TPCCWorkload*) This;
 	for (uint64_t wid = 1; wid <= g_num_wh; wid ++) {
-	if (GET_NODE_ID(wh_to_part(wid)) != g_node_id) continue;
+	//if (GET_NODE_ID(wh_to_part(wid)) != g_node_id) continue;
 		wl->init_tab_dist(wid);
   }
 	printf("DISTRICT Done\n");
@@ -577,7 +577,7 @@ void * TPCCWorkload::threadInitStock(void * This) {
   TPCCWorkload * wl = ((thr_args*) This)->wl;
   int id = ((thr_args*) This)->id;
 	for (uint64_t wid = 1; wid <= g_num_wh; wid ++) {
-	if (GET_NODE_ID(wh_to_part(wid)) != g_node_id) continue;
+	//if (GET_NODE_ID(wh_to_part(wid)) != g_node_id) continue;
 		wl->init_tab_stock(id,wid);
   }
 	printf("STOCK Done\n");
@@ -588,7 +588,7 @@ void * TPCCWorkload::threadInitCust(void * This) {
   TPCCWorkload * wl = ((thr_args*) This)->wl;
   int id = ((thr_args*) This)->id;
 	for (uint64_t wid = 1; wid <= g_num_wh; wid ++) {
-	if (GET_NODE_ID(wh_to_part(wid)) != g_node_id) continue;
+	//if (GET_NODE_ID(wh_to_part(wid)) != g_node_id) continue;
 		for (uint64_t did = 1; did <= g_dist_per_wh; did++) {
 			wl->init_tab_cust(id,did, wid);
 	}
@@ -600,7 +600,7 @@ void * TPCCWorkload::threadInitCust(void * This) {
 void * TPCCWorkload::threadInitHist(void * This) {
   TPCCWorkload * wl = (TPCCWorkload*) This;
 	for (uint64_t wid = 1; wid <= g_num_wh; wid ++) {
-	if (GET_NODE_ID(wh_to_part(wid)) != g_node_id) continue;
+	//if (GET_NODE_ID(wh_to_part(wid)) != g_node_id) continue;
 		for (uint64_t did = 1; did <= g_dist_per_wh; did++)
 	  for (uint64_t cid = 1; cid <= g_cust_per_dist; cid++) wl->init_tab_hist(cid, did, wid);
   }
@@ -612,7 +612,7 @@ void * TPCCWorkload::threadInitOrder(void * This) {
   TPCCWorkload * wl = ((thr_args*) This)->wl;
   int id = ((thr_args*) This)->id;
 	for (uint64_t wid = 1; wid <= g_num_wh; wid ++) {
-	if (GET_NODE_ID(wh_to_part(wid)) != g_node_id) continue;
+	//if (GET_NODE_ID(wh_to_part(wid)) != g_node_id) continue;
 	for (uint64_t did = 1; did <= g_dist_per_wh; did++) wl->init_tab_order(id, did, wid);
   }
 	printf("ORDER Done\n");

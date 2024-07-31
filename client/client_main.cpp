@@ -14,6 +14,7 @@
    limitations under the License.
 */
 
+#include <fstream>
 #include "global.h"
 #include "ycsb.h"
 #include "tpcc.h"
@@ -49,6 +50,7 @@ int main(int argc, char *argv[]) {
   printf("Running client...\n\n");
 	
 	// 0. initialize global data structure
+<<<<<<< HEAD
 	part_map_init();
 	minipart_map_init();
 	g_node_inflight_max_init();
@@ -63,9 +65,31 @@ int main(int argc, char *argv[]) {
 
 
 
+=======
+	//inflight设置
+	node_inflight_max[0] = 3 * MAX_TXN_IN_PART;
+	node_inflight_max[1] = 1 * MAX_TXN_IN_PART;
+
+	part_map_init();
+	minipart_map_init();
+	#if (MIGRATION_ALG == SQUALL)
+		squallpart_map_init();
+	#elif (MIGRATION_ALG == DETEST_SPLIT)
+		row_map_init();
+		order_map_init();
+		cluster_num_init();
+	#endif
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
 	parser(argc, argv);
     assert(g_node_id >= g_node_cnt);
     //assert(g_client_node_cnt <= g_node_cnt);
+
+	for (size_t i=0; i<query_to_part.size(); i++){
+		query_to_part[i] = 0;
+	}
+	for (size_t i=0; i<query_to_row.size(); i++){
+		query_to_row[i] = 0;
+	}
 
 	uint64_t seed = get_sys_clock();
 	srand(seed);
@@ -100,6 +124,9 @@ int main(int argc, char *argv[]) {
 	}
 	m_wl->Workload::init();
 	printf("workload initialized!\n");
+	#if (MIGRATION_ALG == REMUS)
+	std::cout<<"remus status is "<<remus_status<<" "<<&remus_status<<" Time is:"<<get_sys_clock() <<endl;
+	#endif
 
   printf("Initializing simulation... ");
   fflush(stdout);
@@ -173,12 +200,14 @@ int main(int argc, char *argv[]) {
 	warmup_done = true;
 	pthread_barrier_init( &warmup_bar, NULL, all_thd_cnt);
 
-	uint64_t cpu_cnt = 0;
+	
 #if SET_AFFINITY
+	uint64_t cpu_cnt = 0;
 	cpu_set_t cpus;
 #endif
 	// spawn and run txns again.
 	starttime = get_server_clock();
+	g_starttime = starttime;
 	simulation->run_starttime = starttime;
 	simulation->last_da_query_time = starttime;
 	g_start_time = starttime;
@@ -214,20 +243,54 @@ int main(int argc, char *argv[]) {
 
 	endtime = get_server_clock();
 
+<<<<<<< HEAD
 
 	std::cout<<"Query to partition:"<<endl;
 	for (size_t i=0; i<query_to_part.size(); i++){
 		std::cout<<"  partition"<<i<<" "<<query_to_part[i]<<endl;
 	}	
+=======
+	std::cout<<"Query to partition:"<<endl;
+	for (size_t i=0; i<query_to_part.size(); i++){
+		std::cout<<"  partition"<<i<<" "<<query_to_part[i]<<endl;
+	}
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
 
 	std::cout<<"Query to minipartition:"<<endl;
 	for (size_t i=0; i<query_to_minipart.size(); i++){
 		std::cout<<"  minipartition"<<i<<" "<<query_to_minipart[i]<<endl;
+<<<<<<< HEAD
 	}		
 
 	query_to_part.clear();
 	query_to_minipart.clear();
 
+=======
+	}
+	/*
+	ofstream fout("query_to_row.txt");
+	for (size_t i=0; i < edge_index.size(); i++){
+		fout<<edge_index[i].first<<' '<<edge_index[i].second<<"\n";
+	}
+	fout.close(); // 显式的关闭流到文件的连接。
+	*/
+
+	/*
+	for (size_t i=0; i < edge_index.size(); i++){
+		std::cout<<edge_index[i].first<<','<<edge_index[i].second<<' ';
+	}
+	*/
+
+	/*
+	std::cout<<"Query to row:"<<endl;
+	for (size_t i=0; i<query_to_row.size(); i++){
+		std::cout<<"  row"<<i<<" "<<query_to_row[i]<<endl;
+	}
+	*/
+	query_to_part.clear();
+	query_to_row.clear();
+	edge_index.clear();
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
 
   fflush(stdout);
   printf("CLIENT PASS! SimTime = %ld\n", endtime - starttime);

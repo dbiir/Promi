@@ -38,7 +38,11 @@
 #include <time.h>
 #include <sys/time.h>
 #include <math.h>
+<<<<<<< HEAD
 #include <shared_mutex>
+=======
+#include <mutex>
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
 
 #include "pthread.h"
 #include "config.h"
@@ -168,7 +172,16 @@ extern UInt32 g_servers_per_client;
 extern UInt32 g_clients_per_server;
 extern UInt32 g_server_start_node;
 extern vector<int> query_to_part;
+<<<<<<< HEAD
 extern vector<int> query_to_minipart;
+=======
+extern vector<int> query_to_row;
+extern vector<int> query_to_minipart;
+extern vector< pair<uint64_t, uint64_t> > edge_index;
+extern double co_access[PART_SPLIT_CNT][PART_SPLIT_CNT];
+extern vector<double> wtime;
+extern vector<double> wlatency;
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
 
 /******************************************/
 // Global Parameter
@@ -181,6 +194,7 @@ extern UInt32 g_node_id;
 extern UInt32 g_node_cnt;
 extern UInt32 g_part_cnt;
 extern UInt32 g_virtual_part_cnt;
+extern UInt32 g_part_split_cnt;
 extern UInt32 g_core_cnt;
 extern UInt32 g_total_node_cnt;
 extern UInt32 g_total_thread_cnt;
@@ -196,6 +210,7 @@ extern UInt32 g_tcp_thread_cnt;
 extern UInt32 g_send_thread_cnt;
 extern UInt32 g_migrate_thread_cnt;
 extern UInt32 g_rem_thread_cnt;
+extern UInt32 g_stat_thread_cnt;
 extern ts_t g_abort_penalty;
 extern ts_t g_abort_penalty_max;
 extern bool g_central_man;
@@ -224,6 +239,7 @@ extern UInt64 g_seq_batch_time_limit;
 extern UInt64 g_prog_timer;
 extern UInt64 g_warmup_timer;
 extern UInt64 g_msg_time_limit;
+extern UInt64 g_starttime;
 
 // MVCC
 extern UInt64 g_max_read_req;
@@ -261,6 +277,7 @@ extern UInt32 g_max_items;
 extern UInt32 g_dist_per_wh;
 extern UInt32 g_cust_per_dist;
 extern UInt32 g_max_items_per_txn;
+extern uint64_t g_tuplesize[7]; 
 
 // PPS (Product-Part-Supplier)
 extern UInt32 g_max_parts_per;
@@ -325,11 +342,24 @@ enum RemReqType {
     LOG_MSG_RSP,
     LOG_FLUSHED,
     CALVIN_ACK,
+    SYNC,
+    ACK_SYNC,
     SEND_MIGRATION,
     RECV_MIGRATION,
     FINISH_MIGRATION,
+<<<<<<< HEAD
     SET_PARTMAP,
     SET_MINIPARTMAP,
+=======
+    SET_REMUS,
+    SET_PARTMAP,
+    SET_DETEST,
+    SET_MINIPARTMAP,
+    SET_SQUALL,
+    SET_SQUALLPARTMAP,
+    SET_ROWMAP,
+    SET_DETESTSPLIT,
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
   NO_MSG
 };
 
@@ -371,7 +401,9 @@ enum TsType {R_REQ = 0, W_REQ, P_REQ, XP_REQ};
 
 /*DA query build queue*/
 //queue<DAQuery> query_build_queue;
+uint64_t get_node_id_mini(uint64_t key);
 
+<<<<<<< HEAD
 
 /******************  Migration   ****************/
 extern vector <uint64_t> migration_part;
@@ -398,12 +430,24 @@ uint64_t get_key_node_id(uint64_t key);//get node_id by key
 //part_table:记录每个part的信息,<part_id, <node_id,migrate_status> >, migrate_status{0:not migrated, 1:migrating, 2:migrated}
 extern map <uint64_t, vector<uint64_t> > part_map;
 extern std::shared_mutex mtx_part_map;
+=======
+extern int node_inflight_max[NODE_CNT]; 
+extern double percents[TPS_LENGTH];
+
+extern bool g_migrate_flag;
+extern uint64_t g_mig_starttime;
+extern uint64_t g_mig_endtime;
+
+extern map <uint64_t,vector<uint64_t> > part_map;
+//extern std::mutex mtx_part_map;
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
 void part_map_init();
 uint64_t get_part_node_id(uint64_t part_id);
 uint64_t get_part_status(uint64_t part_id);
 void update_part_map(uint64_t part_id, uint64_t node_id);
 void update_part_map_status(uint64_t part_id, uint64_t status);
 
+<<<<<<< HEAD
 extern std::vector<std::map<uint64_t, std::vector<uint64_t>>> minipart_map;
 extern std::vector<std::shared_mutex> mtx_minipart_map;
 void minipart_map_init();
@@ -412,12 +456,67 @@ uint64_t get_minipart_node_id(uint64_t part_id, uint64_t minipart_id);
 uint64_t get_minipart_status(uint64_t part_id, uint64_t minipart_id);
 void update_minipart_map(uint64_t part_id, uint64_t minipart_id, uint64_t node_id);
 void update_minipart_map_status(uint64_t part_id, uint64_t minipart_id, uint64_t status);
+=======
+extern map <uint64_t, vector<uint64_t> > minipart_map;
+//extern std::mutex mtx_minipart_map;
+void minipart_map_init();
+uint64_t get_minipart_id(uint64_t key);
+uint64_t get_minipart_node_id(uint64_t part_id);
+uint64_t get_minipart_status(uint64_t part_id);
+void update_minipart_map(uint64_t part_id, uint64_t node_id);
+void update_minipart_map_status(uint64_t part_id, uint64_t status);
 
+
+extern map <uint64_t, vector<uint64_t> > squallpart_map;
+void squallpart_map_init();
+uint64_t get_squallpart_id(uint64_t key);
+uint64_t get_squallpart_node_id(uint64_t part_id);
+uint64_t get_squallpart_status(uint64_t part_id);
+void update_squallpart_map(uint64_t part_id, uint64_t node_id);
+void update_squallpart_map_status(uint64_t part_id, uint64_t status);
+
+
+extern map <uint64_t, vector<uint64_t> > row_map;
+void row_map_init();
+uint64_t get_row_node_id(uint64_t key);
+uint64_t get_row_status(uint64_t key);
+void update_row_map(uint64_t key, uint64_t node_id);
+void update_row_map_status(uint64_t key, uint64_t status);
+void update_row_map_order(uint64_t order, uint64_t node_id);
+void update_row_map_status_order(uint64_t order, uint64_t node_id);
+
+extern map<uint64_t, vector<uint64_t> > order_map;
+void order_map_init();
+extern int cluster[SPLIT_NODE_NUM]; 
+extern int cluster_num[PART_SPLIT_CNT]; 
+extern int Order[PART_SPLIT_CNT];
+void cluster_num_init();
+extern std::vector<int> Status;
+extern double theta;
+
+extern int detest_status;
+void update_detest_status(int status);
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
+
+
+extern int remus_status;
+
+extern uint64_t remus_finish_time;
+void update_remus_status(int status);
+
+extern int squall_status;
+void update_squall_status(int status);
+
+extern uint64_t migrate_label;
+void update_migrate_label(uint64_t status);
+
+extern int synctime;
 
 #define GET_THREAD_ID(id)	(id % g_thread_cnt)
 
 #define GET_NODE_ID(id) (get_part_node_id(id))
 
+<<<<<<< HEAD
 #define GET_KEY_ID(id) (get_key_node_id(id))
 /*
 #if (PART_TO_NODE == HASH_MODE) 
@@ -426,6 +525,9 @@ void update_minipart_map_status(uint64_t part_id, uint64_t minipart_id, uint64_t
   #define GET_NODE_ID(id) (id / (g_part_cnt / g_node_cnt))
 #endif
 */
+=======
+#define GET_NODE_ID_MINI(key) (get_node_id_mini(key))
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
 
 #define GET_TXN_NODE_ID(id)  (id % g_node_cnt)
   

@@ -102,7 +102,7 @@ Message * Message::create_message(LogRecord * record, RemReqType rtype) {
 
 
 Message * Message::create_message(BaseQuery * query, RemReqType rtype) {
- assert(rtype == RQRY || rtype == CL_QRY || rtype == CL_QRY_O);
+ assert(rtype == RQRY || rtype == CL_QRY || rtype == CL_QRY_O || rtype == SEND_MIGRATION);
  Message * msg = create_message(rtype);
 #if WORKLOAD == YCSB
  ((YCSBClientQueryMessage*)msg)->copy_from_query(query);
@@ -168,6 +168,12 @@ Message * Message::create_message(RemReqType rtype) {
     case RACK_FIN:
       msg = new AckMessage;
       break;
+    case SYNC:
+      msg = new SyncMessage;
+      break;
+    case ACK_SYNC:
+      msg = new AckSyncMessage;
+      break;
     case SEND_MIGRATION:
       msg = new MigrationMessage;
       break;
@@ -204,12 +210,33 @@ Message * Message::create_message(RemReqType rtype) {
     case CL_RSP:
       msg = new ClientResponseMessage;
       break;
+<<<<<<< HEAD
+=======
+    case SET_REMUS:
+      msg = new SetRemusMessage;
+      break;
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
     case SET_PARTMAP:
       msg = new SetPartMapMessage;
       break;
     case SET_MINIPARTMAP:
       msg = new SetMiniPartMapMessage;
       break;
+<<<<<<< HEAD
+=======
+    case SET_DETEST:
+      msg = new SetDetestMessage;
+      break;
+    case SET_SQUALL:
+      msg = new SetSquallMessage;
+      break;
+    case SET_SQUALLPARTMAP:
+      msg = new SetSquallPartMapMessage;
+      break;
+    case SET_ROWMAP:
+      msg = new SetRowMapMessage;
+      break;
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
     default:
       assert(false);
   }
@@ -234,6 +261,7 @@ Message * Message::create_message(RemReqType rtype) {
   return msg;
 }
 
+<<<<<<< HEAD
 
 //create update migration metadata msg
 Message * Message::create_partmap_message(RemReqType rtype, uint64_t part_id, uint64_t node_id, uint64_t status){
@@ -255,6 +283,69 @@ Message * Message::create_minipartmap_message(RemReqType rtype, uint64_t part_id
 
 
 
+=======
+Message * Message::create_message0(RemReqType rtype,uint64_t part_id, uint64_t status){
+  assert(rtype == SET_REMUS || rtype == SET_DETEST || rtype == SET_SQUALL);
+  Message * msg = create_message(rtype);
+  if (rtype == SET_REMUS) {
+    //SetRemusMessage* msg = (SetRemusMessage*)msg;
+    ((SetRemusMessage*) msg)->rtype = rtype;
+    ((SetRemusMessage*) msg)->part_id = part_id;
+    ((SetRemusMessage*) msg)->status = status;
+  }
+  else if (rtype == SET_DETEST) {
+    //SetDetestMessage* msg = (SetDetestMessage*)msg;
+    ((SetDetestMessage*) msg)->rtype = rtype;
+    ((SetDetestMessage*) msg)->minipart_id = part_id;
+    ((SetDetestMessage*) msg)->status = status;
+  }
+  else if (rtype == SET_SQUALL) {
+    ((SetSquallMessage*) msg)->rtype = rtype;
+    ((SetSquallMessage*) msg)->squallpart_id = part_id;
+    ((SetSquallMessage*) msg)->status = status;
+  }
+  else if (rtype == SET_DETESTSPLIT) {
+    //SetDetestMessage* msg = (SetDetestMessage*)msg;
+    ((SetDetestMessage*) msg)->rtype = rtype;
+    ((SetDetestMessage*) msg)->minipart_id = part_id;
+    ((SetDetestMessage*) msg)->status = status;
+  }
+  return msg;
+}
+
+Message * Message::create_message1(RemReqType rtype,uint64_t part_id, uint64_t node_id, uint64_t status){
+  assert(rtype == SET_PARTMAP || rtype == SET_MINIPARTMAP || rtype == SET_ROWMAP || rtype == SET_SQUALLPARTMAP);
+  Message * msg = create_message(rtype);
+  if (rtype == SET_PARTMAP) {
+    //msg = (SetPartMapMessage*)msg;
+    ((SetPartMapMessage*) msg)->rtype = rtype;
+    ((SetPartMapMessage*) msg)->part_id = part_id;
+    ((SetPartMapMessage*) msg)->node_id = node_id;
+    ((SetPartMapMessage*) msg)->status = status;
+  }
+  else if (rtype == SET_MINIPARTMAP) {
+    //(SetMiniPartMapMessage*)msg;
+    ((SetMiniPartMapMessage*) msg)->rtype = rtype;
+    ((SetMiniPartMapMessage*) msg)->minipart_id = part_id;
+    ((SetMiniPartMapMessage*) msg)->node_id = node_id;
+    ((SetMiniPartMapMessage*) msg)->status = status;
+  }
+  else if (rtype == SET_SQUALLPARTMAP){
+    ((SetSquallPartMapMessage*) msg)->rtype = rtype;
+    ((SetSquallPartMapMessage*) msg)->squallpart_id = part_id;
+    ((SetSquallPartMapMessage*) msg)->node_id = node_id;
+    ((SetSquallPartMapMessage*) msg)->status = status;    
+  }
+  else if (rtype == SET_ROWMAP){
+    ((SetRowMapMessage*) msg)->rtype = rtype;
+    ((SetRowMapMessage*) msg)->order = part_id;
+    ((SetRowMapMessage*) msg)->node_id = node_id;
+    ((SetRowMapMessage*) msg)->status = status;
+  }
+  return msg;
+}
+
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
 uint64_t Message::mget_size() {
   uint64_t size = 0;
   size += sizeof(RemReqType);
@@ -450,17 +541,71 @@ void Message::release_message(Message * msg) {
       delete m_msg;
       break;
     }
+<<<<<<< HEAD
     case SET_PARTMAP:{
+=======
+    case SET_REMUS: {
+      SetRemusMessage * m_msg = (SetRemusMessage*) msg;
+      m_msg->release();
+      delete m_msg;
+      break;
+    }
+    case SET_PARTMAP: {
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
       SetPartMapMessage * m_msg = (SetPartMapMessage*) msg;
       m_msg->release();
       delete m_msg;
       break;
     }
+<<<<<<< HEAD
     case SET_MINIPARTMAP:{
       SetMiniPartMapMessage * m_msg = (SetMiniPartMapMessage*) msg;
       m_msg->release();
       delete m_msg;
       break;      
+=======
+    case SET_DETEST: {
+      SetDetestMessage * m_msg = (SetDetestMessage*) msg;
+      m_msg->release();
+      delete m_msg;
+      break;
+    }
+    case SET_MINIPARTMAP: {
+      SetMiniPartMapMessage * m_msg = (SetMiniPartMapMessage*) msg;
+      m_msg->release();
+      delete m_msg;
+      break;
+    }
+    case SET_SQUALL: {
+      SetSquallMessage * m_msg = (SetSquallMessage*) msg;
+      m_msg->release();
+      delete m_msg;
+      break;
+    }
+    case SET_SQUALLPARTMAP: {
+      SetSquallPartMapMessage * m_msg = (SetSquallPartMapMessage*) msg;
+      m_msg->release();
+      delete m_msg;
+      break;
+    }
+    case SET_ROWMAP:{
+      SetRowMapMessage * m_msg = (SetRowMapMessage*) msg;
+      m_msg->release();
+      delete m_msg;
+      break;
+    }
+    case SYNC:{
+      SyncMessage * m_msg = (SyncMessage*) msg;
+      m_msg->release();
+      delete m_msg;
+      break;
+    }
+    case ACK_SYNC:{
+      AckSyncMessage * m_msg = (AckSyncMessage*) msg;
+      m_msg->release();
+      delete m_msg;
+      break;
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
     }
     default: {
       assert(false);
@@ -1544,6 +1689,7 @@ void YCSBQueryMessage::copy_to_txn(TxnManager * txn) {
   //((YCSBQuery*)(txn->query))->requests.copy(requests);
 #if ONE_NODE_RECIEVE == 1 && defined(NO_REMOTE) && LESS_DIS_NUM == 10
 #else
+  //std::cout<<requests.size()<<' ';
   ((YCSBQuery*)(txn->query))->requests.append(requests);
   ((YCSBQuery*)(txn->query))->orig_request = &requests;
 #endif
@@ -1560,6 +1706,14 @@ void YCSBQueryMessage::copy_from_buf(char * buf) {
     DEBUG_M("YCSBQueryMessage::copy ycsb_request alloc\n");
     ycsb_request * req = (ycsb_request*)mem_allocator.alloc(sizeof(ycsb_request));
     COPY_VAL(*req,buf,ptr);
+    if (req->key > g_synth_table_size){
+      std::cout<<"req->key is "<<req->key<<' '<<i<<endl;
+      std::cout<<"rtype is "<<this->get_rtype()<<endl;
+      if (req->key >= g_synth_table_size) {
+        req->key = myrand().next() % g_synth_table_size;
+        std::cout<<"myrand ";
+      }
+    }
     ASSERT(req->key < g_synth_table_size);
     requests.add(req);
   }
@@ -2046,12 +2200,73 @@ uint64_t DAQueryMessage::get_size() {
 }
 void DAQueryMessage::release() { QueryMessage::release(); }
 
+uint64_t SyncMessage::get_size(){
+  uint64_t size;
+  size = Message::mget_size();
+  size += 2 * sizeof(uint64_t);
+  return size;
+}
+
+void SyncMessage::copy_from_buf(char* buf){
+  Message::mcopy_from_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_VAL(part_id,buf,ptr);
+  COPY_VAL(key,buf,ptr);
+}
+
+void SyncMessage::copy_to_buf(char* buf){
+  Message::mcopy_to_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_BUF(buf,part_id,ptr);
+  COPY_BUF(buf,key,ptr);
+}
+
+void SyncMessage::copy_from_txn(TxnManager* txn){}
+
+void SyncMessage::copy_to_txn(TxnManager* txn){}
+
+void SyncMessage::init(){}
+
+void SyncMessage::release(){}
+
+uint64_t AckSyncMessage::get_size(){
+  uint64_t size;
+  size = Message::mget_size();
+  size += 2 * sizeof(uint64_t);
+  return size;
+}
+
+void AckSyncMessage::copy_from_buf(char* buf){
+  Message::mcopy_from_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_VAL(part_id,buf,ptr);
+  COPY_VAL(key,buf,ptr);
+}
+
+void AckSyncMessage::copy_to_buf(char* buf){
+  Message::mcopy_to_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_BUF(buf,part_id,ptr);
+  COPY_BUF(buf,key,ptr);
+}
+
+void AckSyncMessage::copy_from_txn(TxnManager* txn){}
+
+void AckSyncMessage::copy_to_txn(TxnManager* txn){}
+
+void AckSyncMessage::init(){}
+
+void AckSyncMessage::release(){}
+
 
 uint64_t MigrationMessage::get_size(){
   uint64_t size = Message::mget_size();
   size += sizeof(uint64_t)*8;
   size += sizeof(bool)*2;
+<<<<<<< HEAD
   size += sizeof(uint64_t) * mig_order.size();
+=======
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
   #if WORKLOAD == YCSB
   if (isdata){
     size += sizeof(row_t) * data.size();
@@ -2078,12 +2293,17 @@ void MigrationMessage::copy_from_buf(char* buf){
   COPY_VAL(data_size,buf,ptr);
   COPY_VAL(isdata,buf,ptr);
   COPY_VAL(islast,buf,ptr);
+<<<<<<< HEAD
   for (size_t i=0; i<g_part_split_cnt; i++){
     uint64_t mig_order_;
     COPY_VAL(mig_order_,buf,ptr);
     mig_order.emplace_back(mig_order_);
   }
   if (isdata){
+=======
+  if (isdata){
+    
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
     for (size_t i=0;i<data_size;i++){
       row_t tmp;
       COPY_VAL(tmp,buf,ptr);
@@ -2099,6 +2319,10 @@ void MigrationMessage::copy_from_buf(char* buf){
       row_data.emplace_back(tmp_str);
     }
     #endif
+<<<<<<< HEAD
+=======
+    
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
   }
 }
 
@@ -2115,10 +2339,22 @@ void MigrationMessage::copy_to_buf(char* buf){
   COPY_BUF(buf,data_size,ptr);
   COPY_BUF(buf,isdata,ptr);
   COPY_BUF(buf,islast,ptr);
+<<<<<<< HEAD
   for (size_t i=0;i<mig_order.size();i++){
     COPY_BUF(buf,mig_order[i],ptr);
   }
   if (isdata){
+=======
+  //std::cout<<sizeof(data[0])<<' '<<sizeof(row_data[0])<<endl;
+  //std::cout<<"ptr is "<<ptr<<endl;
+  if (isdata){
+    /*
+    COPY_BUF(buf, data, ptr);
+    std::cout<<"ptr is "<<ptr<<endl;
+    COPY_BUF(buf, row_data, ptr);
+    */
+    
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
     for (size_t i=0;i<this->data.size();i++){
       //std::cout<<i<<" "<<buf<<" "<<&(data[i])<<endl;
       //std::cout<<i<<" "<<ptr<<endl;
@@ -2130,6 +2366,10 @@ void MigrationMessage::copy_to_buf(char* buf){
     }
     
   }
+<<<<<<< HEAD
+=======
+  //std::cout<<"ptr is "<<ptr<<endl;
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
 }
 
 
@@ -2152,44 +2392,212 @@ void MigrationMessage::copy_to_txn(TxnManager* txn){
   Message::mcopy_to_txn(txn);
 }
 
+<<<<<<< HEAD
 
+=======
+uint64_t TMigrationMessage::get_size(){
+  uint64_t size = MigrationMessage::get_size();
+  //size += sizeof(uint64_t)*4;
+  size += sizeof(uint64_t)*14;
+  size += sizeof(uint64_t)*7;
+  //size += sizeof(bool)*2;  
+  size += sizeof(uint64_t);
+  //统计表数据大小
+  size += datasize;
+  return size;
+}
+
+void TMigrationMessage::copy_from_buf(char* buf){
+  MigrationMessage::mcopy_from_buf(buf);
+  uint64_t ptr = MigrationMessage::get_size();
+  //COPY_VAL(node_id_src,buf,ptr);
+  //COPY_VAL(node_id_des,buf,ptr);
+  //COPY_VAL(part_id,buf,ptr);
+  //COPY_VAL(minipart_id,buf,ptr);
+  for (int i=0; i<7; i++){
+    COPY_VAL(keyrange[i][0], buf, ptr);
+    COPY_VAL(keyrange[i][1], buf, ptr);
+  }
+  for (int i=0; i<7; i++){
+    COPY_VAL(row_size[i], buf, ptr);
+  }  
+  //COPY_VAL(isdata,buf,ptr);
+  //COPY_VAL(islast,buf,ptr);
+  COPY_VAL(datasize,buf,ptr);
+  /*
+  if (isdata){
+    for (size_t i=0;i<data.size();i++){
+      row_t tmp;
+      COPY_VAL(tmp,buf,ptr);
+      data.emplace_back(tmp);
+    }
+  }
+  */
+}
+
+void TMigrationMessage::copy_to_buf(char* buf){
+  MigrationMessage::mcopy_to_buf(buf);
+  uint64_t ptr = MigrationMessage::get_size();
+  //COPY_BUF(buf,node_id_src,ptr);
+  //COPY_BUF(buf,node_id_des,ptr);
+  //COPY_BUF(buf,part_id,ptr);
+  //COPY_BUF(buf,minipart_id,ptr);
+  for (int i=0; i<7; i++){
+    COPY_BUF(buf, keyrange[i][0], ptr);
+    COPY_BUF(buf, keyrange[i][1], ptr);
+  }
+  for (int i=0; i<7; i++){
+    COPY_BUF(buf, row_size[i], ptr);
+  }  
+  //COPY_BUF(buf, isdata, ptr);
+  //COPY_BUF(buf, islast, ptr);
+  COPY_BUF(buf, datasize, ptr);  
+  /*
+  if (isdata){
+    for (size_t i=0;i<this->data.size();i++){
+      COPY_BUF(buf,data[i],ptr);
+    }
+  } 
+  */ 
+}
+
+void TMigrationMessage::init(){
+
+}
+
+void TMigrationMessage::release(){
+  
+}
+
+void TMigrationMessage::copy_from_txn(TxnManager* txn){
+  Message::mcopy_from_txn(txn);
+  
+}
+
+void TMigrationMessage::copy_to_txn(TxnManager* txn){
+  Message::mcopy_to_txn(txn);
+}
+
+uint64_t SetRemusMessage::get_size(){
+  uint64_t size;
+  size = Message::mget_size();
+  size += 2 * sizeof(uint64_t);
+  return size;
+}
+
+void SetRemusMessage::copy_from_buf(char* buf){
+  Message::mcopy_from_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_VAL(part_id,buf,ptr);
+  COPY_VAL(status,buf,ptr);
+}
+
+void SetRemusMessage::copy_to_buf(char* buf){
+  Message::mcopy_to_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_BUF(buf,part_id,ptr);
+  COPY_BUF(buf,status,ptr);
+}
+
+void SetRemusMessage::copy_from_txn(TxnManager* txn){}
+
+void SetRemusMessage::copy_to_txn(TxnManager* txn){}
+
+void SetRemusMessage::init(){}
+
+void SetRemusMessage::release(){}
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
 
 uint64_t SetPartMapMessage::get_size(){
   uint64_t size;
   size = Message::mget_size();
   size += 3 * sizeof(uint64_t);
+<<<<<<< HEAD
   return size;  
 }
 
 void SetPartMapMessage::copy_from_buf(char * buf){
+=======
+  return size;
+}
+
+void SetPartMapMessage::copy_from_buf(char* buf){
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
   Message::mcopy_from_buf(buf);
   uint64_t ptr = Message::mget_size();
   COPY_VAL(part_id,buf,ptr);
   COPY_VAL(node_id,buf,ptr);
+<<<<<<< HEAD
   COPY_VAL(status,buf,ptr);  
 }
 
 void SetPartMapMessage::copy_to_buf(char * buf){
+=======
+  COPY_VAL(status,buf,ptr);
+}
+
+void SetPartMapMessage::copy_to_buf(char* buf){
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
   Message::mcopy_to_buf(buf);
   uint64_t ptr = Message::mget_size();
   COPY_BUF(buf,part_id,ptr);
   COPY_BUF(buf,node_id,ptr);
   COPY_BUF(buf,status,ptr);
+<<<<<<< HEAD
 }  
 
 void SetPartMapMessage::copy_from_txn(TxnManager * txn){}
 
 void SetPartMapMessage::copy_to_txn(TxnManager * txn){}
+=======
+}
+
+void SetPartMapMessage::copy_from_txn(TxnManager* txn){}
+
+void SetPartMapMessage::copy_to_txn(TxnManager* txn){}
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
 
 void SetPartMapMessage::init(){}
 
 void SetPartMapMessage::release(){}
 
+<<<<<<< HEAD
 
+=======
+uint64_t SetDetestMessage::get_size(){
+  uint64_t size;
+  size = Message::mget_size();
+  size += 2 * sizeof(uint64_t);
+  return size;
+}
+
+void SetDetestMessage::copy_from_buf(char* buf){
+  Message::mcopy_from_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_VAL(minipart_id,buf,ptr);
+  COPY_VAL(status,buf,ptr);
+}
+
+void SetDetestMessage::copy_to_buf(char* buf){
+  Message::mcopy_to_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_BUF(buf,minipart_id,ptr);
+  COPY_BUF(buf,status,ptr);
+}
+
+void SetDetestMessage::copy_from_txn(TxnManager* txn){}
+
+void SetDetestMessage::copy_to_txn(TxnManager* txn){}
+
+void SetDetestMessage::init(){}
+
+void SetDetestMessage::release(){}
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
 
 uint64_t SetMiniPartMapMessage::get_size(){
   uint64_t size;
   size = Message::mget_size();
+<<<<<<< HEAD
   size += 4 * sizeof(uint64_t);
   return size;  
 }
@@ -2198,11 +2606,22 @@ void SetMiniPartMapMessage::copy_from_buf(char * buf){
   Message::mcopy_from_buf(buf);
   uint64_t ptr = Message::mget_size();
   COPY_VAL(part_id,buf,ptr);
+=======
+  size += 2 * sizeof(uint64_t);
+  size += sizeof(int);
+  return size;
+}
+
+void SetMiniPartMapMessage::copy_from_buf(char* buf){
+  Message::mcopy_from_buf(buf);
+  uint64_t ptr = Message::mget_size();
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
   COPY_VAL(minipart_id,buf,ptr);
   COPY_VAL(node_id,buf,ptr);
   COPY_VAL(status,buf,ptr);
 }
 
+<<<<<<< HEAD
 void SetMiniPartMapMessage::copy_to_buf(char * buf){
   Message::mcopy_to_buf(buf);
   uint64_t ptr = Message::mget_size();
@@ -2219,3 +2638,113 @@ void SetMiniPartMapMessage::copy_to_txn(TxnManager * txn){}
 void SetMiniPartMapMessage::init(){}
 
 void SetMiniPartMapMessage::release(){}
+=======
+void SetMiniPartMapMessage::copy_to_buf(char* buf){
+  Message::mcopy_to_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_BUF(buf,minipart_id,ptr);
+  COPY_BUF(buf,node_id,ptr);
+  COPY_BUF(buf,status,ptr);
+}
+
+void SetMiniPartMapMessage::copy_from_txn(TxnManager* txn){}
+
+void SetMiniPartMapMessage::copy_to_txn(TxnManager* txn){}
+
+void SetMiniPartMapMessage::init(){}
+
+void SetMiniPartMapMessage::release(){}
+
+uint64_t SetSquallMessage::get_size(){
+  uint64_t size;
+  size = Message::mget_size();
+  size += 2 * sizeof(uint64_t);
+  return size;
+}
+
+void SetSquallMessage::copy_from_buf(char* buf){
+  Message::mcopy_from_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_VAL(squallpart_id,buf,ptr);
+  COPY_VAL(status,buf,ptr);
+}
+
+void SetSquallMessage::copy_to_buf(char* buf){
+  Message::mcopy_to_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_BUF(buf,squallpart_id,ptr);
+  COPY_BUF(buf,status,ptr);
+}
+
+void SetSquallMessage::copy_from_txn(TxnManager* txn){}
+
+void SetSquallMessage::copy_to_txn(TxnManager* txn){}
+
+void SetSquallMessage::init(){}
+
+void SetSquallMessage::release(){}
+
+uint64_t SetSquallPartMapMessage::get_size(){
+  uint64_t size;
+  size = Message::mget_size();
+  size += 2 * sizeof(uint64_t);
+  size += sizeof(int);
+  return size;
+}
+
+void SetSquallPartMapMessage::copy_from_buf(char* buf){
+  Message::mcopy_from_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_VAL(squallpart_id,buf,ptr);
+  COPY_VAL(node_id,buf,ptr);
+  COPY_VAL(status,buf,ptr);
+}
+
+void SetSquallPartMapMessage::copy_to_buf(char* buf){
+  Message::mcopy_to_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_BUF(buf,squallpart_id,ptr);
+  COPY_BUF(buf,node_id,ptr);
+  COPY_BUF(buf,status,ptr);
+}
+
+void SetSquallPartMapMessage::copy_from_txn(TxnManager* txn){}
+
+void SetSquallPartMapMessage::copy_to_txn(TxnManager* txn){}
+
+void SetSquallPartMapMessage::init(){}
+
+void SetSquallPartMapMessage::release(){}
+
+uint64_t SetRowMapMessage::get_size(){
+  uint64_t size;
+  size = Message::mget_size();
+  size += 2 * sizeof(uint64_t);
+  size += sizeof(int);
+  return size;
+}
+
+void SetRowMapMessage::copy_from_buf(char* buf){
+  Message::mcopy_from_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_VAL(node_id,buf,ptr);
+  COPY_VAL(order,buf,ptr);
+  COPY_VAL(status,buf,ptr);
+}
+
+void SetRowMapMessage::copy_to_buf(char* buf){
+  Message::mcopy_to_buf(buf);
+  uint64_t ptr = Message::mget_size();
+  COPY_BUF(buf,node_id,ptr);
+  COPY_BUF(buf,order,ptr);
+  COPY_BUF(buf,status,ptr);
+}
+
+void SetRowMapMessage::copy_from_txn(TxnManager* txn){}
+
+void SetRowMapMessage::copy_to_txn(TxnManager* txn){}
+
+void SetRowMapMessage::init(){}
+
+void SetRowMapMessage::release(){}
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d

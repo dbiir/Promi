@@ -120,13 +120,12 @@ uint64_t MigrateMessageQueue::dequeue(uint64_t thd_id, MigrationMessage *& msg){
         }
     #elif WORKLOAD == DA
     valid = m_queue[0]->pop(entry);
-    /*
-    #else
+    
+    //#else
     //uint64_t ctr_id = thd_id % g_this_send_thread_cnt;
     //uint64_t start_ctr = *ctr[ctr_id];
-    valid = m_queue[thd_id % g_migrate_thread_cnt]->pop(entry);
-    std::cout<<"the message rtype is "<<entry->msg->get_rtype()<<" by 111"<<endl;
-    */
+    //valid = m_queue[thd_id % g_migrate_thread_cnt]->pop(entry);
+    //std::cout<<"the message rtype is "<<entry->msg->get_rtype()<<" by 111"<<endl;
     #endif
     /*
     while(!valid && !simulation->is_done()) {

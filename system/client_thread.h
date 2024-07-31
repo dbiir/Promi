@@ -18,6 +18,7 @@
 #define _CLIENT_THREAD_H_
 
 #include "global.h"
+#include "helper.h"
 
 class Workload;
 
@@ -25,7 +26,13 @@ class ClientThread : public Thread {
 public:
 	RC 			run();
   void setup();
+  double caltime(vector<int> s);
+  double callatency(vector<int> s);
+  double caldis(vector<int> status);
+  void assign(std::vector<std::vector<int> > plans, double theta);
+  void assign1(std::vector<int64_t> vset, double theta);
 private:
+  myrand* mrand;
   uint64_t last_send_time;
   uint64_t send_interval;
 };

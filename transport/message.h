@@ -24,6 +24,7 @@
 #include "helper.h"
 #include "logger.h"
 #include "array.h"
+#include "row.h"
 
 class ycsb_request;
 class LogRecord;
@@ -39,11 +40,17 @@ public:
   static Message * create_message(uint64_t txn_id,uint64_t batch_id, RemReqType rtype);
   static Message * create_message(LogRecord * record, RemReqType rtype);
   static Message * create_message(RemReqType rtype);
+<<<<<<< HEAD
 
   //create update migration metadata msg
   static Message * create_partmap_message(RemReqType rtype, uint64_t part_id, uint64_t node_id, uint64_t status);
   static Message * create_minipartmap_message(RemReqType rtype, uint64_t part_id, uint64_t minipart_id, uint64_t node_id, uint64_t status);
 
+=======
+  static Message * create_message(RemReqType rtype, uint64_t node_id, int status);
+  static Message * create_message0(RemReqType rtype,uint64_t part_id, uint64_t status);
+  static Message * create_message1(RemReqType rtype,uint64_t part_id, uint64_t node_id, uint64_t status);
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
   static std::vector<Message*> * create_messages(char * buf);
   static void release_message(Message * msg);
   RemReqType rtype;
@@ -500,17 +507,50 @@ class DAQueryMessage : public QueryMessage {
 	uint64_t last_state;
 };
 
+class SyncMessage : public Message{
+  public:
+  uint64_t part_id;//迁移分区id
+  uint64_t key;
+  uint64_t get_size();
+  void copy_from_buf(char * buf);
+  void copy_to_buf(char * buf);
+  void copy_from_txn(TxnManager * txn);
+  void copy_to_txn(TxnManager * txn);
+  void init();
+  void release();
+};
+
+class AckSyncMessage : public Message{
+  public:
+  uint64_t part_id;//迁移分区id
+  uint64_t key;
+  uint64_t get_size();
+  void copy_from_buf(char * buf);
+  void copy_to_buf(char * buf);
+  void copy_from_txn(TxnManager * txn);
+  void copy_to_txn(TxnManager * txn);
+  void init();
+  void release();
+};
+
 class MigrationMessage : public Message {
 public:
   uint64_t node_id_src,node_id_des;//迁移源节点目标节点的id
   uint64_t part_id;//迁移分区id
   uint64_t minipart_id;
   uint64_t key_start,key_end;
+<<<<<<< HEAD
   uint64_t order;//记录第几次迁移minipart
   uint64_t data_size;//row data的数量
   bool isdata;//数据是否传入
   bool islast;//是否是分片的最后一个迁移消息
   vector<uint64_t> mig_order;//迁移minipart的顺序
+=======
+  uint64_t order;//记录detest_split的第几次迁移
+  uint64_t data_size;//row data的数量
+  bool isdata;//数据是否传入
+  bool islast;//是否是分片的最后一个迁移消息
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
   vector<row_t> data;
   vector<string> row_data;//row_t的真正信息保存在char[]中
 
@@ -523,6 +563,40 @@ public:
   void release();
 };
 
+<<<<<<< HEAD
+=======
+class TMigrationMessage : public MigrationMessage{
+public:
+  //uint64_t node_id_src,node_id_des;//迁移源节点目标节点的id
+  //uint64_t part_id;//迁移分区id
+  //uint64_t minipart_id;
+  uint64_t keyrange[7][2]; //7张表，0存key_start，1存key_end
+  uint64_t row_size[7];//7张表，存每张表row data的数量
+  //bool isdata;//数据是否传入
+  //bool islast;//是否是分片的最后一个迁移消息
+  uint64_t datasize; //表数据的大小
+  //vector<row_t> data; //7张表的row
+  uint64_t get_size();
+  void copy_from_buf(char * buf);
+  void copy_to_buf(char * buf);
+  void copy_from_txn(TxnManager * txn);
+  void copy_to_txn(TxnManager * txn);
+  void init();
+  void release();  
+};
+
+class SetRemusMessage : public Message{
+public:
+  uint64_t part_id,status;
+  uint64_t get_size();
+  void copy_from_buf(char * buf);
+  void copy_to_buf(char * buf);
+  void copy_from_txn(TxnManager * txn);
+  void copy_to_txn(TxnManager * txn);
+  void init();
+  void release();
+};
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
 
 class SetPartMapMessage : public Message{
 public:
@@ -536,10 +610,29 @@ public:
   void release();
 };
 
+<<<<<<< HEAD
 
 class SetMiniPartMapMessage : public Message{
 public:
   uint64_t part_id, minipart_id, node_id, status;
+=======
+class SetDetestMessage : public Message{
+public:
+  uint64_t minipart_id, status;
+  uint64_t get_size();
+  void copy_from_buf(char * buf);
+  void copy_to_buf(char * buf);
+  void copy_from_txn(TxnManager * txn);
+  void copy_to_txn(TxnManager * txn);
+  void init();
+  void release();
+};
+
+class SetMiniPartMapMessage : public Message{
+public:
+  uint64_t minipart_id, node_id;
+  int status;
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
   uint64_t get_size();
   void copy_from_buf(char * buf);
   void copy_to_buf(char * buf);
@@ -574,5 +667,21 @@ public:
   void release();
 };
 
+<<<<<<< HEAD
+=======
+class SetRowMapMessage : public Message{
+public:
+  uint64_t node_id, order; //order代表第几次按照label迁移
+  int status;
+  uint64_t get_size();
+  void copy_from_buf(char * buf);
+  void copy_to_buf(char * buf);
+  void copy_from_txn(TxnManager * txn);
+  void copy_to_txn(TxnManager * txn);
+  void init();
+  void release();  
+};
+
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
 
 #endif

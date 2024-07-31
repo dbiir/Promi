@@ -180,7 +180,7 @@ void parser(int argc, char * argv[]) {
     }
 	}
   #if MIGRATION
-    g_total_thread_cnt = g_thread_cnt + g_rem_thread_cnt + g_send_thread_cnt + g_abort_thread_cnt + g_migrate_thread_cnt + 1;
+    g_total_thread_cnt = g_thread_cnt + g_rem_thread_cnt + g_send_thread_cnt + g_abort_thread_cnt + g_migrate_thread_cnt + g_stat_thread_cnt + 1;
   #else
     g_total_thread_cnt = g_thread_cnt + g_rem_thread_cnt + g_send_thread_cnt + g_abort_thread_cnt + 1;
   #endif

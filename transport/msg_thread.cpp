@@ -80,6 +80,7 @@ void MessageThread::send_batch(uint64_t dest_node_id) {
     sbuf->reset(dest_node_id);
   INC_STATS(_thd_id,mtx[12],get_sys_clock() - starttime);
 }
+
 char type2char1(DATxnType txn_type)
 {
   switch (txn_type)
@@ -420,7 +421,7 @@ void MessageThread::run() {
     uint64_t starttime = get_sys_clock();
     sbuf = buffer[dest_node_id];
 
-    if(!sbuf->fits(msg->get_size())) {
+    if(!sbuf->fits(msg->get_size())) {  //if larger than buffer size, reset ptr to 0
       assert(sbuf->cnt > 0);
       sbuf->reset(dest_node_id);
     }
@@ -513,9 +514,13 @@ void MessageThread::run() {
 
   sbuf = buffer[dest_node_id];
 
+<<<<<<< HEAD
   //debug
   //if (msg->rtype == RECV_MIGRATION) std::cout<<"RECV_MIGRATION MSG SIZE IS "<<msg->get_size()<<endl;
 
+=======
+  
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
   if(!sbuf->fits(msg->get_size())) {
     //assert(sbuf->cnt > 0); //报错
     //if (msg->rtype == RECV_MIGRATION) std::cout<<"RECV_MIGRATION MSG IS SENDING"<<endl;
@@ -543,7 +548,11 @@ void MessageThread::run() {
         dest_node_id);
   sbuf->cnt += 1;
   sbuf->ptr += msg->get_size();
+<<<<<<< HEAD
   //f (msg->rtype == RECV_MIGRATION) std::cout<<"RECV_MIGRATION MSG IS SENDING by 542"<<endl;
+=======
+  //if (msg->rtype == RECV_MIGRATION) std::cout<<"RECV_MIGRATION MSG IS SENDING by 542"<<endl;
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
   /*
   // Free message here, no longer needed unless CALVIN sequencer
   if(CC_ALG != CALVIN) {

@@ -153,7 +153,12 @@ void WorkerThread::process(Message * msg) {
   RC rc __attribute__ ((unused));
 
   DEBUG("%ld Processing %ld %d\n",get_thd_id(),msg->get_txn_id(),msg->get_rtype());
+<<<<<<< HEAD
   assert(msg->get_rtype() == CL_QRY || msg->get_rtype() == CL_QRY_O || msg->get_rtype() == SEND_MIGRATION || msg->get_rtype() == RECV_MIGRATION || msg->get_rtype() == FINISH_MIGRATION || msg->get_rtype() == SET_PARTMAP ||  msg->get_rtype() == SET_MINIPARTMAP || msg->get_txn_id() != UINT64_MAX);
+=======
+  assert(msg->get_rtype() == CL_QRY || msg->get_rtype() == CL_QRY_O || msg->get_rtype() == SEND_MIGRATION || msg->get_rtype() == RECV_MIGRATION || msg->get_rtype() == FINISH_MIGRATION || msg->get_rtype() == SET_PARTMAP || msg->get_rtype() == SET_REMUS || msg->get_rtype() == SET_DETEST || msg->get_rtype() == SET_MINIPARTMAP || msg->get_rtype() == SET_ROWMAP || msg->get_rtype() == SET_SQUALL || msg->get_rtype() == SET_SQUALLPARTMAP || msg->get_rtype() == SYNC || msg->get_rtype() == ACK_SYNC || 
+  msg->get_txn_id() != UINT64_MAX);
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
   uint64_t starttime = get_sys_clock();
 		switch(msg->get_rtype()) {
 			case RPASS:
@@ -220,6 +225,35 @@ void WorkerThread::process(Message * msg) {
 			case LOG_MSG_RSP:
         rc = process_log_msg_rsp(msg);
 				break;
+      case SYNC:
+        //std::cout<<"SYNC1 ";
+        rc = process_sync_migration(msg);
+        break;
+      case ACK_SYNC:
+        //std::cout<<"ACK_SYNC ";
+        rc = process_ack_sync_migration(msg);
+        break;
+      case SET_PARTMAP:
+        rc = process_set_partmap(msg);
+        break;
+      case SET_MINIPARTMAP:
+        rc = process_set_minipartmap(msg);
+        break;
+      case SET_REMUS:
+        rc = process_set_remus(msg);
+        break;
+      case SET_DETEST:
+        rc = process_set_detest(msg);
+        break;  
+      case SET_SQUALL:
+        rc = process_set_squall(msg);
+        break;        
+      case SET_SQUALLPARTMAP:
+        rc = process_set_squallpartmap(msg);
+        break;  
+      case SET_ROWMAP:
+        rc = process_set_rowmap(msg);
+        break;
 			default:
         printf("Msg: %d\n",msg->get_rtype());
         fflush(stdout);
@@ -300,10 +334,16 @@ void WorkerThread::commit() {
 
   // Send result back to client
 #if !SERVER_GENERATE_QUERIES
+<<<<<<< HEAD
   if (txn_man->client_id == 0){
     txn_man->client_id = g_node_cnt;
     INC_STATS(get_thd_id(), num_client_id, 1);
     //std::cout<<"client_id ";
+=======
+  if (txn_man->client_id == 0) {
+    txn_man->client_id = 2; //fix下面的client_id==0的问题
+    std::cout<<"client_id ";
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
   }
   msg_queue.enqueue(get_thd_id(),Message::create_message(txn_man,CL_RSP),txn_man->client_id);
 #endif
@@ -353,7 +393,15 @@ TxnManager * WorkerThread::get_transaction_manager(Message * msg) {
   TxnManager* local_txn_man =
       txn_table.get_transaction_manager(get_thd_id(), msg->get_txn_id(), msg->get_batch_id());
 #else
-  TxnManager * local_txn_man = txn_table.get_transaction_manager(get_thd_id(),msg->get_txn_id(),0);
+  TxnManager * local_txn_man = NULL;
+  local_txn_man = txn_table.get_transaction_manager(get_thd_id(),msg->get_txn_id(),0);
+  /*
+  if (get_sys_clock() > g_mig_endtime && g_mig_endtime != 0) {
+    std::cout<<"thd_id "<<get_thd_id();
+    if (local_txn_man == NULL) std::cout<<" NULL ";
+    std::cout<<"362txn_id "<<local_txn_man->get_txn_id()<<endl;
+  }
+  */
 #endif
   return local_txn_man;
 }
@@ -415,6 +463,7 @@ RC WorkerThread::run() {
   #endif
 
     msg = work_queue.dequeue(get_thd_id());
+    
     if(!msg) {
       if (idle_starttime == 0) idle_starttime = get_sys_clock();
       //todo: add sleep 0.01ms
@@ -426,10 +475,18 @@ RC WorkerThread::run() {
       idle_starttime = 0;
     }
     //uint64_t starttime = get_sys_clock();
+<<<<<<< HEAD
 
     if((msg->rtype != CL_QRY && msg->rtype != CL_QRY_O && msg->rtype != SET_PARTMAP && msg->rtype != SET_MINIPARTMAP) || CC_ALG == CALVIN) {
+=======
+    if (msg->rtype == SEND_MIGRATION) std::cout<<"get SEND1 ";
+    //if (msg->rtype == SYNC) std::cout<<"get SYNC2 ";
+    if((msg->rtype != CL_QRY && msg->rtype != CL_QRY_O && msg->rtype!= SYNC && msg->rtype != SET_REMUS && msg->rtype != SET_DETEST && msg->rtype != SET_PARTMAP && msg->rtype != SET_MINIPARTMAP && msg->rtype != SET_SQUALL && msg->rtype != SET_SQUALLPARTMAP) || CC_ALG == CALVIN){
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
       txn_man = get_transaction_manager(msg);
-
+      /*
+      if (get_sys_clock() > g_mig_endtime && g_mig_endtime != 0) std::cout<<"txn_man->txn_id="<<msg->txn_id<<endl;
+      */
       if (CC_ALG != CALVIN && IS_LOCAL(txn_man->get_txn_id())) {
         if (msg->rtype != RTXN_CONT &&
             ((msg->rtype != RACK_PREP) || (txn_man->get_rsp_cnt() == 1))) {
@@ -451,6 +508,7 @@ RC WorkerThread::run() {
       } else {
           txn_man->txn_stats.clear_short();
       }
+      
       if (CC_ALG != CALVIN) {
         txn_man->txn_stats.lat_network_time_start = msg->lat_network_time;
         txn_man->txn_stats.lat_other_time_start = msg->lat_other_time;
@@ -626,6 +684,8 @@ RC WorkerThread::process_rack_prep(Message * msg) {
     txn_man->abort();
   } else {
     txn_man->commit();
+    uint64_t warmuptime1 = get_sys_clock() - g_starttime;
+    INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1); //throughput只在本来的节点统计
   }
 
   return rc;
@@ -637,7 +697,8 @@ RC WorkerThread::process_rack_rfin(Message * msg) {
   RC rc = RCOK;
 
   int responses_left = txn_man->received_response(((AckMessage*)msg)->rc);
-  assert(responses_left >=0);
+  if (responses_left < 0) std::cout<<"responses_left is "<<responses_left<<endl;
+  //assert(responses_left >=0);
   if (responses_left > 0) return WAIT;
 
   // Done waiting
@@ -646,6 +707,12 @@ RC WorkerThread::process_rack_rfin(Message * msg) {
   if(txn_man->get_rc() == RCOK) {
     INC_STATS(get_thd_id(), trans_commit_network, get_sys_clock() - txn_man->txn_stats.trans_commit_network_start_time);
     //txn_man->commit();
+    //统计每个节点的提交数量
+    uint64_t warmuptime = get_sys_clock() - simulation->run_starttime;
+    assert(warmuptime > 0);
+    //uint64_t warmuptime1 = get_sys_clock() - g_starttime;
+    //INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1);
+    //std::cout<<"Throughout "<<warmuptime1/BILLION<<' '<<"is "<<stats._stats[get_thd_id()]->throughput[warmuptime1/BILLION]<<' ';
     commit();
 
     //update throughput data (distributed transaction)
@@ -685,8 +752,11 @@ RC WorkerThread::process_rqry_rsp(Message * msg) {
 
 RC WorkerThread::process_rqry(Message * msg) {
   DEBUG("RQRY %ld\n",msg->get_txn_id());
+  //std::cout<<"RQRY "<<msg->get_txn_id()<<' ';
+  //闲着没事干写这个，注释掉
 #if ONE_NODE_RECIEVE == 1 && defined(NO_REMOTE) && LESS_DIS_NUM == 10
 #else
+<<<<<<< HEAD
 
   // running this code, because rqry msg would be sent many times when minipart's node and status change.
   if (IS_LOCAL(msg->get_txn_id())) { //msg is constructed locally
@@ -697,16 +767,30 @@ RC WorkerThread::process_rqry(Message * msg) {
   }  
 
 
+=======
+  if (IS_LOCAL(msg->get_txn_id())) { //RQRY消息发之后GET_NODE变了
+    std::cout<<"abort "; 
+    this->txn_man->abort();
+    return Abort;
+  }
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
   M_ASSERT_V(!IS_LOCAL(msg->get_txn_id()), "RQRY local: %ld %ld/%d\n", msg->get_txn_id(),
                msg->get_txn_id() % g_node_cnt, g_node_id);
   assert(!IS_LOCAL(msg->get_txn_id()));
   
   
 #endif
+
   RC rc = RCOK;
 
+/*
+  if (((YCSBQuery*)(txn_man->query))->requests.get_count() != 0) {
+    std::cout<<"requests not empty ";
+    return Abort;
+  }
+*/
   msg->copy_to_txn(txn_man);
-
+  
 #if CC_ALG == MVCC
   txn_table.update_min_ts(get_thd_id(),txn_man->get_txn_id(),0,txn_man->get_timestamp());
 #endif
@@ -734,6 +818,7 @@ RC WorkerThread::process_rqry(Message * msg) {
   // Send response
   if(rc != WAIT) {
     msg_queue.enqueue(get_thd_id(),Message::create_message(txn_man,RQRY_RSP),txn_man->return_id);
+    //INC_STATS(get_thd_id(), tps[get_thd_id()], 1); //统计每个线程的提交数量
   }
   return rc;
 }
@@ -819,6 +904,7 @@ RC WorkerThread::process_rtxn(Message * msg) {
     uint64_t ready_starttime = get_sys_clock();
     bool ready = txn_man->unset_ready();
     INC_STATS(get_thd_id(),worker_activate_txn_time,get_sys_clock() - ready_starttime);
+    if (!ready) std::cout<<"Try again! Restart the process!"<<endl;
     assert(ready);
     if (CC_ALG == WAIT_DIE) {
       #if WORKLOAD == DA //mvcc use timestamp
@@ -854,7 +940,7 @@ RC WorkerThread::process_rtxn(Message * msg) {
         simulation->seconds_from_start(get_sys_clock()), txn_man->txn_stats.starttime);
   }
     // Get new timestamps
-    if(is_cc_new_timestamp()) {
+  if(is_cc_new_timestamp()) {
     #if WORKLOAD==DA //mvcc use timestamp
       if(da_stamp_tab.count(txn_man->get_txn_id())==0)
       {
@@ -1056,6 +1142,24 @@ bool WorkerThread::is_mine(Message* msg) {  //TODO:have some problems!
   return false;
 }
 
+RC WorkerThread::process_sync_migration(Message* msg){
+  RC rc = RCOK;
+  //txn_man = txn_table.get_transaction_manager(get_thd_id(),msg->txn_id,0);
+  msg_queue.enqueue(get_thd_id(),Message::create_message(msg->get_txn_id(), ACK_SYNC),MIGRATION_SRC_NODE);//默认给源节点
+  //std::cout<<"SYNC ";
+  return rc;
+}
+
+RC WorkerThread::process_ack_sync_migration(Message* msg){
+  RC rc = RCOK;
+  rc = txn_man->commit();
+  uint64_t warmuptime1 = get_sys_clock() - g_starttime;
+  INC_STATS(get_thd_id(), throughput[warmuptime1/BILLION], 1);
+  commit(); 
+  //std::cout<<"ACK sync";
+  return rc;
+}
+
 RC WorkerThread::process_send_migration(Message* msg){
   DEBUG("SEND_MIGRATION %ld\n",msg->get_txn_id());
   //std::cout<<"message type is:"<<msg->get_rtype()<<" by process_send_migration"<<endl;
@@ -1096,12 +1200,17 @@ RC WorkerThread::process_set_partmap(Message* msg){
   update_part_map(msg1->part_id, msg1->node_id);
   update_part_map_status(msg1->part_id, msg1->status);
   delete(msg1);
+<<<<<<< HEAD
   return RCOK;  
+=======
+  return RCOK;
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
 }
 
 RC WorkerThread::process_set_minipartmap(Message* msg){
   SetMiniPartMapMessage * msg1 = new(SetMiniPartMapMessage);
   *msg1 = *(SetMiniPartMapMessage *)msg;
+<<<<<<< HEAD
   update_minipart_map(msg1->part_id, msg1->minipart_id, msg1->node_id);
   update_minipart_map_status(msg1->part_id, msg1->minipart_id, msg1->status);
   delete(msg1);
@@ -1109,6 +1218,55 @@ RC WorkerThread::process_set_minipartmap(Message* msg){
 }
 
 
+=======
+  update_minipart_map(msg1->minipart_id, msg1->node_id);
+  update_minipart_map_status(msg1->minipart_id, msg1->status);
+  delete(msg1);
+  return RCOK;
+}
+
+RC WorkerThread::process_set_remus(Message* msg){
+  SetRemusMessage * msg1 = new(SetRemusMessage);
+  *msg1 = *(SetRemusMessage *)msg;
+  update_remus_status(msg1->status);
+  delete(msg1);
+  return RCOK;
+}
+
+RC WorkerThread::process_set_detest(Message* msg){
+  SetDetestMessage * msg1 = new(SetDetestMessage);
+  *msg1 = *(SetDetestMessage *)msg;
+  update_detest_status(msg1->status);
+  delete(msg1);
+  return RCOK;
+}
+
+RC WorkerThread::process_set_squall(Message* msg){
+  SetSquallMessage * msg1 = new(SetSquallMessage);
+  *msg1 = *(SetSquallMessage *)msg;
+  update_squall_status(msg1->status);
+  delete(msg1);
+  return RCOK;
+}
+
+RC WorkerThread::process_set_squallpartmap(Message* msg){
+  SetSquallPartMapMessage * msg1 = new(SetSquallPartMapMessage);
+  *msg1 = *(SetSquallPartMapMessage *)msg;
+  update_squallpart_map(msg1->squallpart_id, msg1->node_id);
+  update_squallpart_map_status(msg1->squallpart_id, msg1->status);
+  delete(msg1);
+  return RCOK;
+}
+
+RC WorkerThread::process_set_rowmap(Message* msg){
+  SetRowMapMessage * msg1 = new(SetRowMapMessage);
+  *msg1 = *(SetRowMapMessage *)msg;\
+  update_row_map_order(msg1->order,msg1->node_id);
+  update_row_map_status_order(msg1->order,msg1->status);
+  delete(msg1);
+  return RCOK;
+}
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
 
 /*
 RC WorkerThread::process_send_migration(MigrationMessage* msg){

@@ -38,6 +38,7 @@ public:
   BaseQuery * get_next_query_partition(uint64_t server_id, uint64_t partition_id,uint64_t thread_id);
   void initQueriesParallel(uint64_t thd_id);
   static void * initQueriesHelper(void * context);
+  BaseQuery * get_next_query_partition(uint64_t server_id, uint64_t partition_id,uint64_t thread_id);
 
 private:
 	Workload * _wl;

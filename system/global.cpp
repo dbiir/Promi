@@ -146,6 +146,12 @@ int32_t g_load_per_server = LOAD_PER_SERVER;
 
 bool g_hw_migrate = HW_MIGRATE;
 
+int node_inflight_max[NODE_CNT]; 
+
+bool g_migrate_flag = MIGRATION;
+uint64_t g_mig_starttime;
+uint64_t g_mig_endtime;
+
 volatile UInt64 g_row_id = 0;
 bool g_part_alloc = PART_ALLOC;
 bool g_mem_pad = MEM_PAD;
@@ -164,6 +170,7 @@ bool g_prt_lat_distr = PRT_LAT_DISTR;
 UInt32 g_node_id = 0;
 UInt32 g_node_cnt = NODE_CNT;
 UInt32 g_part_cnt = PART_CNT;
+UInt32 g_part_split_cnt = PART_SPLIT_CNT;
 UInt32 g_virtual_part_cnt = VIRTUAL_PART_CNT;
 UInt32 g_core_cnt = CORE_CNT;
 
@@ -185,14 +192,15 @@ UInt32 g_migrate_thread_cnt = MIG_THREAD_CNT;
 #else
 UInt32 g_migrate_thread_cnt = 0;
 #endif
+UInt32 g_stat_thread_cnt = 1;
 #if CC_ALG == CALVIN
 // sequencer + scheduler thread
 UInt32 g_total_thread_cnt = g_thread_cnt + g_rem_thread_cnt + g_send_thread_cnt + g_abort_thread_cnt + g_logger_thread_cnt + 3;
 #else
     #if MIGRATION
-        UInt32 g_total_thread_cnt = g_thread_cnt + g_rem_thread_cnt + g_send_thread_cnt + g_abort_thread_cnt + g_logger_thread_cnt + g_migrate_thread_cnt + 1;
+        UInt32 g_total_thread_cnt = g_thread_cnt + g_rem_thread_cnt + g_send_thread_cnt + g_abort_thread_cnt + g_logger_thread_cnt + g_migrate_thread_cnt + g_stat_thread_cnt + 1;
     #else
-        UInt32 g_total_thread_cnt = g_thread_cnt + g_rem_thread_cnt + g_send_thread_cnt + g_abort_thread_cnt + g_logger_thread_cnt + 1;
+        UInt32 g_total_thread_cnt = g_thread_cnt + g_rem_thread_cnt + g_send_thread_cnt + g_abort_thread_cnt + g_logger_thread_cnt + g_stat_thread_cnt + 1;
     #endif
 #endif
 
@@ -207,11 +215,21 @@ UInt32 g_client_node_cnt = CLIENT_NODE_CNT;
 UInt32 g_client_thread_cnt = CLIENT_THREAD_CNT;
 UInt32 g_client_rem_thread_cnt = CLIENT_REM_THREAD_CNT;
 UInt32 g_client_send_thread_cnt = CLIENT_SEND_THREAD_CNT;
-UInt32 g_servers_per_client = 0;
+UInt32 g_servers_per_client = g_node_cnt;
 UInt32 g_clients_per_server = 0;
 UInt32 g_server_start_node = 0;
 vector<int> query_to_part(g_part_cnt);
+<<<<<<< HEAD
 vector<int> query_to_minipart(g_part_split_cnt);
+=======
+vector<int> query_to_row(g_synth_table_size);
+vector<int> query_to_minipart(PART_SPLIT_CNT);
+vector< pair<uint64_t, uint64_t> > edge_index;
+double co_access[PART_SPLIT_CNT][PART_SPLIT_CNT];
+vector<double> wtime = {}; //by cost model
+vector<double> wlatency = {};
+
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
 
 UInt32 g_this_thread_cnt = ISCLIENT ? g_client_thread_cnt : g_thread_cnt;
 UInt32 g_this_rem_thread_cnt = ISCLIENT ? g_client_rem_thread_cnt : g_rem_thread_cnt;
@@ -226,6 +244,7 @@ UInt64 g_seq_batch_time_limit = SEQ_BATCH_TIMER;
 UInt64 g_prog_timer = PROG_TIMER;
 UInt64 g_warmup_timer = WARMUP_TIMER;
 UInt64 g_msg_time_limit = MSG_TIME_LIMIT;
+UInt64 g_starttime=0;
 
 UInt64 g_log_buf_max = LOG_BUF_MAX;
 UInt64 g_log_flush_timeout = LOG_BUF_TIMEOUT;
@@ -269,9 +288,13 @@ char * txn_file = NULL;
 #if TPCC_SMALL
 UInt32 g_max_items = MAX_ITEMS_SMALL;
 UInt32 g_cust_per_dist = CUST_PER_DIST_SMALL;
+//uint64_t g_tuplesize[9] = {105, 121, 78, 56, 24, 64, 40, 98, 32}; 
+uint64_t g_tuplesize[7] = {105, 121, 1024 * 5, 56, 64, 98, 32}; //只统计迁移表
+//warehouse, distinct, customer, history, order, item, stock
 #else
 UInt32 g_max_items = MAX_ITEMS_NORM;
 UInt32 g_cust_per_dist = CUST_PER_DIST_NORM;
+uint64_t g_tuplesize[9] = {105, 121, 703, 80, 24, 64, 80, 98, 338};
 #endif
 UInt32 g_max_items_per_txn = MAX_ITEMS_PER_TXN;
 UInt32 g_dist_per_wh = DIST_PER_WH;
@@ -281,6 +304,7 @@ UInt32 g_repl_cnt = REPLICA_CNT;
 
 map<string, string> g_params;
 
+<<<<<<< HEAD
 
 /*************    Migration    ************/
 vector <uint64_t> migration_part;
@@ -321,6 +345,34 @@ uint64_t get_key_node_id(uint64_t key){
 //part_table:记录每个part所在的node
 std::map <uint64_t, std::vector<uint64_t> > part_map;
 std::shared_mutex mtx_part_map;
+=======
+double percents[TPS_LENGTH];
+
+uint64_t get_node_id_mini(uint64_t key){
+  #if MIGRATION_ALG == DETEST
+    if (key_to_part(key) != MIGRATION_PART) return GET_NODE_ID(key_to_part(key));
+    else {
+      return get_minipart_node_id(get_minipart_id(key));
+    }
+  #elif MIGRATION_ALG == SQUALL
+    if (key_to_part(key) != MIGRATION_PART) return GET_NODE_ID(key_to_part(key));
+    else {
+      return get_squallpart_node_id(get_squallpart_id(key));
+    }
+  #elif MIGRATION_ALG == DETEST_SPLIT
+    if (key_to_part(key) != 0) return GET_NODE_ID(key_to_part(key));
+    else {
+      return row_map[key][0];
+    }
+
+  #else
+    return GET_NODE_ID(key_to_part(key));
+  #endif
+}
+
+
+std::map <uint64_t, std::vector<uint64_t>> part_map;
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
 uint64_t remus_finish_time;
 
 
@@ -328,23 +380,35 @@ void part_map_init(){
   mtx_part_map.lock();
   for (uint64_t i=0;i<g_part_cnt;i++){
     #if (PART_TO_NODE == HASH_MODE)
+<<<<<<< HEAD
       std::vector<uint64_t> vtmp;
+=======
+      vector<uint64_t> vtmp;
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
       vtmp.emplace_back(i % g_node_cnt);
       vtmp.emplace_back(0);
       part_map[i] = vtmp;
     #elif (PART_TO_NODE == CONST_MODE)
+<<<<<<< HEAD
       part_map[i][0].store(i % g_node_cnt);
       part_map[i][1].store(0);
       /*vector<uint64_t> vtmp;
       vtmp.emplace_back(i / (g_part_cnt / g_node_cnt));
       vtmp.emplace_back(0);
       part_map[i].store(vtmp);*/
+=======
+      vector<uint64_t> vtmp;
+      vtmp.emplace_back(i / (g_part_cnt / g_node_cnt));
+      vtmp.emplace_back(0);
+      part_map[i] = vtmp;
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
     #endif
   }
   mtx_part_map.unlock();
 }
 
 uint64_t get_part_node_id(uint64_t part_id){
+<<<<<<< HEAD
   mtx_part_map.lock_shared();
   uint64_t res = part_map[part_id][0];
   mtx_part_map.unlock_shared();
@@ -356,20 +420,32 @@ uint64_t get_part_status(uint64_t part_id){
   uint64_t res = part_map[part_id][1];
   mtx_part_map.unlock_shared();
   return res;
+=======
+  return part_map[part_id][0];
+}
+
+uint64_t get_part_status(uint64_t part_id){
+  return part_map[part_id][1];
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
 }
 
 void update_part_map(uint64_t part_id, uint64_t node_id){
   //std::lock_guard<std::mutex> lock(mtx_part_map);
+<<<<<<< HEAD
   //vector<uint64_t> vtmp;
   //vtmp = part_map[part_id].load();
   //vtmp[0] = node_id;
   mtx_part_map.lock();
   part_map[part_id][0] = node_id;
   mtx_part_map.unlock();
+=======
+  part_map[part_id][0] = node_id;
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
 }
 
 void update_part_map_status(uint64_t part_id, uint64_t status){
   //std::lock_guard<std::mutex> lock(mtx_part_map);
+<<<<<<< HEAD
   //vector<uint64_t> vtmp;
   //vtmp = part_map[part_id].load();
   //vtmp[1] = status;
@@ -391,6 +467,20 @@ void minipart_map_init(){
       maptmp[j] = vtmp;
     }
     minipart_map.emplace_back(maptmp);
+=======
+  part_map[part_id][1] = status;
+}
+
+map <uint64_t, vector<uint64_t> > minipart_map;
+std::mutex mtx_minipart_map;
+
+void minipart_map_init(){
+  for (uint64_t i=0; i<g_part_split_cnt; i++){
+    vector<uint64_t> vtmp;
+    vtmp.emplace_back(0);
+    vtmp.emplace_back(0);
+    minipart_map[i] = vtmp;
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
   }
 }
 
@@ -402,6 +492,7 @@ uint64_t get_minipart_id(uint64_t key){
 #endif
 }
 
+<<<<<<< HEAD
 uint64_t get_minipart_node_id(uint64_t part_id, uint64_t minipart_id){  
   mtx_minipart_map[part_id].lock_shared();
   uint64_t res = minipart_map[part_id][minipart_id][0];
@@ -427,3 +518,155 @@ void update_minipart_map_status(uint64_t part_id, uint64_t minipart_id, uint64_t
   minipart_map[part_id][minipart_id][1] = status;
   mtx_minipart_map[part_id].unlock();
 }
+=======
+uint64_t get_minipart_node_id(uint64_t minipart_id){
+  return minipart_map[minipart_id][0];
+}
+
+uint64_t get_minipart_status(uint64_t minipart_id){
+  return minipart_map[minipart_id][1];
+}
+
+void update_minipart_map(uint64_t minipart_id, uint64_t node_id){
+  minipart_map[minipart_id][0] = node_id;
+}
+
+void update_minipart_map_status(uint64_t minipart_id, uint64_t status){
+  minipart_map[minipart_id][1] = status;
+}
+
+map <uint64_t, vector<uint64_t> > squallpart_map;
+
+void squallpart_map_init(){
+  for (uint64_t i=0; i < Squall_Part_Cnt; i++){
+    vector<uint64_t> vtmp;
+    vtmp.emplace_back(0);
+    vtmp.emplace_back(0);
+    squallpart_map[i] = vtmp;
+  }
+}
+
+uint64_t get_squallpart_id(uint64_t key){
+#if WORKLOAD == YCSB
+  return key / g_part_cnt / (g_synth_table_size / g_part_cnt / Squall_Part_Cnt);
+#elif WORKLOAD == TPCC
+  return (key -1 - ((MIGRATION_PART+1) * g_dist_per_wh + (MIGRATION_PART+1)) * g_cust_per_dist) / (g_dist_per_wh * g_cust_per_dist / Squall_Part_Cnt);
+  //return (key) / (g_dist_per_wh * g_cust_per_dist / Squall_Part_Cnt);
+#endif
+}
+
+uint64_t get_squallpart_node_id(uint64_t squallpart_id){
+  return squallpart_map[squallpart_id][0];
+}
+
+uint64_t get_squallpart_status(uint64_t squallpart_id){
+  return squallpart_map[squallpart_id][1];
+}
+
+void update_squallpart_map(uint64_t squallpart_id, uint64_t node_id){
+  squallpart_map[squallpart_id][0] = node_id;
+}
+
+void update_squallpart_map_status(uint64_t squallpart_id, uint64_t status){
+  squallpart_map[squallpart_id][1] = status;
+}
+
+map <uint64_t, vector<uint64_t> > row_map;
+
+void row_map_init(){
+  uint64_t key = 0;
+  for (uint64_t i = 0; i < g_synth_table_size / g_part_cnt; i++){
+    vector<uint64_t> vtmp;
+    vtmp.emplace_back(0);
+    vtmp.emplace_back(0);
+    row_map[key] = vtmp;
+    key += g_part_cnt;
+  }
+}
+uint64_t get_row_node_id(uint64_t key){
+  return row_map[key][0];
+}
+
+uint64_t get_row_status(uint64_t key){
+  return row_map[key][1];
+}
+
+void update_row_map(uint64_t key, uint64_t node_id){
+  row_map[key][0] = node_id;
+}
+
+void update_row_map_status(uint64_t key, uint64_t status){
+  row_map[key][1] = status;
+}
+
+void update_row_map_order(uint64_t order, uint64_t node_id){
+  for (uint64_t i=0;i<order_map[Order[order]].size();i++){
+    update_row_map(order_map[Order[order]][i], node_id);
+  }
+}
+
+void update_row_map_status_order(uint64_t order, uint64_t status){
+  for (uint64_t i=0;i<order_map[Order[order]].size();i++){
+    update_row_map_status(order_map[Order[order]][i], status);
+  }
+}
+
+map<uint64_t, vector<uint64_t> > order_map;
+
+void order_map_init(){
+  int a;
+  for (int i=0; i<SPLIT_NODE_NUM;i++)
+  {
+    a = cluster[i];
+    for (int j=i*ROW_PER_NODE; j<(i+1)*ROW_PER_NODE; j++){
+      order_map[a].emplace_back(j*g_part_cnt);
+    } 
+  }
+
+  for (uint64_t j = SPLIT_NODE_NUM * ROW_PER_NODE; j < (g_synth_table_size / g_part_cnt); j++){
+    order_map[a].emplace_back(j*g_part_cnt);  
+  }
+}
+
+//int Order[SPLIT_NODE_NUM]={2,3,1,0};
+int Order[PART_SPLIT_CNT]={0,1,2,3};
+//int Order[SPLIT_NODE_NUM]={3,0,2,1};
+
+//int cluster[300]={2,3,0,0,3,1,3,1,0,2,2,1,3,2,0,3,3,3,1,3,3,1,0,0,0,1,2,3,3,0,1,2,0,2,0,0,2,0,2,1,2,2,1,3,1,3,0,2,2,3,3,0,3,1,3,2,0,2,2,2,0,0,2,1,2,3,2,1,1,3,2,0,2,2,3,1,2,2,3,1,3,0,2,1,0,2,3,2,2,0,1,3,1,0,2,3,3,2,2,0,0,2,0,3,3,2,3,3,2,2,2,2,2,1,2,2,1,2,0,2,0,3,2,0,3,0,3,1,2,1,0,2,2,0,2,1,3,2,3,2,2,3,1,3,0,3,0,3,2,0,1,1,3,0,2,0,1,3,2,3,0,1,3,2,1,0,2,2,2,3,1,2,3,2,0,0,2,3,0,3,3,0,2,0,3,2,2,3,2,1,1,0,3,0,3,1,2,0,2,3,2,0,0,2,0,1,3,0,2,2,3,3,3,0,2,3,2,0,1,0,3,2,0,2,1,3,1,1,2,1,3,0,2,0,2,0,2,1,3,3,0,3,2,0,2,1,1,2,2,0,2,2,1,0,3,3,0,2,2,0,2,3,3,2,1,3,3,2,1,0,2,0,2,2,3,2,0,0,3,3,2,1,2,0,0,0,2,0,0,0,0,2,1,2,3,0,0,0,3,1};
+
+int cluster[300]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3};
+
+int cluster_num[PART_SPLIT_CNT];
+
+void cluster_num_init(){
+  for (int i=0;i<SPLIT_NODE_NUM;i++){
+    cluster_num[cluster[i]] += ROW_PER_NODE;
+  }
+}
+
+std::vector<int> Status(PART_SPLIT_CNT);
+
+double theta = 0.20;
+
+int detest_status; 
+void update_detest_status(int status){
+  detest_status = status;
+}
+
+int remus_status;
+void update_remus_status(int status){
+  remus_status = status;
+}
+
+int squall_status;
+void update_squall_status(int status){
+  squall_status = status;
+}
+
+uint64_t migrate_label;
+void update_migrate_label(uint64_t status){
+  migrate_label = status;
+}
+
+int synctime = SYNCTIME;
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d

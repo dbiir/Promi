@@ -24,6 +24,9 @@ public:
     uint64_t dequeue(uint64_t thd_id, MigrationMessage *& msg);
     uint64_t get_size();
 private:
+    #if NETWORK_DELAY_TEST
+        boost::lockfree::queue<msg_entry*> ** cl_m_queue;
+    #endif
     boost::lockfree::queue<migmsg_entry*> ** m_queue;
     std::vector<migmsg_entry*> sthd_m_cache;
     uint64_t ** ctr;

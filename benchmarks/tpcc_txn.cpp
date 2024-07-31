@@ -246,6 +246,7 @@ void TPCCTxnManager::next_tpcc_state() {
 			state = TPCC_PAYMENT0;
 			break;
 		case TPCC_PAYMENT0:
+			//state = TPCC_FIN;
 			state = TPCC_PAYMENT1;
 			break;
 		case TPCC_PAYMENT1:
@@ -357,6 +358,7 @@ RC TPCCTxnManager::send_remote_request() {
 	query->partitions_touched.add_unique(GET_PART_ID(0,dest_node_id));
 	msg_queue.enqueue(get_thd_id(),msg,dest_node_id);
 	state = next_state;
+	//std::cout<<"remote ";
 	return WAIT_REM;
 }
 
@@ -410,11 +412,19 @@ RC TPCCTxnManager::run_txn_state() {
 
 	RC rc = RCOK;
 	INC_STATS(get_thd_id(),trans_benchmark_compute_time,get_sys_clock() - starttime);
+	#if MIGRATION
+		if (g_node_id == MIGRATION_DES_NODE){
+			if (w_loc == false) w_loc = true;
+			if (c_w_loc == false) c_w_loc = true;
+			if (ol_supply_w_loc == false) ol_supply_w_loc = true;
+		}
+	#endif
 	switch (state) {
 		case TPCC_PAYMENT0 :
 						if(w_loc)
 										rc = run_payment_0(w_id, d_id, d_w_id, h_amount, row);
 						else {
+							std::cout<<"payment0 ";
 							rc = send_remote_request();
 						}
 						break;
@@ -431,6 +441,7 @@ RC TPCCTxnManager::run_txn_state() {
 						if(c_w_loc)
 								rc = run_payment_4( w_id,  d_id, c_id, c_w_id,  c_d_id, c_last, h_amount, by_last_name, row);
 						else {
+								std::cout<<"payment4 ";
 								rc = send_remote_request();
 						}
 						break;
@@ -441,6 +452,7 @@ RC TPCCTxnManager::run_txn_state() {
 						if(w_loc)
 								rc = new_order_0( w_id, d_id, c_id, remote, ol_cnt, o_entry_d, &tpcc_query->o_id, row);
 						else {
+								std::cout<<"neworder0 ";
 								rc = send_remote_request();
 						}
 			break;
@@ -470,6 +482,7 @@ RC TPCCTxnManager::run_txn_state() {
 				rc = new_order_8(w_id, d_id, remote, ol_i_id, ol_supply_w_id, ol_quantity, ol_number, o_id,
 												 row);
 			} else {
+									std::cout<<"neworder8 ";
 									rc = send_remote_request();
 					}
 							break;
@@ -567,7 +580,8 @@ inline RC TPCCTxnManager::run_payment_2(uint64_t w_id, uint64_t d_id, uint64_t d
 	assert(item != NULL);
 	row_t * r_dist = ((row_t *)item->location);
 	INC_STATS(get_thd_id(),trans_benchmark_compute_time,get_sys_clock() - starttime);
-	RC rc = get_row(r_dist, WR, r_dist_local);
+	//RC rc = get_row(r_dist, WR, r_dist_local);
+	RC rc = get_row(r_dist, RD, r_dist_local);
 	return rc;
 }
 
@@ -668,7 +682,8 @@ inline RC TPCCTxnManager::run_payment_4(uint64_t w_id, uint64_t d_id, uint64_t c
 		 	EXEC SQL UPDATE customer SET c_balance = :c_balance, c_data = :c_new_data
 	 		WHERE c_w_id = :c_w_id AND c_d_id = :c_d_id AND c_id = :c_id;
 	 	+======================================================================*/
-	RC rc  = get_row(r_cust, WR, r_cust_local);
+	//RC rc  = get_row(r_cust, WR, r_cust_local);
+	RC rc  = get_row(r_cust, RD, r_cust_local);
 
 	return rc;
 }
@@ -802,7 +817,8 @@ inline RC TPCCTxnManager::new_order_4(uint64_t w_id, uint64_t d_id, uint64_t c_i
 	assert(item != NULL);
 	row_t * r_dist = ((row_t *)item->location);
 	INC_STATS(get_thd_id(),trans_benchmark_compute_time,get_sys_clock() - starttime);
-	RC rc = get_row(r_dist, WR, r_dist_local);
+	//RC rc = get_row(r_dist, WR, r_dist_local);
+	RC rc = get_row(r_dist, RD, r_dist_local);
 	return rc;
 }
 
@@ -918,7 +934,8 @@ inline RC TPCCTxnManager::new_order_8(uint64_t w_id, uint64_t d_id, bool remote,
 	assert(item != NULL);
 	row_t * r_stock = ((row_t *)item->location);
 	INC_STATS(get_thd_id(),trans_benchmark_compute_time,get_sys_clock() - starttime);
-	RC rc = get_row(r_stock, WR, r_stock_local);
+	//RC rc = get_row(r_stock, WR, r_stock_local);
+	RC rc = get_row(r_stock, RD, r_stock_local);
 	return rc;
 }
 

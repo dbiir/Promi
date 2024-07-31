@@ -96,7 +96,11 @@ TxnManager * TxnTable::get_transaction_manager(uint64_t thd_id, uint64_t txn_id,
     t_node = t_node->next;
   }
   INC_STATS(thd_id,mtx[20],get_sys_clock()-prof_starttime);
-
+  /*
+  if (get_sys_clock() > g_mig_endtime && g_mig_endtime != 0){ 
+    if (txn_man == NULL) std::cout<<"100txn_id null"<<"thd_id "<<thd_id<<endl; else std::cout<<"100txn_id "<<txn_man->get_txn_id()<<" thd_id "<<thd_id<<endl;
+  }
+  */
 
   if(!txn_man) {
     prof_starttime = get_sys_clock();
@@ -141,6 +145,7 @@ TxnManager * TxnTable::get_transaction_manager(uint64_t thd_id, uint64_t txn_id,
 
   INC_STATS(thd_id,txn_table_get_time,get_sys_clock() - starttime);
   INC_STATS(thd_id,txn_table_get_cnt,1);
+  //if (get_sys_clock() > g_mig_endtime && g_mig_endtime != 0) std::cout<<"145txn_id "<<txn_man->get_txn_id()<<" thd_id "<<thd_id<<endl;
   return txn_man;
 }
 

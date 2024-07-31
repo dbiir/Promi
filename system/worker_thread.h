@@ -54,11 +54,21 @@ public:
     RC process_log_msg(Message * msg);
     RC process_log_msg_rsp(Message * msg);
     RC process_log_flushed(Message * msg);
+    RC process_sync_migration(Message* msg);
+    RC process_ack_sync_migration(Message* msg);
     RC process_send_migration(Message* msg);
     RC process_recv_migration(Message* msg);
     RC process_finish_migration(Message* msg);
     RC process_set_partmap(Message* msg);
     RC process_set_minipartmap(Message* msg);
+<<<<<<< HEAD
+=======
+    RC process_set_remus(Message* msg);
+    RC process_set_detest(Message* msg);
+    RC process_set_squall(Message* msg);
+    RC process_set_squallpartmap(Message* msg);
+    RC process_set_rowmap(Message* msg);
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
     RC init_phase();
     uint64_t get_next_txn_id();
     bool is_cc_new_timestamp();

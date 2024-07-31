@@ -55,11 +55,18 @@
 #include "rts_cache.h"
 #include "index_btree.h"
 #include "migrate_thread.h"
+#include "stat_thread.h"
 #include "migmsg_queue.h"
+#include "partition.h"
+#include <algorithm>
+#include <iostream>
+#include <vector>
 
 void network_test();
 void network_test_recv();
 void * run_thread(void *);
+void start_migration(uint64_t node_id_src, uint64_t node_id_des, uint64_t part_id);
+void start_minimigration(uint64_t node_id_src, uint64_t node_id_des, uint64_t part_id);
 
 WorkerThread * worker_thds;
 WorkerNumThread * worker_num_thds;
@@ -68,6 +75,7 @@ OutputThread * output_thds;
 AbortThread * abort_thds;
 LogThread * log_thds;
 MigrateThread * migrate_thds;
+StatThread * stat_thds;
 #if CC_ALG == CALVIN
 CalvinLockThread * calvin_lock_thds;
 CalvinSequencerThread * calvin_seq_thds;
@@ -80,11 +88,36 @@ int main(int argc, char *argv[]) {
 	// 0. initialize global data structure
 	if (g_node_id >= 0 && g_node_id < g_node_cnt) {
 		part_map_init();
+<<<<<<< HEAD
 		minipart_map_init();		
 	}
 
 	std::cout<<"TPS_LEN IS "<<TPS_LENGTH<<endl;
 
+=======
+		minipart_map_init();
+		#if (MIGRATION_ALG == SQUALL)
+			squallpart_map_init();
+		#elif (MIGRATION_ALG == DETEST_SPLIT)
+			row_map_init();
+			order_map_init();
+			cluster_num_init();
+		#endif
+	}
+	#if MIGRATION
+	#if (MIGRATION_ALG == REMUS)
+		remus_status = 0;
+		std::cout<<"remus status is "<<remus_status<<" "<<&remus_status<<"Time is: "<<get_sys_clock() / BILLION <<endl;
+	#elif (MIGRATION_ALG == DETEST)
+		detest_status = 0;
+		std::cout<<"detest status is "<<detest_status<<"Time is: "<<(get_sys_clock() - g_starttime) / BILLION <<endl;
+	#elif (MIGRATION_ALG == SQUALL)
+		squall_status = 0;
+		std::cout<<"squall status is "<<squall_status<<"Time is: "<<(get_sys_clock() - g_starttime) / BILLION <<endl;		
+	#endif
+	#endif
+	
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
 	parser(argc, argv);
 #if SEED != 0
 	uint64_t seed = SEED + g_node_id;
@@ -302,7 +335,8 @@ int main(int argc, char *argv[]) {
 	uint64_t rthd_cnt = g_rem_thread_cnt;
 	uint64_t sthd_cnt = g_send_thread_cnt;
 	uint64_t migthd_cnt = g_migrate_thread_cnt;
-	uint64_t all_thd_cnt = thd_cnt + rthd_cnt + sthd_cnt + g_abort_thread_cnt + migthd_cnt + 1;
+	uint64_t statthd_cnt = g_stat_thread_cnt;
+	uint64_t all_thd_cnt = thd_cnt + rthd_cnt + sthd_cnt + g_abort_thread_cnt + migthd_cnt + g_stat_thread_cnt + 1;
 #if LOGGING
 		all_thd_cnt += 1; // logger thread
 #endif
@@ -311,9 +345,11 @@ int main(int argc, char *argv[]) {
 #endif
 
 
-	printf("%ld, %ld, %ld, %d, %ld\n", thd_cnt, rthd_cnt, sthd_cnt, g_abort_thread_cnt, migthd_cnt);
+	printf("%ld, %ld, %ld, %d, %ld, %ld\n", thd_cnt, rthd_cnt, sthd_cnt, g_abort_thread_cnt, migthd_cnt, statthd_cnt);
 	printf("all_thd_cnt: %ld, g_this_total_thread_cnt: %d \n", all_thd_cnt, g_this_total_thread_cnt);
 	fflush(stdout);
+	std::cout<<"g_total_thread_cnt is "<<g_total_thread_cnt<<endl;
+	std::cout<<"g_stat_thread_cnt is "<<g_stat_thread_cnt<<endl;
 	assert(all_thd_cnt == g_this_total_thread_cnt);
 
 	pthread_t *p_thds = (pthread_t *)malloc(sizeof(pthread_t) * (all_thd_cnt));
@@ -327,6 +363,7 @@ int main(int argc, char *argv[]) {
 	abort_thds = new AbortThread[1];
 	log_thds = new LogThread[1];
 	migrate_thds = new MigrateThread[g_migrate_thread_cnt];
+	stat_thds = new StatThread[g_stat_thread_cnt];
 #if CC_ALG == CALVIN
 	calvin_lock_thds = new CalvinLockThread[1];
 	calvin_seq_thds = new CalvinSequencerThread[1];
@@ -380,10 +417,15 @@ int main(int argc, char *argv[]) {
 	cpu_set_t cpus;
 #endif
 	// spawn and run txns again.
-	starttime = get_server_clock();
+	starttime = get_sys_clock();
 	simulation->run_starttime = starttime;
 	simulation->last_da_query_time = starttime;
+<<<<<<< HEAD
 	g_start_time = starttime;
+=======
+	g_starttime = starttime;
+	std::cout<<"g_starttime is"<<g_starttime<<endl;
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
 
 	uint64_t id = 0;
 	for (uint64_t i = 0; i < wthd_cnt; i++) {
@@ -451,6 +493,11 @@ int main(int argc, char *argv[]) {
 	}
 	#endif
 
+	for (uint64_t i = 0; i < g_stat_thread_cnt; i++){
+		stat_thds[i].init(id, g_node_id, m_wl);
+		pthread_create(&p_thds[id++], NULL, run_thread, (void *)&stat_thds[i]);
+	}
+
 #if CC_ALG == CALVIN
 #if SET_AFFINITY
 	CPU_ZERO(&cpus);
@@ -474,10 +521,25 @@ int main(int argc, char *argv[]) {
 
 	worker_num_thds[0].init(id,g_node_id,m_wl);
 	pthread_create(&p_thds[id++], &attr, run_thread, (void *)&worker_num_thds[0]);
+<<<<<<< HEAD
+=======
+	
+	//sleep(g_warmup_timer / BILLION + 5);
+	//搞一个迁移消息 Remus的snapshot copying Detest的minipartition调度
+	#if MIGRATION
+		//uint64_t node_id_src=0, node_id_des=1;
+		//uint64_t part_id = 0;
+	#if (MIGRATION_ALG == DETEST)
+		//start_minimigration(node_id_src, node_id_des, part_id);
+	#else
+		//start_migration(node_id_src, node_id_des, part_id);
+	#endif
+	#endif
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
 
 	for (uint64_t i = 0; i < all_thd_cnt; i++) pthread_join(p_thds[i], NULL);
 
-	endtime = get_server_clock();
+	endtime = get_sys_clock();
 
 	fflush(stdout);
 	printf("PASS! SimTime = %f\n", (float)(endtime - starttime) / BILLION);
@@ -548,4 +610,64 @@ void network_test_recv() {
 			tport_man.simple_send_msg(bytes);
 	}
 	*/
+}
+
+void start_migration(uint64_t node_id_src, uint64_t node_id_des, uint64_t part_id){
+	if (g_node_id == 0){
+		MigrationMessage* msg = new(MigrationMessage);
+		msg->node_id_src = node_id_src;
+		msg->node_id_des = node_id_des;
+		msg->part_id = part_id;
+		msg->minipart_id = -1;
+		msg->rtype = SEND_MIGRATION;
+		msg->data_size = g_synth_table_size / g_part_cnt;
+		msg->return_node_id = node_id_des;
+		msg->isdata = false;
+		std::cout<<"msg size is:"<<msg->get_size()<<endl;
+		std::cout<<"begin migration!"<<endl;
+		work_queue.enqueue(g_thread_cnt-1,msg,false);
+	}
+}
+
+void start_minimigration(uint64_t node_id_src, uint64_t node_id_des, uint64_t part_id){
+	if (g_node_id == 0){
+		Partition_t partition_migrate = Partition_t(part_id, -1, part_id, g_synth_table_size - (g_part_cnt - part_id));
+		partition_migrate.split();
+		vector<int> hot_minipart;
+		int tmp=0;
+		UInt32 t=0;
+		for (uint64_t i=partition_migrate.key_start ;i <= partition_migrate.key_end ; i+=(g_synth_table_size / g_part_cnt)){ //统计当前分区的热点子分区
+			tmp += query_to_row[i];
+			t++;
+			if (t == (g_synth_table_size / g_part_cnt / g_part_split_cnt)){
+				hot_minipart.emplace_back(query_to_row[i]);
+				tmp = 0;
+				t = 0;
+			}
+		}
+		int cnt=0;
+		update_detest_status(1);
+		std::cout<<"detest status is "<<detest_status<<" Time is: "<<get_sys_clock() / BILLION <<endl;
+		while (cnt < PART_HOT_CNT){//调度子分区迁移
+			vector<int>::iterator maxValue = max_element(hot_minipart.begin(),hot_minipart.end()); 
+			int pos = distance(hot_minipart.begin(), maxValue);
+			int minipart_id = pos * g_part_cnt + part_id;
+			MigrationMessage* msg = new(MigrationMessage);
+			msg->node_id_src = node_id_src;
+			msg->node_id_des = node_id_des;
+			msg->part_id = part_id;
+			msg->minipart_id = minipart_id;
+			msg->key_start = partition_migrate.minipart[minipart_id]->key_start;
+			msg->key_end = partition_migrate.minipart[minipart_id]->key_end;
+			msg->rtype = SEND_MIGRATION;
+			msg->data_size = g_synth_table_size / g_part_cnt / g_part_split_cnt;
+			msg->return_node_id = node_id_des;
+			msg->isdata = false;
+			cnt++;
+			if (cnt == PART_HOT_CNT) msg->islast = true;
+			std::cout<<"msg size is:"<<msg->get_size()<<endl;
+			work_queue.enqueue(g_thread_cnt-1,msg,false);
+		}
+
+	}
 }

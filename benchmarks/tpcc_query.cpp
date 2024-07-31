@@ -23,6 +23,11 @@
 #include "table.h"
 #include "message.h"
 
+void TPCCQueryGenerator::init(){
+	mrand = (myrand *) mem_allocator.alloc(sizeof(myrand));
+	mrand->init(get_sys_clock());  
+}
+
 BaseQuery * TPCCQueryGenerator::create_query(Workload * h_wl,uint64_t home_partition_id) {
   double x = (double)(rand() % 100) / 100.0;
 	if (x < g_perc_payment)
@@ -143,9 +148,46 @@ BaseQuery * TPCCQueryGenerator::gen_payment(uint64_t home_partition) {
 	query->txn_type = TPCC_PAYMENT;
   uint64_t home_warehouse;
 	if (FIRST_PART_LOCAL) {
-    while (wh_to_part(home_warehouse = URand(1, g_num_wh)) != home_partition) {
+    while (wh_to_part(home_warehouse = URand(1, g_num_wh)) != home_partition) {}
+  } else if (SINGLE_PART){
+			#if SINGLE_PART_0
+				home_warehouse = 0;
+			#elif SINGLE_PART_012 //not used in TPCC
+      /*
+				if (rid == 0){
+					if (home_partition_id == 0){
+						int tmp = mrand->next();
+						if (tmp % 2== 0) partition_id = 0;
+						else if (tmp % 2 == 1) partition_id = 2;
+					}
+					else {
+						
+						if (mrand->next() % 2 == 0) partition_id = 1;
+						else if (mrand->next() % 2 == 1) partition_id = 3;
+						
+						//partition_id = 1;
+					}
+					part = partition_id;
+				}
+				else partition_id = part;
+      */
+			#elif  SINGLE_PART_0124
+				if (home_partition == 0){
+					int tmp = mrand->next();
+					if (tmp % 3 == 0) home_warehouse = 1;
+					else if (tmp % 3 == 1) home_warehouse = 3;
+					else if (tmp % 3 == 2) home_warehouse = 5;
+				}
+				else {
+					home_warehouse = 2;
+				}
+			#elif SINGLE_PART_CONSOLIDATION
+				home_warehouse = home_partition_id;
+      #else 
+        while (GET_NODE_ID(wh_to_part(home_warehouse = URand(1, g_num_wh))) != home_partition) {}
+      #endif
   }
-  } else
+  else
 		home_warehouse = URand(1, g_num_wh);
   query->w_id =  home_warehouse;
 	query->d_w_id = home_warehouse;
@@ -162,7 +204,7 @@ BaseQuery * TPCCQueryGenerator::gen_payment(uint64_t home_partition) {
 #ifdef NO_REMOTE
   if(x >= 0) {
 #else
-	if(x > 0.15) {
+	if(x >= 0) { //no remote
 #endif
 		// home warehouse
 		query->c_d_id = query->d_id;
@@ -179,7 +221,7 @@ BaseQuery * TPCCQueryGenerator::gen_payment(uint64_t home_partition) {
 		} else
       query->c_w_id = query->w_id;
 	}
-	if(y <= 60) {
+	if(y < 0) {
 		// by last name
 		query->by_last_name = true;
 		Lastname(NURand(255,0,999),query->c_last);
@@ -203,9 +245,46 @@ BaseQuery * TPCCQueryGenerator::gen_new_order(uint64_t home_partition) {
 	query->txn_type = TPCC_NEW_ORDER;
   query->items.init(g_max_items_per_txn);
 	if (FIRST_PART_LOCAL) {
-    while (wh_to_part(query->w_id = URand(1, g_num_wh)) != home_partition) {
-  }
-  } else
+    while (wh_to_part(query->w_id = URand(1, g_num_wh)) != home_partition) {}
+  } else if (SINGLE_PART){
+			#if SINGLE_PART_0
+				query->w_id = 1;  //warehouse_id 从1开始
+			#elif SINGLE_PART_012 //not used in TPCC
+      /*
+				if (rid == 0){
+					if (home_partition_id == 0){
+						int tmp = mrand->next();
+						if (tmp % 2== 0) partition_id = 0;
+						else if (tmp % 2 == 1) partition_id = 2;
+					}
+					else {
+						
+						if (mrand->next() % 2 == 0) partition_id = 1;
+						else if (mrand->next() % 2 == 1) partition_id = 3;
+						
+						//partition_id = 1;
+					}
+					part = partition_id;
+				}
+				else partition_id = part;
+      */
+			#elif  SINGLE_PART_0124
+				if (home_partition == 0){
+					uint64_t tmp = mrand->next();
+					if (tmp % 3 == 0) query->w_id = 1;   //w_id最小1
+					else if (tmp % 3 == 1) query->w_id = 3;
+					else if (tmp % 3 == 2) query->w_id = 5;
+				}
+				else {
+					query->w_id = 2;
+				}
+			#elif SINGLE_PART_CONSOLIDATION
+				query->w_id = home_partition_id;
+      #else
+        while (GET_NODE_ID(wh_to_part(query->w_id = URand(1, g_num_wh))) != home_partition) {}
+      #endif
+  } 
+  else
 		query->w_id = URand(1, g_num_wh);
 
 	query->d_id = URand(1, g_dist_per_wh);

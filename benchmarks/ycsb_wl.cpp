@@ -69,10 +69,18 @@ RC YCSBWorkload::init_schema(const char * schema_file) {
 int YCSBWorkload::key_to_part(uint64_t key) {
 	//uint64_t rows_per_part = g_synth_table_size / g_part_cnt;
 	//return key / rows_per_part;
-	#if KEY_TO_PART == HASH_MODE
-  		return key % g_part_cnt;
-	#elif KEY_TO_PART == CONST_MODE 
-		return key / (g_synth_table_size / g_part_cnt);
+	#if MIGRATION_ALG == DETEST
+		#if KEY_TO_PART == HASH_MODE
+  			return key % g_part_cnt;
+		#elif KEY_TO_PART == CONST_MODE 
+			return key / (g_synth_table_size / g_part_cnt);
+		#endif
+	#else
+		#if KEY_TO_PART == HASH_MODE
+  			return key % g_part_cnt;
+		#elif KEY_TO_PART == CONST_MODE 
+			return key / (g_synth_table_size / g_part_cnt);
+		#endif
 	#endif
 }
 
@@ -213,6 +221,7 @@ void * YCSBWorkload::init_table_slice(){
 			rc = the_index->index_insert(idx_key, m_item, part_id);
 			assert(rc == RCOK);
 			key_cnt ++;
+			std::cout<<"Insert key "<<key<<' ';
 			key ++;
 		}
   		printf("Thd %d inserted %ld keys\n",tid,key_cnt);

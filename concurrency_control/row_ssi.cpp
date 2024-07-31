@@ -124,6 +124,11 @@ SSIReqEntry * Row_ssi::debuffer_req( TsType type, TxnManager * txn) {
 			prev_req = req;
 			req = req->next;
 		}
+		//下面报错，先注释掉
+		if (req == NULL){
+			std::cout<<"prev_req is "<<prev_req<<" ";
+			std::cout<<prev_req->txn->last_msg<<endl;
+		}
 		assert(req != NULL);
 		if (prev_req != NULL)
 			prev_req->next = req->next;
@@ -234,7 +239,7 @@ RC Row_ssi::access(TxnManager * txn, TsType type, row_t * row) {
 	else
 		pthread_mutex_lock( latch );
 	INC_STATS(txn->get_thd_id(), trans_access_lock_wait_time, get_sys_clock() - starttime);
-  	if (type == R_REQ) {
+  if (type == R_REQ) {
 		// Add the si-read lock
 		get_lock(LOCK_SH, txn);
 		// Traverse the whole write lock

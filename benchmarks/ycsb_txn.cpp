@@ -59,8 +59,13 @@ RC YCSBTxnManager::acquire_locks() {
 		ycsb_request * req = ycsb_query->requests[rid];
 		uint64_t part_id = _wl->key_to_part( req->key );
     DEBUG("LK Acquire (%ld,%ld) %d,%ld -> %ld\n", get_txn_id(), get_batch_id(), req->acctype,
+<<<<<<< HEAD
           req->key, get_key_node_id(req->key));
     if (get_key_node_id(req->key) != g_node_id) continue;
+=======
+          req->key, GET_NODE_ID_MINI(req->key));
+		if (GET_NODE_ID_MINI(req->key) != g_node_id) continue;
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
 		INDEX * index = _wl->the_index;
 		itemid_t * item;
 		item = index_read(index, req->key, part_id);
@@ -95,6 +100,7 @@ RC YCSBTxnManager::run_txn() {
     DEBUG("Running txn %ld\n",txn->txn_id);
     //query->print();
     query->partitions_touched.add_unique(GET_PART_ID(0,g_node_id));
+    //query->partitions_touched.add_unique(key_to_part(((YCSBQuery*)query)->requests[0]->key));
   }
 
   uint64_t starttime = get_sys_clock();
@@ -116,7 +122,12 @@ RC YCSBTxnManager::run_txn() {
   } else if(rc == Abort){
     rc = abort();
   }
-
+  /*
+  if(is_done() && rc == RCOK)
+    rc = start_commit();
+  else if(rc == Abort)
+    rc = start_abort();
+  */
   return rc;
 
 }
@@ -155,13 +166,22 @@ void YCSBTxnManager::next_ycsb_state() {
 }
 
 bool YCSBTxnManager::is_local_request(uint64_t idx) {
+<<<<<<< HEAD
   return get_key_node_id(((YCSBQuery*)query)->requests[idx]->key) == g_node_id;
+=======
+  return GET_NODE_ID_MINI(((YCSBQuery*)query)->requests[idx]->key) == g_node_id;
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
 }
 
 RC YCSBTxnManager::send_remote_request() {
   YCSBQuery* ycsb_query = (YCSBQuery*) query;
+<<<<<<< HEAD
   uint64_t dest_node_id = get_key_node_id(ycsb_query->requests[next_record_id]->key);
+=======
+  uint64_t dest_node_id = GET_NODE_ID_MINI(ycsb_query->requests[next_record_id]->key);
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
   ycsb_query->partitions_touched.add_unique(GET_PART_ID(0,dest_node_id));
+  //ycsb_query->partitions_touched.add_unique(key_to_part(((YCSBQuery*)query)->requests[next_record_id]->key));
   DEBUG("ycsb send remote request %ld, %ld\n",txn->txn_id,txn->batch_id);
   msg_queue.enqueue(get_thd_id(),Message::create_message(this,RQRY),dest_node_id);
   txn_stats.trans_process_network_start_time = get_sys_clock();
@@ -171,6 +191,7 @@ RC YCSBTxnManager::send_remote_request() {
 void YCSBTxnManager::copy_remote_requests(YCSBQueryMessage * msg) {
   YCSBQuery* ycsb_query = (YCSBQuery*) query;
   //msg->requests.init(ycsb_query->requests.size());
+<<<<<<< HEAD
   uint64_t dest_node_id = get_key_node_id(ycsb_query->requests[next_record_id]->key);
 #if ONE_NODE_RECIEVE == 1 && defined(NO_REMOTE) && LESS_DIS_NUM == 10
   while (next_record_id < ycsb_query->requests.size() && get_key_node_id(ycsb_query->requests[next_record_id]->key) == dest_node_id) {
@@ -178,6 +199,15 @@ void YCSBTxnManager::copy_remote_requests(YCSBQueryMessage * msg) {
   while (next_record_id < ycsb_query->requests.size() && !is_local_request(next_record_id) &&
          get_key_node_id(ycsb_query->requests[next_record_id]->key) == dest_node_id) {
 #endif
+=======
+  uint64_t dest_node_id = GET_NODE_ID_MINI(ycsb_query->requests[next_record_id]->key);
+  #if ONE_NODE_RECIEVE == 1 && defined(NO_REMOTE) && LESS_DIS_NUM == 10
+    while (next_record_id < ycsb_query->requests.size() && GET_NODE_ID(key_to_part(ycsb_query->requests[next_record_id]->key)) == dest_node_id) {
+  #else
+    while (next_record_id < ycsb_query->requests.size() && !is_local_request(next_record_id) &&
+         GET_NODE_ID_MINI(ycsb_query->requests[next_record_id]->key) == dest_node_id) {
+  #endif
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
     YCSBQuery::copy_request_to_msg(ycsb_query,msg,next_record_id++);
   }
 }
@@ -186,6 +216,7 @@ RC YCSBTxnManager::run_txn_state() {
   YCSBQuery* ycsb_query = (YCSBQuery*) query;
 	ycsb_request * req = ycsb_query->requests[next_record_id];
 	uint64_t part_id = _wl->key_to_part( req->key );
+<<<<<<< HEAD
   assert(part_id < g_part_cnt);
 
   /*
@@ -195,6 +226,37 @@ RC YCSBTxnManager::run_txn_state() {
   bool loc = get_key_node_id(req->key) == g_node_id;
 
 
+=======
+  assert(part_id >= 0);
+  bool loc = GET_NODE_ID_MINI(req->key) == g_node_id;
+  if (!loc) this->isdistributed = true;
+  
+  #if MIGRATION
+  #if MIGRATION_ALG == REMUS
+    //part_map修改了，只有那些本地生成的事务，访问的mini分区刚好迁移完了，继续保持本地执行
+    if (g_node_id == MIGRATION_SRC_NODE && IS_LOCAL(txn->txn_id) && loc == false && part_id == MIGRATION_PART && get_part_status(key_to_part(req->key)) == 2){
+      loc = true;
+      //std::cout<<"keep local remus"<<' ';
+    }
+  
+  #elif MIGRATION_ALG == DETEST
+    //part_map修改了，只有那些本地生成的事务，访问的mini分区刚好迁移完了，继续保持本地执行
+    if (g_node_id == MIGRATION_SRC_NODE && IS_LOCAL(txn->txn_id) && loc == false && part_id == MIGRATION_PART && get_minipart_status(get_minipart_id(req->key)) == 2){
+      loc = true;
+      //std::cout<<"keep local detest"<<' ';
+    }
+  #elif MIGRATION_ALG == SQUALL
+    if (g_node_id == MIGRATION_DES_NODE && part_id == MIGRATION_PART && squall_status == 1 && get_squallpart_status(get_squallpart_id(req->key)) == 0){
+    }
+  #elif MIGRATION_ALG == DETEST_SPLIT
+    if (this->get_txn_id() % g_node_cnt == 0 && loc == false && part_id == 0 && get_minipart_status(get_minipart_id(req->key)) != 0 && this->txn_stats.starttime < remus_finish_time){
+      loc = true;
+      std::cout<<"keep local detest"<<' ';
+    }
+  #endif
+  #endif
+  
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
   //std::cout<<"key is:"<<req->key<<" node is "<<GET_NODE_ID(part_id)<<" part is "<<part_id<<endl;
 
 	RC rc = RCOK;
@@ -354,10 +416,15 @@ RC YCSBTxnManager::run_ycsb() {
     if (this->phase == CALVIN_LOC_RD && req->acctype == WR) continue;
     if (this->phase == CALVIN_EXEC_WR && req->acctype == RD) continue;
 
+<<<<<<< HEAD
 		uint64_t part_id = _wl->key_to_part( req->key );
     assert(part_id < g_part_cnt);
     
     bool loc = get_key_node_id(req->key) == g_node_id;
+=======
+		//uint64_t part_id = _wl->key_to_part( req->key );
+    bool loc = GET_NODE_ID_MINI(req->key) == g_node_id;
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
 
     if (!loc) continue;
 

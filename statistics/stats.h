@@ -66,12 +66,15 @@ public:
   uint64_t local_txn_abort_cnt;
   uint64_t remote_txn_abort_cnt;
   double txn_run_time;
+  //uint64_t distributed_txn_cnt;
   uint64_t multi_part_txn_cnt;
   double multi_part_txn_run_time;
   uint64_t single_part_txn_cnt;
   double single_part_txn_run_time;
   uint64_t txn_write_cnt;
   uint64_t record_write_cnt;
+  uint64_t throughput[TPS_LENGTH];
+  uint64_t tps[THREAD_CNT];
 
   // Transaction stats
   double txn_total_process_time;
@@ -84,6 +87,7 @@ public:
   double txn_twopc_time;
 
   // Client
+  uint64_t txn_sent[TPS_LENGTH+30];
   uint64_t txn_sent_cnt;
   double cl_send_intv;
 
@@ -453,6 +457,7 @@ public:
   void mem_util(FILE * outf);
   void cpu_util(FILE * outf);
   void print_prof(FILE * outf);
+  void analyze(Stats_thd ** _stats);
 
   clock_t lastCPU, lastSysCPU, lastUserCPU;
 private:

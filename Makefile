@@ -1,18 +1,28 @@
+<<<<<<< HEAD
 CC=/usr/bin/g++
 CFLAGS=-Wall -Werror -std=c++17 -g3 -ggdb -O0 -fno-strict-aliasing -fno-omit-frame-pointer -D_GLIBCXX_USE_CXX11_ABI=0
 #CFLAGS += -fsanitize=address -fno-stack-protector -fno-omit-frame-pointer
+=======
+CC=g++
+
+CFLAGS=-Wall -Werror -std=c++11 -g3 -ggdb -O0 -fno-strict-aliasing -I/usr/local/include -I/home/u2021000884/include -L/usr/local/lib -L/home/u2021000884/lib -D_GLIBCXX_USE_CXX11_ABI=0 -fno-omit-frame-pointer -D_GLIBCXX_USE_CXX11_ABI=0
+
+# CFLAGS += -fsanitize=address -fno-stack-protector -fno-omit-frame-pointer
+>>>>>>> 8ee691f8bc5012b01a09fa4ed4cd44586f4b7b9d
 NNMSG=./nanomsg-0.5-beta
+#RALLOC = ./rlib/lib
 
 .SUFFIXES: .o .cpp .h .cc
 
 SRC_DIRS = ./ ./benchmarks/ ./client/ ./concurrency_control/ ./storage/ ./transport/ ./system/ ./statistics/#./unit_tests/
 DEPS = -I. -I./benchmarks -I./client/ -I./concurrency_control -I./storage -I./transport -I./system -I./statistics #-I./unit_tests
 
-CFLAGS += $(DEPS) -D NOGRAPHITE=1 -Wno-sizeof-pointer-memaccess
+
+CFLAGS += $(DEPS) -D NOGRAPHITE=1 -Wno-sizeof-pointer-memaccess 
 LDFLAGS = -Wall -L. -L$(NNMSG) -Wl,-rpath -pthread -lrt -lnanomsg -lanl -lcurl -lpthread
-#LDFLAGS = -Wall -L. -L$(NNMSG) -L$(JEMALLOC)/lib -Wl,-rpath,$(JEMALLOC)/lib -pthread -gdwarf-3 -lrt -std=c++11
 LDFLAGS += $(CFLAGS)
 LIBS =
+
 
 DB_MAINS = ./client/client_main.cpp ./system/sequencer_main.cpp ./unit_tests/unit_main.cpp
 CL_MAINS = ./system/main.cpp ./system/sequencer_main.cpp ./unit_tests/unit_main.cpp
