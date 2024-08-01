@@ -1,6 +1,6 @@
 Promi
 =======
-Implementation of the paper “Promi: Progressive Live Migration in Distributed Database Systems”
+Implementation of the paper “Promi: Progressive Live Migration in Distributed Database Systems”.
 Promi is a testbed of an OLTP distributed database management system (DBMS).
 
 
