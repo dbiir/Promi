@@ -1,7 +1,7 @@
-Poem
+Promi
 =======
-Implementation of the paper “Poem: Progressive and Efficient Live Migration in Distributed Database Systems”
-Poem is a testbed of an OLTP distributed database management system (DBMS).
+Implementation of the paper “Promi: Progressive Live Migration in Distributed Database Systems”
+Promi is a testbed of an OLTP distributed database management system (DBMS).
 
 
 ## Dependencies
@@ -25,7 +25,7 @@ To build the database.
 Configuration
 -------------
 
-Poem configurations can be changed in the config.h file. Please refer to README for the meaning of each configuration. Here we only list several most important ones.
+Promi configurations can be changed in the config.h file. Please refer to README for the meaning of each configuration. Here we only list several most important ones.
 
     NODE_CNT          : Number of server nodes in the database
     THREAD_CNT        : Number of worker threads running per server
@@ -40,7 +40,7 @@ Configurations can also be specified as command argument at runtime. Run the fol
 Run
 ---
 
-The Poem can be run with
+The Promi can be run with
 
     ./rundb -nid[N]
     ./runcl -nid[M]
